@@ -128,7 +128,8 @@ void load_parameters(rclcpp::Node * node, BaseVehicleModel & model)
             declare_vec("powertrain.torque")
           },
           declare_vec("powertrain.gear_ratio"),
-          declare_double("powertrain.final_drive_ratio")
+          declare_double("powertrain.final_drive_ratio"),
+          declare_double("powertrain.kd")
         }
   );
 

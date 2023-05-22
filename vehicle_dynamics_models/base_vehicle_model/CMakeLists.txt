@@ -23,9 +23,6 @@ endif()
 # Require that dependencies from package.xml be available.
 find_package(casadi REQUIRED)
 find_package(ament_cmake_auto REQUIRED)
-find_package(eigen3_cmake_module REQUIRED)
-find_package(Eigen3 REQUIRED)
-include_directories(SYSTEM ${EIGEN3_INCLUDE_DIRS})
 ament_auto_find_build_dependencies(REQUIRED
   ${${PROJECT_NAME}_BUILD_DEPENDS}
   ${${PROJECT_NAME}_BUILDTOOL_DEPENDS}
@@ -49,14 +46,14 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
 
 target_link_libraries(${PROJECT_NAME} casadi)
 
-# if(BUILD_TESTING)
-#   find_package(ament_lint_auto REQUIRED)
-#   ament_lint_auto_find_test_dependencies()
-#   set(TEST_SOURCES test/test_base_vehicle_model.cpp)
-#   set(TEST_BVM_EXE test_bvm)
-#   ament_add_gtest(${TEST_BVM_EXE} ${TEST_SOURCES})
-#   target_link_libraries(${TEST_BVM_EXE} ${PROJECT_NAME})
-# endif()
+if(BUILD_TESTING)
+  find_package(ament_lint_auto REQUIRED)
+  ament_lint_auto_find_test_dependencies()
+  set(TEST_SOURCES test/test_base_vehicle_model.cpp)
+  set(TEST_BVM_EXE test_bvm)
+  ament_add_gtest(${TEST_BVM_EXE} ${TEST_SOURCES})
+  target_link_libraries(${TEST_BVM_EXE} ${PROJECT_NAME})
+endif()
 
 # Create & install ament package.
 ament_auto_package(INSTALL_TO_SHARE
