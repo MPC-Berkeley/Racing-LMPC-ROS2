@@ -1,0 +1,34 @@
+name: ROS2 CI Workflow
+
+on: [push]
+jobs:
+  build-ros2-humble:
+    runs-on: ubuntu-latest
+    container:
+      image: ros:humble
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+      - name: Build Casadi
+        run: |
+          bash -c 'apt update; \
+          apt install -y gcc g++ gfortran git cmake liblapack-dev pkg-config --install-recommends; \
+          apt install -y --no-install-recommends coinor-libipopt-dev; \
+          git clone https://github.com/casadi/casadi.git -b main casadi; \
+          cd casadi; mkdir build; cd build;
+          cmake -DWITH_IPOPT=ON ..; make; make install;
+          echo export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/usr/local/lib" >> /etc/bash.bashrc'
+      - name: Install ROS Dependencies
+        run: |
+          bash -c 'source /opt/ros/$ROS_DISTRO/setup.bash; \
+          apt-get update && rosdep update; \
+          rosdep install --from-paths src --ignore-src -y'
+      - name: Build Workspace
+        run: |
+          bash -c 'source /opt/ros/$ROS_DISTRO/setup.bash; \
+          colcon build --event-handlers console_cohesion+'
+      - name: Run Tests
+        run: |
+          bash -c 'source /opt/ros/$ROS_DISTRO/setup.bash; \
+          colcon test --event-handlers console_cohesion+; \
+          colcon test-result --verbose'
