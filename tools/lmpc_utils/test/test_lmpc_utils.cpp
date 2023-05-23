@@ -19,20 +19,13 @@
 #include "lmpc_utils/lookup.hpp"
 #include "lmpc_utils/ros_param_helper.hpp"
 
-class DummyTestNode : public rclcpp::Node
-{
-public:
-  explicit DummyTestNode(const rclcpp::NodeOptions & options)
-  : rclcpp::Node("test_lmpc_utils_node", options) {}
-};
-
 TEST(LmpcUtilsTest, RosParamHelperTest) {
   rclcpp::init(0, nullptr);
   rclcpp::NodeOptions options;
   options.arguments(
     {"--ros-args", "-p", "test_double:=1.0", "-p", "test_int:=1", "-p",
       "test_vec:=[3.14,2.718]"});
-  auto test_node = DummyTestNode(options);
+  auto test_node = rclcpp::Node("test_lmpc_utils_node", options);
 
   EXPECT_DOUBLE_EQ(lmpc::utils::declare_parameter<double>(&test_node, "test_double"), 1.0);
   EXPECT_EQ(lmpc::utils::declare_parameter<int64_t>(&test_node, "test_int"), 1);
