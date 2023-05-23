@@ -5,7 +5,6 @@
       width: 0.25
       mass: 20.0
       moi: 20.0 # rotational moment of inertia
-      rolling_resistance_coeff: 0.012
       pacejka_b: 9.62
       pacejka_c: 2.59
       pacejka_e: 1.0
@@ -17,7 +16,6 @@
       width: 0.25
       mass: 25.0
       rot: 20.0 # rotational moment of inertia
-      rolling_resistance_coeff: 0.015
       pacejka_b: 8.62
       pacejka_c: 2.65
       pacejka_e: 1.0
@@ -58,11 +56,12 @@
       tw_r: 1.6
       moi: 1000.0 # rotational moment of inertia
       b: 2.0
+      fr: 0.012
 
     aero:
       air_density: 1.2
       drag_coeff: 0.736
-      cross_area: 1.0
+      frontal_area: 1.0
       cl_f: 2.4
       cl_r: 3.0
 

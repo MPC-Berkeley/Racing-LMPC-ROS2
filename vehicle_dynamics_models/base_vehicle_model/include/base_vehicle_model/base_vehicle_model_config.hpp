@@ -34,7 +34,6 @@ struct TyreConfig
   double width;  // m
   double mass;  // kg
   double moi;  // rotational moment of inertia in kg * m^2
-  double rolling_resistance_coeff;  // rolling resistance coefficient
 
   double pacejka_b;  // Pacejka magic number
   double pacejka_c;  // Pacejka magic number
@@ -75,6 +74,7 @@ struct ChassisConfig
   double tw_r;  // rear track width (m)
   double moi;  // polar moment of inertia (kg * m^2)
   double b;  // vehicle width (m)
+  double fr;  // rolling resistance coefficient
 };
 
 struct AeroConfig

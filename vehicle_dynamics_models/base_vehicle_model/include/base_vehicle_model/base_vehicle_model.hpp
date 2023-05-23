@@ -39,18 +39,16 @@ public:
   void set_base_config(BaseVehicleModelConfig::SharedPtr config);
   const BaseVehicleModelConfig & get_base_config() const;
 
-  casadi::Function & dynamics();
-
   virtual size_t nx() const;
   virtual size_t nu() const;
 
-protected:
-  virtual casadi::Function compile_dynamics();
+  virtual void forward_dynamics(const casadi::MXDict & in, casadi::MXDict & out);
+  virtual void add_nlp_constraints(casadi::Opti & opti, const casadi::MXDict & in);
 
+protected:
   BaseVehicleModelConfig::SharedPtr base_config_ {};
   casadi::DM x_;
   casadi::DM u_;
-  casadi::Function dynamics_;
 };
 }  // namespace base_vehicle_model
 }  // namespace vehicle_model

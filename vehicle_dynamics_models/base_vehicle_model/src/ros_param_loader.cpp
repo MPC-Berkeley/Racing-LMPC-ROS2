@@ -27,7 +27,7 @@ namespace vehicle_model
 {
 namespace base_vehicle_model
 {
-void load_parameters(rclcpp::Node * node, BaseVehicleModel & model)
+BaseVehicleModelConfig::SharedPtr load_parameters(rclcpp::Node * node)
 {
   auto declare_double = [&](const char * name) {
       return lmpc::utils::declare_parameter<double>(node, name);
@@ -41,7 +41,6 @@ void load_parameters(rclcpp::Node * node, BaseVehicleModel & model)
           declare_double("front_tyre.width"),
           declare_double("front_tyre.mass"),
           declare_double("front_tyre.moi"),
-          declare_double("front_tyre.rolling_resistance_coeff"),
           declare_double("front_tyre.pacejka_b"),
           declare_double("front_tyre.pacejka_c"),
           declare_double("front_tyre.pacejka_e"),
@@ -56,12 +55,11 @@ void load_parameters(rclcpp::Node * node, BaseVehicleModel & model)
           declare_double("rear_tyre.width"),
           declare_double("rear_tyre.mass"),
           declare_double("rear_tyre.rot"),
-          declare_double("rear_tyre.rolling_resistance_coeff"),
-          declare_double("rear.pacejka_b"),
-          declare_double("rear.pacejka_c"),
-          declare_double("rear.pacejka_e"),
-          declare_double("rear.pacejka_fz0"),
-          declare_double("rear.pacejka_eps")
+          declare_double("rear_tyre.pacejka_b"),
+          declare_double("rear_tyre.pacejka_c"),
+          declare_double("rear_tyre.pacejka_e"),
+          declare_double("rear_tyre.pacejka_fz0"),
+          declare_double("rear_tyre.pacejka_eps")
         }
   );
 
@@ -106,7 +104,8 @@ void load_parameters(rclcpp::Node * node, BaseVehicleModel & model)
           declare_double("chassis.tw_f"),
           declare_double("chassis.tw_r"),
           declare_double("chassis.moi"),
-          declare_double("chassis.b")
+          declare_double("chassis.b"),
+          declare_double("chassis.fr")
         }
   );
 
@@ -133,7 +132,7 @@ void load_parameters(rclcpp::Node * node, BaseVehicleModel & model)
         }
   );
 
-  auto vehicle_model_config = std::make_shared<BaseVehicleModelConfig>(
+  return std::make_shared<BaseVehicleModelConfig>(
     BaseVehicleModelConfig{
           front_tyre_config,
           rear_tyre_config,
@@ -145,7 +144,6 @@ void load_parameters(rclcpp::Node * node, BaseVehicleModel & model)
           powertrain_config
         }
   );
-  model.set_base_config(vehicle_model_config);
 }
 }  // namespace base_vehicle_model
 }  // namespace vehicle_model

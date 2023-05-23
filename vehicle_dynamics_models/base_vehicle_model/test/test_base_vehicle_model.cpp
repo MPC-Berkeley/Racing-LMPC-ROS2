@@ -14,11 +14,23 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <gtest/gtest.h>
+#include <rclcpp/rclcpp.hpp>
+#include <ament_index_cpp/get_package_share_directory.hpp>
 
 #include "base_vehicle_model/base_vehicle_model.hpp"
+#include "base_vehicle_model/ros_param_loader.hpp"
 
 TEST(BaseVehicleModelTest, BaseVehicleModelTest) {
-  auto config = lmpc::vehicle_model::base_vehicle_model::BaseVehicleModelConfig::SharedPtr();
+  rclcpp::init(0, nullptr);
+  const auto share_dir = ament_index_cpp::get_package_share_directory("base_vehicle_model");
+  rclcpp::NodeOptions options;
+  options.arguments(
+    {"--ros-args", "--params-file", share_dir + "/param/sample_vehicle.param.yaml"});
+  auto test_node = rclcpp::Node("test_base_vehicle_model_node", options);
+
+  auto config = lmpc::vehicle_model::base_vehicle_model::load_parameters(&test_node);
   auto model = lmpc::vehicle_model::base_vehicle_model::BaseVehicleModel(config);
+
+  rclcpp::shutdown();
   SUCCEED();
 }

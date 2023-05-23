@@ -22,7 +22,7 @@ namespace vehicle_model
 namespace base_vehicle_model
 {
 BaseVehicleModel::BaseVehicleModel(BaseVehicleModelConfig::SharedPtr config)
-: base_config_(config), dynamics_(compile_dynamics())
+: base_config_(config)
 {
 }
 
@@ -36,11 +36,6 @@ const BaseVehicleModelConfig & BaseVehicleModel::get_base_config() const
   return *base_config_.get();
 }
 
-casadi::Function & BaseVehicleModel::dynamics()
-{
-  return dynamics_;
-}
-
 size_t BaseVehicleModel::nx() const
 {
   return 1;
@@ -51,12 +46,16 @@ size_t BaseVehicleModel::nu() const
   return 1;
 }
 
-casadi::Function BaseVehicleModel::compile_dynamics()
+void BaseVehicleModel::forward_dynamics(const casadi::MXDict & in, casadi::MXDict & out)
 {
-  auto x = casadi::SX::sym("x", nx(), 1);
-  auto u = casadi::SX::sym("u", nu(), 1);
-  auto x_dot = casadi::SX::zeros(1, 1);
-  return casadi::Function("base_dynamics", {x, u}, {x_dot});
+  (void) in;
+  (void) out;
+}
+
+void BaseVehicleModel::add_nlp_constraints(casadi::Opti & opti, const casadi::MXDict & in)
+{
+  (void) opti;
+  (void) in;
 }
 }  // namespace base_vehicle_model
 }  // namespace vehicle_model

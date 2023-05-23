@@ -21,7 +21,6 @@
 
 #include <rclcpp/rclcpp.hpp>
 
-#include "base_vehicle_model/base_vehicle_model.hpp"
 #include "base_vehicle_model/base_vehicle_model_config.hpp"
 
 namespace lmpc
@@ -30,7 +29,7 @@ namespace vehicle_model
 {
 namespace base_vehicle_model
 {
-void load_parameters(rclcpp::Node * node, BaseVehicleModel & model);
+BaseVehicleModelConfig::SharedPtr load_parameters(rclcpp::Node * node);
 }  // namespace base_vehicle_model
 }  // namespace vehicle_model
 }  // namespace lmpc
