@@ -22,7 +22,7 @@ jobs:
         run: |
           bash -c 'source /opt/ros/$ROS_DISTRO/setup.bash; \
           apt-get update && rosdep update; \
-          rosdep install --from-paths src --ignore-src -y'
+          rosdep install --from-paths . --ignore-src -y'
       - name: Build Workspace
         run: |
           bash -c 'source /opt/ros/$ROS_DISTRO/setup.bash; \
