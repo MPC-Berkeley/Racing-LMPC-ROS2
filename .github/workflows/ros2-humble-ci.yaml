@@ -1,4 +1,4 @@
-name: ROS2 CI Workflow
+name: ROS2 Humble
 
 on: [push]
 jobs:
