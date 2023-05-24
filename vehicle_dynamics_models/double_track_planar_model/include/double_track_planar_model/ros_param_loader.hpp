@@ -1,4 +1,4 @@
-// Copyright 2022 AI Racing Tech
+// Copyright 2023 Haoru Xue
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
