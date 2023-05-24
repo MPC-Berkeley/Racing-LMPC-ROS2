@@ -62,7 +62,6 @@ private:
 
   DoubleTrackPlanarModelConfig::SharedPtr config_ {};
   casadi::Function dynamics_;
-  casadi::Function lateral_load_transfer_;
 };
 }  // namespace double_track_planar_model
 }  // namespace vehicle_model

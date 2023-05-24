@@ -48,7 +48,14 @@ size_t DoubleTrackPlanarModel::nu() const
 
 void DoubleTrackPlanarModel::forward_dynamics(const casadi::MXDict & in, casadi::MXDict & out)
 {
+  using TI = lmpc::utils::TyreIndex;
   const auto gamma_y = casadi::MX::sym("gamma_y", 1);
+  const auto & u = in.at("u");
+  const auto & delta = u(2);
+
+  const auto & hcog = get_base_config().chassis_config->cg_height;
+  const auto & twf = get_base_config().chassis_config->tw_f;
+  const auto & twr = get_base_config().chassis_config->tw_r;
 
   auto dyn_in = casadi::MXDict(in);
   dyn_in["gamma_y"] = gamma_y;
@@ -56,6 +63,11 @@ void DoubleTrackPlanarModel::forward_dynamics(const casadi::MXDict & in, casadi:
 
   const auto Fx_ij = out.at("Fx_ij");
   const auto Fy_ij = out.at("Fy_ij");
+
+  const auto res = gamma_y - hcog / (0.5 * (twf + twr)) *
+    (Fy_ij(TI::RL) + Fy_ij(TI::RR) + (Fx_ij(TI::FL) + Fx_ij(TI::FR)) * sin(delta) + (Fy_ij(TI::FL) + Fy_ij(TI::FR)) * cos(delta));
+  auto g = casadi::Function("g", {gamma_y}, {res});
+  auto lateral_load_transfer_ = casadi::rootfinder("G", "newton", g, {{"error_on_fail", false}});
 
   const auto gamma_y_solve = lateral_load_transfer_(casadi::MX{0.0});
   for (auto & var : out) {
@@ -253,11 +265,6 @@ void DoubleTrackPlanarModel::compile_dynamics()
     {"x", "u", "gamma_y"},
     {"x_dot", "Fx_ij", "Fy_ij", "Fz_ij"}
   );
-
-  // const auto res = gamma_y - hcog / (0.5 * (twf + twr)) *
-  //   (Fy_rl + Fy_rr + (Fx_rl + Fx_fr) * sin(delta) + (Fy_fl + Fy_fr) * cos(delta));
-  // auto g = casadi::Function("g", {gamma_y}, {res});
-  // lateral_load_transfer_ = casadi::rootfinder("G", "newton", g, {{"error_on_fail", false}});
 }
 }  // namespace double_track_planar_model
 }  // namespace vehicle_model
