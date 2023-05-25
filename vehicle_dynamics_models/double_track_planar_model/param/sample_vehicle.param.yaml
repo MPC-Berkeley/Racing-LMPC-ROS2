@@ -5,7 +5,7 @@
       fb_max: -20000.0 # max brake force
       td: 1.0 # time constant for throttle
       tb: 1.0 # time constant for brake
-      v_max: 80.0 # max velocity constraint
+      v_max: 100.0 # max velocity constraint
       p_max: 270000.0 # max engine power
       kroll_f: 0.5 # front roll moment distribution
       mu: 1.5 # track - tyre friction coefficient

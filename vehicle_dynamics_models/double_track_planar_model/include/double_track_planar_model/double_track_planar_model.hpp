@@ -42,9 +42,29 @@ struct DoubleTrackPlanarModelConfig
   double mu;
 };
 
+enum XIndex: size_t
+{
+  PX = 0,
+  PY = 1,
+  YAW = 2,
+  V_YAW = 3,
+  SLIP = 4,
+  V = 5
+};
+
+enum UIndex: size_t
+{
+  FD = 0,
+  FB = 1,
+  STEER = 2
+};
+
 class DoubleTrackPlanarModel final : public base_vehicle_model::BaseVehicleModel
 {
 public:
+  typedef std::shared_ptr<DoubleTrackPlanarModel> SharedPtr;
+  typedef std::unique_ptr<DoubleTrackPlanarModel> UniquePtr;
+
   DoubleTrackPlanarModel(
     base_vehicle_model::BaseVehicleModelConfig::SharedPtr base_config,
     DoubleTrackPlanarModelConfig::SharedPtr config);

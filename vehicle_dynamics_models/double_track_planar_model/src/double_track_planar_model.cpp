@@ -84,13 +84,12 @@ void DoubleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casa
   const auto & u = in.at("u");
   const auto & gamma_y = in.at("gamma_y");
   const auto & xip1 = in.at("xip1");
-  const auto & uip1 = in.at("uip1");
   const auto & t = in.at("t");
 
-  const auto & v = x(5);
-  const auto & fd = u(0);
-  const auto & fb = u(1);
-  const auto & delta = u(2);
+  const auto & v = x(XIndex::V);
+  const auto & fd = u(UIndex::FB);
+  const auto & fb = u(UIndex::FD);
+  const auto & delta = u(UIndex::STEER);
 
   const auto & twf = get_base_config().chassis_config->tw_f;
   const auto & twr = get_base_config().chassis_config->tw_r;
@@ -107,7 +106,7 @@ void DoubleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casa
 
   // dynamics constraint
   auto xip1_temp = casadi::MX(xip1);
-  xip1_temp(2) = lmpc::utils::align_yaw<casadi::MX>(xip1_temp(2), x(2));
+  xip1_temp(XIndex::YAW) = lmpc::utils::align_yaw<casadi::MX>(xip1_temp(XIndex::YAW), x(XIndex::YAW));
   const auto out1 = dynamics_({{"x", x}, {"u", u}, {"gamma_y", gamma_y}});
   const auto f1 = out1.at("x_dot");
   const auto out2 = dynamics_({{"x", xip1_temp}, {"u", u}, {"gamma_y", gamma_y}});
@@ -141,9 +140,13 @@ void DoubleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casa
   opti.subject_to(opti.bounded(-1.0 * delta_max, delta, delta_max));
 
   // dynamic actuator constraint
-  opti.subject_to((uip1(0) - fd) / t <= Fd_max / Td);
-  opti.subject_to((uip1(1) - fb) / t >= Fb_max / Tb);
-  opti.subject_to(opti.bounded(-delta_max / Tdelta, (uip1(2) - delta) / t, delta_max / Tdelta));
+  if (in.count("uip1"))
+  {
+    const auto & uip1 = in.at("uip1");
+    opti.subject_to((uip1(UIndex::FD) - fd) / t <= Fd_max / Td);
+    opti.subject_to((uip1(UIndex::FB) - fb) / t >= Fb_max / Tb);
+    opti.subject_to(opti.bounded(-delta_max / Tdelta, (uip1(UIndex::STEER) - delta) / t, delta_max / Tdelta));
+  }
 }
 
 void DoubleTrackPlanarModel::compile_dynamics()
@@ -154,13 +157,13 @@ void DoubleTrackPlanarModel::compile_dynamics()
   auto u = SX::sym("u", nu());
   auto gamma_y = SX::sym("gamma_y", 1);   // lateral load transfer
 
-  const auto & phi = x(2);  // yaw
-  const auto & omega = x(3);  // yaw rate
-  const auto & beta = x(4);  // slip angle
-  const auto & v = x(5);  // velocity magnitude
-  const auto & fd = u(0);  // drive force
-  const auto & fb = u(1);  // brake forcce
-  const auto & delta = u(2);  // front wheel angle
+  const auto & phi = x(XIndex::YAW);  // yaw
+  const auto & omega = x(XIndex::V_YAW);  // yaw rate
+  const auto & beta = x(XIndex::SLIP);  // slip angle
+  const auto & v = x(XIndex::V);  // velocity magnitude
+  const auto & fd = u(UIndex::FD);  // drive force
+  const auto & fb = u(UIndex::FB);  // brake forcce
+  const auto & delta = u(UIndex::STEER);  // front wheel angle
   const auto & v_sq = pow(v, 2);
 
   const auto & kd_f = get_base_config().powertrain_config->kd;
