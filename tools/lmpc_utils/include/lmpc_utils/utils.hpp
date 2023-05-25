@@ -30,6 +30,19 @@ T align_yaw(const T & yaw_1, const T & yaw_2)
   return yaw_1 + l * sign(yaw_2 - yaw_1);
 }
 
+template<typename T>
+T global_to_frenet(const T & p, const T & p0, const T & yaw)
+{
+  using T;
+  const auto cos_theta = cos(-yaw);
+  const auto sin_theta = sin(-yaw);
+  const auto R = T(T::vertcat({
+    T::horzcat({cos_theta, -sin_theta}),
+    T::horzcat({sin_theta, cos_theta})
+  }));
+  return T::mtimes(R, p - p0);
+}
+
 enum TyreIndex : size_t
 {
   FL = 0,
