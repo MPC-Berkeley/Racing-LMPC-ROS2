@@ -70,7 +70,7 @@ void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out)
 
   // minimum time trajectory tracking cost
   auto cost = MX::zeros(1);
-  for (int i = 0; i < config_->N - 1; i++) {
+  for (size_t i = 0; i < config_->N - 1; i++) {
     const auto dx = (X(Slice(), i) - X_ref(Slice(), i)) * scale_x_;
     const auto du = (U(Slice(), i) - U_ref(Slice(), i)) * scale_u_;
     cost += T(i) *
@@ -82,7 +82,7 @@ void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out)
   cost += 0.5 * MX::mtimes({dxN.T(), config_->Qf, dxN});
   opti.minimize(cost);
 
-  for (int i = 0; i < config_->N - 1; i++) {
+  for (size_t i = 0; i < config_->N - 1; i++) {
     const auto xi = X(Slice(), i) * scale_x_ + X0(Slice(), i);
     const auto xip1 = X(Slice(), i + 1) * scale_x_ + X0(Slice(), i + 1);
     const auto ui = U(Slice(), i) * scale_u_;

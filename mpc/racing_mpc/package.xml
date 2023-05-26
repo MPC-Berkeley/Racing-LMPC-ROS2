@@ -17,7 +17,6 @@
   <depend>backward_ros</depend>
 
   <depend>lmpc_utils</depend>
-  <depend>racing_mpc</depend>
   <depend>double_track_planar_model</depend>
 
   <export>

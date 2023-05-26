@@ -42,7 +42,7 @@ struct DoubleTrackPlanarModelConfig
   double mu;
 };
 
-enum XIndex: size_t
+enum XIndex : size_t
 {
   PX = 0,
   PY = 1,
@@ -52,7 +52,7 @@ enum XIndex: size_t
   V = 5
 };
 
-enum UIndex: size_t
+enum UIndex : size_t
 {
   FD = 0,
   FB = 1,

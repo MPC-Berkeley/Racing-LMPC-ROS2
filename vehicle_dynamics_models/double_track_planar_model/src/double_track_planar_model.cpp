@@ -65,7 +65,8 @@ void DoubleTrackPlanarModel::forward_dynamics(const casadi::MXDict & in, casadi:
   const auto Fy_ij = out.at("Fy_ij");
 
   const auto res = gamma_y - hcog / (0.5 * (twf + twr)) *
-    (Fy_ij(TI::RL) + Fy_ij(TI::RR) + (Fx_ij(TI::FL) + Fx_ij(TI::FR)) * sin(delta) + (Fy_ij(TI::FL) + Fy_ij(TI::FR)) * cos(delta));
+    (Fy_ij(TI::RL) + Fy_ij(TI::RR) + (Fx_ij(TI::FL) + Fx_ij(TI::FR)) * sin(delta) +
+    (Fy_ij(TI::FL) + Fy_ij(TI::FR)) * cos(delta));
   auto g = casadi::Function("g", {gamma_y}, {res});
   auto lateral_load_transfer_ = casadi::rootfinder("G", "newton", g, {{"error_on_fail", false}});
 
@@ -106,7 +107,8 @@ void DoubleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casa
 
   // dynamics constraint
   auto xip1_temp = casadi::MX(xip1);
-  xip1_temp(XIndex::YAW) = lmpc::utils::align_yaw<casadi::MX>(xip1_temp(XIndex::YAW), x(XIndex::YAW));
+  xip1_temp(XIndex::YAW) =
+    lmpc::utils::align_yaw<casadi::MX>(xip1_temp(XIndex::YAW), x(XIndex::YAW));
   const auto out1 = dynamics_({{"x", x}, {"u", u}, {"gamma_y", gamma_y}});
   const auto f1 = out1.at("x_dot");
   const auto out2 = dynamics_({{"x", xip1_temp}, {"u", u}, {"gamma_y", gamma_y}});
@@ -140,12 +142,14 @@ void DoubleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casa
   opti.subject_to(opti.bounded(-1.0 * delta_max, delta, delta_max));
 
   // dynamic actuator constraint
-  if (in.count("uip1"))
-  {
+  if (in.count("uip1")) {
     const auto & uip1 = in.at("uip1");
     opti.subject_to((uip1(UIndex::FD) - fd) / t <= Fd_max / Td);
     opti.subject_to((uip1(UIndex::FB) - fb) / t >= Fb_max / Tb);
-    opti.subject_to(opti.bounded(-delta_max / Tdelta, (uip1(UIndex::STEER) - delta) / t, delta_max / Tdelta));
+    opti.subject_to(
+      opti.bounded(
+        -delta_max / Tdelta, (uip1(UIndex::STEER) - delta) / t,
+        delta_max / Tdelta));
   }
 }
 
