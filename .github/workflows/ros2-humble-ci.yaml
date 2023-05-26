@@ -2,8 +2,8 @@ name: ROS2 Humble
 
 on: [push]
 
-concurrency: 
-  group: ${{ github.ref }}
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
