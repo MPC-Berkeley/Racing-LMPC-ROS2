@@ -64,13 +64,14 @@ TEST(RacingMPCTest, RacingMPCSolveTest) {
   using casadi::DM;
   using casadi::Slice;
   auto mpc = get_mpc();
-  const auto test_data = DM::from_file(share_dir + "/test_data/mgkt_turn_4.txt", "txt").T();
+  const auto N = static_cast<casadi_int>(mpc->get_config().N);
+  const auto test_data = DM::from_file(share_dir + "/test_data/mgkt_turn_4.txt", "txt")(Slice(0, N), Slice()).T();
   const auto bound_left = test_data(Slice(9, 11), Slice());
   const auto bound_right = test_data(Slice(11, 13), Slice());
 
-  const auto X_optm_ref = DM::from_file(share_dir + "/test_data/x_optm.txt", "txt").T();
-  const auto U_optm_ref = DM::from_file(share_dir + "/test_data/u_optm.txt", "txt").T();
-  const auto T_optm_ref = DM::from_file(share_dir + "/test_data/t_optm.txt", "txt").T();
+  const auto X_optm_ref = DM::from_file(share_dir + "/test_data/x_optm.txt", "txt")(Slice(0, N), Slice()).T();
+  const auto U_optm_ref = DM::from_file(share_dir + "/test_data/u_optm.txt", "txt")(Slice(0, N-1), Slice()).T();
+  const auto T_optm_ref = DM::from_file(share_dir + "/test_data/t_optm.txt", "txt")(Slice(0, N-1), Slice()).T();
   auto sol_in = casadi::DMDict{
     {"X_optm_ref", X_optm_ref},
     {"U_optm_ref", U_optm_ref(Slice(0, 3), Slice())},
