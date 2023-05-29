@@ -41,15 +41,15 @@ RacingMPCConfig::SharedPtr load_parameters(rclcpp::Node * node)
 
   return std::make_shared<RacingMPCConfig>(
     RacingMPCConfig{
-          declare_double("max_wall_time"),
+          declare_double("max_cpu_time"),
           declare_double("tol"),
           declare_double("constr_viol_tol"),
           static_cast<size_t>(declare_int("n")),
           declare_double("margin"),
           declare_double("average_track_width"),
-          casadi::DM(declare_vec("q")),
-          casadi::DM(declare_vec("r")),
-          casadi::DM(declare_vec("qf")),
+          casadi::DM::reshape(casadi::DM(declare_vec("q")), 6, 6),
+          casadi::DM::reshape(casadi::DM(declare_vec("r")), 3, 3),
+          casadi::DM::reshape(casadi::DM(declare_vec("qf")), 6, 6),
           casadi::DM(declare_vec("x_max")),
           casadi::DM(declare_vec("x_min")),
           casadi::DM(declare_vec("u_max")),

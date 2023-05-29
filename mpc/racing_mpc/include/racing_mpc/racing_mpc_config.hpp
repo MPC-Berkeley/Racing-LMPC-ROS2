@@ -32,7 +32,7 @@ struct RacingMPCConfig
   typedef std::shared_ptr<RacingMPCConfig> SharedPtr;
 
   // optimizer settings
-  double max_wall_time;  // max solving time (s)
+  double max_cpu_time;  // max solving time (s)
   double tol;  // convergence tolarance
   double constr_viol_tol;  // constraint violation tolerance
 

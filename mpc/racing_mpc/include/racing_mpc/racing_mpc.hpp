@@ -48,6 +48,8 @@ public:
 
   void solve(const casadi::DMDict & in, casadi::DMDict & out);
 
+  void create_warm_start(const casadi::DMDict & in, casadi::DMDict & out);
+
 protected:
   RacingMPCConfig::SharedPtr config_ {};
   DoubleTrackPlanarModel::SharedPtr model_ {};

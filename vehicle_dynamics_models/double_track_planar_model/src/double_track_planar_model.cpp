@@ -46,23 +46,27 @@ size_t DoubleTrackPlanarModel::nu() const
   return 3;
 }
 
-void DoubleTrackPlanarModel::forward_dynamics(const casadi::MXDict & in, casadi::MXDict & out)
+void DoubleTrackPlanarModel::forward_dynamics(const casadi::DMDict & in, casadi::DMDict & out)
 {
   using TI = lmpc::utils::TyreIndex;
-  const auto gamma_y = casadi::MX::sym("gamma_y", 1);
+  const auto gamma_y = casadi::SX::sym("gamma_y", 1);
   const auto & u = in.at("u");
-  const auto & delta = u(2);
+  const auto & delta = casadi::SX(u(2));
 
   const auto & hcog = get_base_config().chassis_config->cg_height;
   const auto & twf = get_base_config().chassis_config->tw_f;
   const auto & twr = get_base_config().chassis_config->tw_r;
 
-  auto dyn_in = casadi::MXDict(in);
+  casadi::SXDict dyn_in =
+  {
+    {"x", in.at("x")},
+    {"u", in.at("u")},
+  };
   dyn_in["gamma_y"] = gamma_y;
-  out = dynamics_(dyn_in);
+  const auto dyn_out = dynamics_(dyn_in);
 
-  const auto Fx_ij = out.at("Fx_ij");
-  const auto Fy_ij = out.at("Fy_ij");
+  const auto Fx_ij = dyn_out.at("Fx_ij");
+  const auto Fy_ij = dyn_out.at("Fy_ij");
 
   const auto res = gamma_y - hcog / (0.5 * (twf + twr)) *
     (Fy_ij(TI::RL) + Fy_ij(TI::RR) + (Fx_ij(TI::FL) + Fx_ij(TI::FR)) * sin(delta) +
@@ -70,11 +74,11 @@ void DoubleTrackPlanarModel::forward_dynamics(const casadi::MXDict & in, casadi:
   auto g = casadi::Function("g", {gamma_y}, {res});
   auto lateral_load_transfer_ = casadi::rootfinder("G", "newton", g, {{"error_on_fail", false}});
 
-  const auto gamma_y_solve = lateral_load_transfer_(casadi::MX{0.0});
-  for (auto & var : out) {
-    var.second = substitute(var.second, gamma_y, gamma_y_solve[0]);
+  const auto gamma_y_solve = casadi::DM(lateral_load_transfer_(casadi::DM{0.0}));
+  for (auto & var : dyn_out) {
+    out[var.first] = casadi::DM(casadi::SX::substitute(var.second, gamma_y, gamma_y_solve));
   }
-  out["gamma_y"] = gamma_y_solve[0];
+  out["gamma_y"] = gamma_y_solve;
 }
 
 void DoubleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casadi::MXDict & in)
@@ -88,8 +92,8 @@ void DoubleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casa
   const auto & t = in.at("t");
 
   const auto & v = x(XIndex::V);
-  const auto & fd = u(UIndex::FB);
-  const auto & fb = u(UIndex::FD);
+  const auto & fd = u(UIndex::FD);
+  const auto & fb = u(UIndex::FB);
   const auto & delta = u(UIndex::STEER);
 
   const auto & twf = get_base_config().chassis_config->tw_f;
@@ -113,10 +117,10 @@ void DoubleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casa
   const auto f1 = out1.at("x_dot");
   const auto out2 = dynamics_({{"x", xip1_temp}, {"u", u}, {"gamma_y", gamma_y}});
   const auto f2 = out2.at("x_dot");
-  const auto xm = 0.5 * (x + xip1_temp) + (t / 8.0) * (f1.T() - f2.T());
+  const auto xm = 0.5 * (x + xip1_temp) + (t / 8.0) * (f1 - f2);
   const auto outm = dynamics_({{"x", xm}, {"u", u}, {"gamma_y", gamma_y}});
   const auto fm = outm.at("x_dot");
-  opti.subject_to(x + (t / 6.0) * (f1.T() + 4 * fm.T() + f2.T()) - xip1_temp == 0);
+  opti.subject_to(x + (t / 6.0) * (f1 + 4 * fm + f2) - xip1_temp == 0);
 
   // tyre constraints
   const auto Fx_ij = out1.at("Fx_ij");
@@ -175,8 +179,8 @@ void DoubleTrackPlanarModel::compile_dynamics()
   const auto & m = get_base_config().chassis_config->total_mass;  // mass of car
   const auto & Jzz = get_base_config().chassis_config->moi;  // MOI around z axis
   const auto & l = get_base_config().chassis_config->wheel_base;  // wheelbase
-  const auto & lf = get_base_config().chassis_config->cg_ratio * l;  // cg to front axle
-  const auto lr = l - lf;  // cg to rear axle
+  const auto & lr = get_base_config().chassis_config->cg_ratio * l;  // cg to front axle
+  const auto lf = l - lr;  // cg to rear axle
   const auto & twf = get_base_config().chassis_config->tw_f;  // front track width
   const auto & twr = get_base_config().chassis_config->tw_r;  // rear track width
   const auto & fr = get_base_config().chassis_config->fr;  // rolling resistance coefficient
@@ -249,8 +253,8 @@ void DoubleTrackPlanarModel::compile_dynamics()
     ((Fx_rl + Fx_rr) * cos(beta) + (Fx_fl + Fx_fr) * cos(delta - beta) + (Fy_rl + Fy_rr) *
     sin(beta) - (Fy_fl + Fy_fr) * sin(delta - beta) - 0.5 * cd * rho * A * v_sq * cos(beta));
   const auto beta_dot = -omega + 1.0 / (m * v) *
-    (-(Fx_rl + Fx_rr) * sin(beta) + (Fx_fl + Fx_fr) * sin(delta - beta) + (Fy_rl + Fy_rr) *
-    cos(beta) + (Fy_fl + Fy_fr) * cos(delta - beta) + 0.5 * cd * rho * A * v_sq * sin(beta));
+    (-(Fx_rl + Fx_rr) * sin(beta) + (Fx_fl + Fx_fr) * sin(delta - beta) + (Fy_rl + Fy_rr) * cos(
+      beta) + (Fy_fl + Fy_fr) * cos(delta - beta) + 0.5 * cd * rho * A * v_sq * sin(beta));
   const auto omega_dot = 1.0 / Jzz *
     ((Fx_rr - Fx_rl) * twr / 2 - (Fy_rl + Fy_rr) * lr +
     ((Fx_fr - Fx_fl) * cos(delta) + (Fy_fl - Fy_fr) * sin(delta)) * twf / 2.0 +
@@ -270,8 +274,7 @@ void DoubleTrackPlanarModel::compile_dynamics()
     {x, u, gamma_y},
     {x_dot, Fx_ij, Fy_ij, Fz_ij},
     {"x", "u", "gamma_y"},
-    {"x_dot", "Fx_ij", "Fy_ij", "Fz_ij"}
-  );
+    {"x_dot", "Fx_ij", "Fy_ij", "Fz_ij"});
 }
 }  // namespace double_track_planar_model
 }  // namespace vehicle_model

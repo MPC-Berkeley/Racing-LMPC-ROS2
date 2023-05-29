@@ -1,0 +1,79 @@
+/**:
+  ros__parameters:
+    front_tyre:
+      radius: 0.127
+      width: 0.127
+      mass: 2.0
+      moi: 2.0 # rotational moment of inertia
+      pacejka_b: 9.62
+      pacejka_c: 2.59
+      pacejka_e: 1.0
+      pacejka_fz0: 3000.0
+      pacejka_eps: -0.0813
+
+    rear_tyre:
+      radius: 0.127
+      width: 0.20955
+      mass: 2.0
+      rot: 2.0 # rotational moment of inertia
+      pacejka_b: 8.62
+      pacejka_c: 2.65
+      pacejka_e: 1.0
+      pacejka_fz0: 3000.0
+      pacejka_eps: -0.1263
+
+    front_brake:
+      max_brake: 3000.0
+      brake_pad_out_r: 0.1
+      brake_pad_in_r: 0.0835
+      brake_pad_friction_coeff: 0.4
+      # six piston brake averaging 14.375 mm radius
+      piston_area: 0.00141 # 0.015 ^ 2 * pi * 2
+      bias: 0.0
+
+    rear_brake:
+      max_brake: 3000.0
+      brake_pad_out_r: 0.1
+      brake_pad_in_r: 0.0835
+      brake_pad_friction_coeff: 0.4
+      # six piston brake averaging 14.375 mm radius
+      piston_area: 0.00141 # 0.015 ^ 2 * pi * 2
+      bias: 1.0
+
+    steer:
+      max_steer_rate: 1.0
+      max_steer: 0.314159
+      turn_left_bias: 0.0
+
+    chassis:
+      total_mass: 245.0
+      sprung_mass: 237.0
+      unsprung_mass: 8.0
+      cg_ratio: 0.45
+      cg_height: 0.25
+      wheel_base: 1.05
+      tw_f: 1.0
+      tw_r: 1.0
+      moi: 245.0 # rotational moment of inertia
+      b: 1.0
+      fr: 0.012
+
+    aero:
+      air_density: 1.2041
+      drag_coeff: 0.8
+      frontal_area: 0.4
+      cl_f: 0.0
+      cl_r: 0.0
+
+    powertrain:
+      rpm: [0.0, 1800.0, 3600.0, 4000.0]
+      throttle: [0.0, 50.0, 100.0, 125.0]
+      torque: [
+        0.0, 81.3490769, 82.0, 82.0,
+        0.0, 81.3490769, 81.3490769, 81.3490769,
+        0.0, 0.0, 0.0, 0.0,
+        0.0, 0.0, 0.0, 0.0,
+      ]
+      gear_ratio: [1.0]
+      final_drive_ratio: 1.5
+      kd: 0.0

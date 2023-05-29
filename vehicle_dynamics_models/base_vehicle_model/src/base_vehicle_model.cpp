@@ -46,7 +46,7 @@ size_t BaseVehicleModel::nu() const
   return 1;
 }
 
-void BaseVehicleModel::forward_dynamics(const casadi::MXDict & in, casadi::MXDict & out)
+void BaseVehicleModel::forward_dynamics(const casadi::DMDict & in, casadi::DMDict & out)
 {
   (void) in;
   (void) out;

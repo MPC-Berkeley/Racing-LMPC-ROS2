@@ -13,6 +13,12 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+#include <math.h>
+#include <exception>
+#include <vector>
+#include <iostream>
+#include <chrono>
+
 #include "racing_mpc/racing_mpc.hpp"
 #include "lmpc_utils/utils.hpp"
 
@@ -33,9 +39,10 @@ RacingMPC::RacingMPC(
         static_cast<double>(mpc_config->x_max(XIndex::V))
       }),
   scale_u_({
-        model_->get_config().Fd_max,
-        model_->get_config().Fb_max,
-        model_->get_base_config().steer_config->max_steer}),
+        abs(model_->get_config().Fd_max),
+        abs(model_->get_config().Fb_max),
+        abs(model_->get_base_config().steer_config->max_steer)
+      }),
   scale_gamma_y_(model_->get_base_config().chassis_config->total_mass * 50.0)
 {
 }
@@ -59,26 +66,27 @@ void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out)
   const auto & bound_right = in.at("bound_right");
   const auto P0 = X_ref(Slice(0, 2), Slice());
   const auto X0 = DM::vertcat({P0, DM::zeros(model_->nx() - 2, config_->N)});
-  const auto Yaws = X_ref(XIndex::YAW);
-  const auto V = X_ref(XIndex::V);
+  const auto Yaws = X_ref(XIndex::YAW, Slice());
+  const auto V = X_ref(XIndex::V, Slice());
 
   auto opti = casadi::Opti();
   auto X = opti.variable(model_->nx(), config_->N);
   auto U = opti.variable(model_->nu(), config_->N - 1);
-  auto T = opti.variable(config_->N - 1);
+  auto T = casadi::MX(in.at("T_optm_ref"));
   auto Gamma_y = opti.variable(config_->N - 1);
 
-  // minimum time trajectory tracking cost
+  // trajectory tracking cost
   auto cost = MX::zeros(1);
   for (size_t i = 0; i < config_->N - 1; i++) {
-    const auto dx = (X(Slice(), i) - X_ref(Slice(), i)) * scale_x_;
-    const auto du = (U(Slice(), i) - U_ref(Slice(), i)) * scale_u_;
+    const auto xi = X(Slice(), i) * scale_x_ + X0(Slice(), i);
+    const auto ui = U(Slice(), i) * scale_u_;
+    const auto dx = xi - X_ref(Slice(), i);
+    const auto du = ui - U_ref(Slice(), i);
     cost += T(i) *
       (0.5 *
       MX::mtimes({dx.T(), config_->Q, dx}) + 0.5 * MX::mtimes({du.T(), config_->R, du}));
   }
-  const auto dxN = (X(Slice(), -1) - X_ref(Slice(), -1)) * scale_x_;
-  const auto duN = (U(Slice(), -1) - U_ref(Slice(), -1)) * scale_u_;
+  const auto dxN = X(Slice(), -1) * scale_x_ + X0(Slice(), -1) - X_ref(Slice(), -1);
   cost += 0.5 * MX::mtimes({dxN.T(), config_->Qf, dxN});
   opti.minimize(cost);
 
@@ -92,16 +100,16 @@ void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out)
     // boundary constraints in frenet frame
     const auto p = X(Slice(0, 2), i) * scale_x_(Slice(0, 2));
     const auto p0 = P0(Slice(), i);
-    const auto p1 = P0(Slice(), i + 1);
     const auto pf = lmpc::utils::global_to_frenet<MX>(p, MX::zeros(2), Yaws(i));
-    const auto dl = MX::norm_2(bound_left(Slice(), i) - p0);
-    const auto dr = MX::norm_2(bound_right(Slice(), i) - p0) * -1.0;
-    opti.subject_to(pf(0) == 0);
+    const auto dl = DM::norm_2(bound_left(Slice(), i) - p0);
+    const auto dr = DM::norm_2(bound_right(Slice(), i) - p0) * -1.0;
+    opti.subject_to(pf(0) == 0.0);
     // TODO(haoru): handle case when margin cannot be met
-    opti.subject_to(opti.bounded(dr + config_->margin, pf(1), dl - config_->margin));
+    const auto margin = config_->margin + model_->get_base_config().chassis_config->b / 2.0;
+    opti.subject_to(opti.bounded(dr + margin, pf(1), dl - margin));
 
     // model constraints
-    casadi::MXDict in = {
+    casadi::MXDict constraint_in = {
       {"x", xi},
       {"u", ui},
       {"gamma_y", gamma_y},
@@ -109,54 +117,121 @@ void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out)
       {"t", ti}
     };
     if (i < config_->N - 2) {
-      const auto uip1 = U(Slice(), i + 1);
-      in["uip1"] = uip1;
+      const auto uip1 = U(Slice(), i + 1) * scale_u_;
+      constraint_in["uip1"] = uip1;
     }
-    model_->add_nlp_constraints(opti, in);
-
-    // time must be positive
-    opti.subject_to(ti >= 0.0);
-
-    // set warm start
-    opti.set_initial(
-      X(Slice(), i) * scale_x_,
-      X_ref(Slice(), i) - X0
-    );
-    opti.set_initial(ui, U_ref(Slice(), i));
-    opti.set_initial(ti, DM::norm_2(p1 - p0) / X_ref(XIndex::V));
+    model_->add_nlp_constraints(opti, constraint_in);
   }
+  const auto & X_optm_ref = in.at("X_optm_ref");
+  const auto & U_optm_ref = in.at("U_optm_ref");
+  const auto & T_optm_ref = in.at("T_optm_ref");
+  const auto & Gamma_y_optm_ref = in.at("Gamma_y_optm_ref");
+  opti.set_initial(X * scale_x_, X_optm_ref - X0);
+  opti.set_initial(U * scale_u_, U_optm_ref);
+  opti.set_initial(T, T_optm_ref);
+  opti.set_initial(Gamma_y * scale_gamma_y_, Gamma_y_optm_ref);
 
   // Starting state must match
   const auto x0 = X(Slice(), 0) * scale_x_ + X0(Slice(), 0);
   opti.subject_to(x0 == x_ic);
 
-  // Final position, orientation must match
+  // Final state must match
   const auto xN = X(Slice(), -1) * scale_x_ + X0(Slice(), -1);
-  opti.subject_to(xN(Slice(0, 3)) == x_g(Slice(0, 3)));
-  // opti.subject_to(xN(XIndex::V) == x_g(XIndex::V));
+  opti.subject_to(xN == X_ref(Slice(), -1));
 
   // configure solver
   const auto p_opts = casadi::Dict{
-    {"expand", true}
+    {"expand", false},
+    {"print_time", false}
   };
   const auto s_opts = casadi::Dict{
-    {"max_wall_time", config_->max_wall_time},
+    {"max_cpu_time", config_->max_cpu_time},
     {"tol", config_->tol},
     {"constr_viol_tol", config_->constr_viol_tol},
-    {"print_level", 0}
+    {"print_level", 0},
+    {"max_iter", 500}
   };
   opti.solver("ipopt", p_opts, s_opts);
 
   // solve problem
   try {
+    const auto start = std::chrono::high_resolution_clock::now();
     const auto sol = opti.solve_limited();
+    // const auto sol = opti.solve();
+    const auto stop = std::chrono::high_resolution_clock::now();
+    const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+    std::cout << "Time in IPOPT: " << duration.count() << "ms" << std::endl;
     out["X_optm"] = sol.value(X) * scale_x_ + X0;
     out["U_optm"] = sol.value(U) * scale_u_;
     out["T_optm"] = sol.value(T);
     out["Gamma_y_optm"] = sol.value(Gamma_y) * scale_gamma_y_;
   } catch (const std::exception & e) {
     std::cerr << e.what() << '\n';
+    // throw e;
+    out["X_optm"] = opti.debug().value(X) * scale_x_ + X0;
+    out["U_optm"] = opti.debug().value(U) * scale_u_;
+    out["T_optm"] = opti.debug().value(T);
+    out["Gamma_y_optm"] = opti.debug().value(Gamma_y) * scale_gamma_y_;
   }
+}
+
+void RacingMPC::create_warm_start(const casadi::DMDict & in, casadi::DMDict & out)
+{
+  using casadi::DM;
+  using casadi::Slice;
+
+  const auto & P0 = in.at("P0");
+  const auto & Yaws = in.at("Yaws");
+  const auto & Radii = in.at("Radii");
+  const auto & current_vel = in.at("current_vel");
+  const auto & target_vel = in.at("target_vel");
+
+  if (static_cast<size_t>(P0.size2()) != config_->N) {
+    throw std::length_error("create_warm_start: P0 dimension does not match MPC dimension.");
+  }
+  if (static_cast<size_t>(Yaws.size2()) != config_->N) {
+    throw std::length_error("create_warm_start: Yaws dimension does not match MPC dimension.");
+  }
+  if (static_cast<double>(current_vel) <= 0.0) {
+    throw std::range_error("Current velocity cannot be smaller than or equal to zero.");
+  }
+  if (static_cast<double>(target_vel) <= 0.0) {
+    throw std::range_error("Target velocity cannot be smaller than or equal to zero.");
+  }
+
+  auto X_ref = DM::zeros(model_->nx(), config_->N);
+  auto U_ref = DM::zeros(model_->nu(), config_->N - 1);
+  auto T_ref = DM::zeros(config_->N - 1, 1);
+
+  X_ref(Slice(0, 2), Slice()) = P0;
+  X_ref(XIndex::YAW, Slice()) = Yaws;
+  X_ref(XIndex::V, Slice()) = DM::linspace(current_vel, target_vel, config_->N);
+  X_ref(XIndex::V_YAW, Slice()) = X_ref(XIndex::V, Slice()) / Radii;
+
+  for (size_t i = 0; i < config_->N - 1; i++) {
+    // fill control force with 2nd Newton's law
+    const auto v0 = X_ref(XIndex::V, i);
+    const auto v1 = X_ref(XIndex::V, i + 1);
+    const auto d = DM::norm_2(P0(Slice(), i) - P0(Slice(), i + 1));
+    const auto a = static_cast<double>((pow(v1, 2) - pow(v0, 2)) / (2 * d));
+    const auto f = model_->get_base_config().chassis_config->total_mass * a;
+    if (f > 0.0) {
+      U_ref(UIndex::FD, i) = f;
+    } else {
+      U_ref(UIndex::FB, i) = f;
+    }
+    T_ref(i) = d / v0;
+
+    // fill steering angle with pure pursuit
+    {
+      U_ref(
+        UIndex::STEER,
+        i) = atan(model_->get_base_config().chassis_config->wheel_base / Radii(i));
+    }
+  }
+  out["X_ref"] = X_ref;
+  out["U_ref"] = U_ref;
+  out["T_ref"] = T_ref;
 }
 }  // namespace racing_mpc
 }  // namespace mpc

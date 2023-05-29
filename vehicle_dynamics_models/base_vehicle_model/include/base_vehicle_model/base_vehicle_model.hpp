@@ -42,7 +42,7 @@ public:
   virtual size_t nx() const;
   virtual size_t nu() const;
 
-  virtual void forward_dynamics(const casadi::MXDict & in, casadi::MXDict & out);
+  virtual void forward_dynamics(const casadi::DMDict & in, casadi::DMDict & out);
   virtual void add_nlp_constraints(casadi::Opti & opti, const casadi::MXDict & in);
 
 protected:
