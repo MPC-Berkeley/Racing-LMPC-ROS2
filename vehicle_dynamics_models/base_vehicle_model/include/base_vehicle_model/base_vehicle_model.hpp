@@ -39,16 +39,46 @@ public:
   void set_base_config(BaseVehicleModelConfig::SharedPtr config);
   const BaseVehicleModelConfig & get_base_config() const;
 
+  /**
+   * @brief Get the size of the state variable.
+   *
+   * @return size_t state variable size.
+   */
   virtual size_t nx() const;
+
+  /**
+   * @brief Get the size of the control variable.
+   *
+   * @return size_t control variable size.
+   */
   virtual size_t nu() const;
 
+  /**
+   * @brief Override to implement dynamics.
+   * 
+   * @param in "x" (state) and "u" (control) are required. additional inputs are optional.
+   * @param out "x_dot" (time derivative of state) is required. additional outputs are optional. 
+   */
   virtual void forward_dynamics(const casadi::DMDict & in, casadi::DMDict & out);
+
+/**
+ * @brief Override to implement Jacobian of dynamics
+ * 
+ * @param in "x" (state) and "u" (control)
+ * @param out Jacobian of "x_dot" with respect to x (A matrix) and u (B matrix) evaulated at their given point.
+ */
+  virtual void dynamics_jacobian(const casadi::DMDict & in, casadi::DMDict & out);
+
+  /**
+   * @brief Add constraints to the optimal control problem.
+   * 
+   * @param opti Casadi NLP optimizer
+   * @param in "x" (state), "u" (control), "t"(delta t), "xip1" (next state), "uip1" (next control).
+   */
   virtual void add_nlp_constraints(casadi::Opti & opti, const casadi::MXDict & in);
 
 protected:
   BaseVehicleModelConfig::SharedPtr base_config_ {};
-  casadi::DM x_;
-  casadi::DM u_;
 };
 }  // namespace base_vehicle_model
 }  // namespace vehicle_model
