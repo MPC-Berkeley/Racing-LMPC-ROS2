@@ -47,6 +47,23 @@ T global_to_frenet(const T & p, const T & p0, const T & yaw)
   return T::mtimes(R, p - p0);
 }
 
+template<typename T>
+casadi::Function global_to_frenet_function(const casadi_int & n)
+{
+  const auto p = T::sym("p", 2, 1);
+  const auto p0 = T::sym("p0", 2, 1);
+  const auto yaw = T::sym("yaw", 1, 1);
+  const auto out = global_to_frenet<T>(p, p0, yaw);
+  return casadi::Function("global_to_frenet", {p, p0, yaw}, {out}).map(n);
+}
+
+casadi::Function norm_2_function(const casadi_int & n)
+{
+  const auto p = casadi::MX::sym("p", 2, 1);
+  const auto out = casadi::MX::norm_2(p);
+  return casadi::Function("norm_2", {p}, {out}).map(n);
+}
+
 enum TyreIndex : size_t
 {
   FL = 0,

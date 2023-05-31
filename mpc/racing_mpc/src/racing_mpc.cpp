@@ -43,7 +43,9 @@ RacingMPC::RacingMPC(
         abs(model_->get_config().Fb_max),
         abs(model_->get_base_config().steer_config->max_steer)
       }),
-  scale_gamma_y_(model_->get_base_config().chassis_config->total_mass * 50.0)
+  scale_gamma_y_(model_->get_base_config().chassis_config->total_mass * 50.0),
+  g_to_f_(utils::global_to_frenet_function<casadi::MX>(config_->N)),
+  norm_2_(utils::norm_2_function(config_->N))
 {
 }
 
@@ -90,23 +92,21 @@ void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out)
   cost += 0.5 * MX::mtimes({dxN.T(), config_->Qf, dxN});
   opti.minimize(cost);
 
+  // boundary constraints in frenet frame
+  const auto P = X(Slice(0, 2), Slice()) * scale_x_(Slice(0, 2));
+  const auto Pf = g_to_f_({P, MX::zeros(2, config_->N), Yaws})[0];
+  opti.subject_to(Pf(0, Slice()) == 0.0);
+  const auto margin = config_->margin + model_->get_base_config().chassis_config->b / 2.0;
+  const auto dl = norm_2_(bound_left - P0)[0];
+  const auto dr = norm_2_(bound_right - P0)[0] * -1.0;
+  opti.subject_to(opti.bounded(dr + margin, Pf(1, Slice()), dl - margin));
+
   for (size_t i = 0; i < config_->N - 1; i++) {
     const auto xi = X(Slice(), i) * scale_x_ + X0(Slice(), i);
     const auto xip1 = X(Slice(), i + 1) * scale_x_ + X0(Slice(), i + 1);
     const auto ui = U(Slice(), i) * scale_u_;
     const auto ti = T(i);
     const auto gamma_y = Gamma_y(i) * scale_gamma_y_;
-
-    // boundary constraints in frenet frame
-    const auto p = X(Slice(0, 2), i) * scale_x_(Slice(0, 2));
-    const auto p0 = P0(Slice(), i);
-    const auto pf = lmpc::utils::global_to_frenet<MX>(p, MX::zeros(2), Yaws(i));
-    const auto dl = DM::norm_2(bound_left(Slice(), i) - p0);
-    const auto dr = DM::norm_2(bound_right(Slice(), i) - p0) * -1.0;
-    opti.subject_to(pf(0) == 0.0);
-    // TODO(haoru): handle case when margin cannot be met
-    const auto margin = config_->margin + model_->get_base_config().chassis_config->b / 2.0;
-    opti.subject_to(opti.bounded(dr + margin, pf(1), dl - margin));
 
     // model constraints
     casadi::MXDict constraint_in = {

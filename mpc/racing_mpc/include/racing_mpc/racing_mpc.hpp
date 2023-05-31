@@ -57,7 +57,8 @@ protected:
   casadi::DM scale_x_;
   casadi::DM scale_u_;
   casadi::DM scale_gamma_y_;
-  casadi::Function min_time_tracking_cost_;
+  casadi::Function g_to_f_;
+  casadi::Function norm_2_;
 };
 }  // namespace racing_mpc
 }  // namespace mpc
