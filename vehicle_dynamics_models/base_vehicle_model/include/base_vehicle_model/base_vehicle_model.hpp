@@ -55,15 +55,15 @@ public:
 
   /**
    * @brief Override to implement dynamics.
-   * 
+   *
    * @param in "x" (state) and "u" (control) are required. additional inputs are optional.
-   * @param out "x_dot" (time derivative of state) is required. additional outputs are optional. 
+   * @param out "x_dot" (time derivative of state) is required. additional outputs are optional.
    */
   virtual void forward_dynamics(const casadi::DMDict & in, casadi::DMDict & out);
 
 /**
  * @brief Override to implement Jacobian of dynamics
- * 
+ *
  * @param in "x" (state) and "u" (control)
  * @param out Jacobian of "x_dot" with respect to x (A matrix) and u (B matrix) evaulated at their given point.
  */
@@ -71,7 +71,7 @@ public:
 
   /**
    * @brief Add constraints to the optimal control problem.
-   * 
+   *
    * @param opti Casadi NLP optimizer
    * @param in "x" (state), "u" (control), "t"(delta t), "xip1" (next state), "uip1" (next control).
    */

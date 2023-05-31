@@ -52,6 +52,12 @@ void BaseVehicleModel::forward_dynamics(const casadi::DMDict & in, casadi::DMDic
   (void) out;
 }
 
+void dynamics_jacobian(const casadi::DMDict & in, casadi::DMDict & out)
+{
+  (void) in;
+  (void) out;
+}
+
 void BaseVehicleModel::add_nlp_constraints(casadi::Opti & opti, const casadi::MXDict & in)
 {
   (void) opti;
