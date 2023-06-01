@@ -63,7 +63,6 @@ void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out)
   const auto & X_ref = in.at("X_ref");
   const auto & U_ref = in.at("U_ref");
   const auto & x_ic = in.at("x_ic");
-  const auto & x_g = in.at("x_g");
   const auto & bound_left = in.at("bound_left");
   const auto & bound_right = in.at("bound_right");
   const auto P0 = X_ref(Slice(0, 2), Slice());
@@ -84,9 +83,7 @@ void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out)
     const auto ui = U(Slice(), i) * scale_u_;
     const auto dx = xi - X_ref(Slice(), i);
     const auto du = ui - U_ref(Slice(), i);
-    cost += T(i) *
-      (0.5 *
-      MX::mtimes({dx.T(), config_->Q, dx}) + 0.5 * MX::mtimes({du.T(), config_->R, du}));
+    cost += 0.5 * MX::mtimes({dx.T(), config_->Q, dx}) + 0.5 * MX::mtimes({du.T(), config_->R, du});
   }
   const auto dxN = X(Slice(), -1) * scale_x_ + X0(Slice(), -1) - X_ref(Slice(), -1);
   cost += 0.5 * MX::mtimes({dxN.T(), config_->Qf, dxN});
@@ -134,10 +131,6 @@ void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out)
   // Starting state must match
   const auto x0 = X(Slice(), 0) * scale_x_ + X0(Slice(), 0);
   opti.subject_to(x0 == x_ic);
-
-  // Final state must match
-  const auto xN = X(Slice(), -1) * scale_x_ + X0(Slice(), -1);
-  opti.subject_to(xN == X_ref(Slice(), -1));
 
   // configure solver
   const auto p_opts = casadi::Dict{

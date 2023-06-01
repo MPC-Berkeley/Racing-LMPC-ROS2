@@ -52,7 +52,7 @@ void BaseVehicleModel::forward_dynamics(const casadi::DMDict & in, casadi::DMDic
   (void) out;
 }
 
-void dynamics_jacobian(const casadi::DMDict & in, casadi::DMDict & out)
+void BaseVehicleModel::dynamics_jacobian(const casadi::DMDict & in, casadi::DMDict & out)
 {
   (void) in;
   (void) out;
