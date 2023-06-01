@@ -8,7 +8,7 @@
       pacejka_b: 9.62
       pacejka_c: 2.59
       pacejka_e: 1.0
-      pacejka_fz0: 3000.0
+      pacejka_fz0: 550.0
       pacejka_eps: -0.0813
 
     rear_tyre:
@@ -19,7 +19,7 @@
       pacejka_b: 8.62
       pacejka_c: 2.65
       pacejka_e: 1.0
-      pacejka_fz0: 3000.0
+      pacejka_fz0: 550.0
       pacejka_eps: -0.1263
 
     front_brake:
