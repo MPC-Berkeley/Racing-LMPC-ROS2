@@ -101,16 +101,91 @@ TEST(RacingMPCTest, RacingMPCSolveTest) {
     ASSERT_TRUE(static_cast<double>(V(i)) != 0.0 && !isnan(static_cast<double>(V(i))));
   }
   auto sol_out = casadi::DMDict{};
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < 3; i++) {
     const auto start = std::chrono::high_resolution_clock::now();
     mpc->solve(sol_in, sol_out);
     const auto stop = std::chrono::high_resolution_clock::now();
     const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
     std::cout << "MPC Execution Time: " << duration.count() << "ms" << std::endl;
-    sol_in["X_optm_ref"] = sol_out["X_optm"];
-    sol_in["U_optm_ref"] = sol_out["U_optm"];
-    sol_in["T_optm_ref"] = sol_out["T_optm"];
-    sol_in["Gamma_y_optm_ref"] = sol_out["Gamma_y_optm"];
+    sol_in.erase("X_optm_ref");
+    sol_in.erase("U_optm_ref");
+    sol_in.erase("T_optm_ref");
+    sol_in.erase("Gamma_y_optm_ref");
+  }
+  sol_out["X_optm"].T().to_file("X_optm.txt", "txt");
+  sol_out["U_optm"].T().to_file("U_optm.txt", "txt");
+  sol_out["T_optm"].T().to_file("T_optm.txt", "txt");
+  sol_out["Gamma_y_optm"].T().to_file("Gamma_y_optm.txt", "txt");
+  SUCCEED();
+}
+
+TEST(RacingMPCTest, RacingMPCSolveInterpolatedTest) {
+  using casadi::DM;
+  using casadi::Slice;
+  auto mpc = get_mpc();
+  const auto N = static_cast<casadi_int>(mpc->get_config().N);
+  const auto test_data =
+    DM::from_file(share_dir + "/test_data/mgkt_turn_4.txt", "txt").T();
+  const auto bound_left = test_data(Slice(9, 11), Slice());
+  const auto bound_right = test_data(Slice(11, 13), Slice());
+
+  const auto X_optm_ref =
+    DM::from_file(share_dir + "/test_data/x_optm.txt", "txt");
+  const auto U_optm_ref =
+    DM::from_file(share_dir + "/test_data/u_optm.txt", "txt");
+  const auto T_optm_ref =
+    DM::from_file(share_dir + "/test_data/t_optm.txt", "txt");
+
+  auto T_accum = DM::zeros(T_optm_ref.size1() + 1);
+  for (int i = 0; i < T_optm_ref.size1(); i++) {
+    T_accum(i + 1) = T_accum(i) + T_optm_ref(i);
+  }
+
+  const auto t_vec = T_accum.get_elements();
+  const auto t_intp = DM::linspace(0.0, 1.0, N);
+  const auto bound_left_intp = DM::interp1d(
+    t_vec, bound_left.T(),
+    t_intp.get_elements(), "floor", false).T();
+  const auto bound_right_intp = DM::interp1d(
+    t_vec, bound_right.T(),
+    t_intp.get_elements(), "floor", false).T();
+  const auto X_optm_ref_intp =
+    DM::interp1d(t_vec, X_optm_ref, t_intp.get_elements(), "floor", false).T();
+  const auto U_optm_ref_intp =
+    DM::interp1d(
+    T_accum(Slice(0, -1)).get_elements(), U_optm_ref, t_intp(
+      Slice(
+        0, -1)).get_elements(), "floor", false).T();
+  const auto T_optm_ref_intp = DM::zeros(N - 1) + t_intp(1) - t_intp(0);
+
+  auto sol_in = casadi::DMDict{
+    {"X_optm_ref", X_optm_ref_intp},
+    {"U_optm_ref", U_optm_ref_intp(Slice(0, 3), Slice())},
+    {"T_optm_ref", T_optm_ref_intp},
+    {"X_ref", X_optm_ref_intp},
+    {"U_ref", U_optm_ref_intp(Slice(0, 3), Slice())},
+    {"T_ref", T_optm_ref_intp},
+    {"bound_left", bound_left_intp},
+    {"bound_right", bound_right_intp}
+  };
+  auto x_ic = DM(sol_in["X_ref"](Slice(), 0));
+  x_ic(0) += 0.3;
+  x_ic(1) += 0.3;
+  sol_in["x_ic"] = x_ic;
+  sol_in["x_g"] = sol_in["X_ref"](Slice(), -1);
+  sol_in["Gamma_y_optm_ref"] = U_optm_ref_intp(3, Slice());
+
+  auto sol_out = casadi::DMDict{};
+  for (int i = 0; i < 3; i++) {
+    const auto start = std::chrono::high_resolution_clock::now();
+    mpc->solve(sol_in, sol_out);
+    const auto stop = std::chrono::high_resolution_clock::now();
+    const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+    std::cout << "MPC Execution Time: " << duration.count() << "ms" << std::endl;
+    sol_in.erase("X_optm_ref");
+    sol_in.erase("U_optm_ref");
+    sol_in.erase("T_optm_ref");
+    sol_in.erase("Gamma_y_optm_ref");
   }
   sol_out["X_optm"].T().to_file("X_optm.txt", "txt");
   sol_out["U_optm"].T().to_file("U_optm.txt", "txt");

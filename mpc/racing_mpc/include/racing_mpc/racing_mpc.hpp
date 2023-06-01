@@ -59,6 +59,10 @@ protected:
   casadi::DM scale_gamma_y_;
   casadi::Function g_to_f_;
   casadi::Function norm_2_;
+  casadi::Opti opti_;
+  casadi::MX X_;
+  casadi::MX U_;
+  casadi::MX Gamma_y_;
 };
 }  // namespace racing_mpc
 }  // namespace mpc

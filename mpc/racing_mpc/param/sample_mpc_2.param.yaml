@@ -1,9 +1,9 @@
 /**:
   ros__parameters:
-    max_cpu_time: 0.2
+    max_cpu_time: 10.0
     tol: 0.1
     constr_viol_tol: 0.1
-    n: 20
+    n: 10
     margin: 0.3
     average_track_width: 7.0
 

@@ -45,8 +45,25 @@ RacingMPC::RacingMPC(
       }),
   scale_gamma_y_(model_->get_base_config().chassis_config->total_mass * 50.0),
   g_to_f_(utils::global_to_frenet_function<casadi::MX>(config_->N)),
-  norm_2_(utils::norm_2_function(config_->N))
+  norm_2_(utils::norm_2_function(config_->N)),
+  opti_(casadi::Opti()),
+  X_(opti_.variable(model_->nx(), config_->N)),
+  U_(opti_.variable(model_->nu(), config_->N - 1)),
+  Gamma_y_(opti_.variable(config_->N - 1))
 {
+  // configure solver
+  const auto p_opts = casadi::Dict{
+    {"expand", false},
+    {"print_time", false}
+  };
+  const auto s_opts = casadi::Dict{
+    {"max_cpu_time", config_->max_cpu_time},
+    {"tol", config_->tol},
+    {"constr_viol_tol", config_->constr_viol_tol},
+    {"print_level", 0},
+    {"max_iter", 500}
+  };
+  opti_.solver("ipopt", p_opts, s_opts);
 }
 
 const RacingMPCConfig & RacingMPC::get_config() const
@@ -60,6 +77,9 @@ void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out)
   using casadi::MX;
   using casadi::Slice;
 
+  // clear constraints
+  opti_.subject_to();
+
   const auto & X_ref = in.at("X_ref");
   const auto & U_ref = in.at("U_ref");
   const auto & x_ic = in.at("x_ic");
@@ -69,40 +89,36 @@ void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out)
   const auto X0 = DM::vertcat({P0, DM::zeros(model_->nx() - 2, config_->N)});
   const auto Yaws = X_ref(XIndex::YAW, Slice());
 
-  auto opti = casadi::Opti();
-  auto X = opti.variable(model_->nx(), config_->N);
-  auto U = opti.variable(model_->nu(), config_->N - 1);
-  auto T = casadi::MX(in.at("T_optm_ref"));
-  auto Gamma_y = opti.variable(config_->N - 1);
+  auto T = casadi::MX(in.at("T_ref"));
 
   // trajectory tracking cost
   auto cost = MX::zeros(1);
   for (size_t i = 0; i < config_->N - 1; i++) {
-    const auto xi = X(Slice(), i) * scale_x_ + X0(Slice(), i);
-    const auto ui = U(Slice(), i) * scale_u_;
+    const auto xi = X_(Slice(), i) * scale_x_ + X0(Slice(), i);
+    const auto ui = U_(Slice(), i) * scale_u_;
     const auto dx = xi - X_ref(Slice(), i);
     const auto du = ui - U_ref(Slice(), i);
     cost += 0.5 * MX::mtimes({dx.T(), config_->Q, dx}) + 0.5 * MX::mtimes({du.T(), config_->R, du});
   }
-  const auto dxN = X(Slice(), -1) * scale_x_ + X0(Slice(), -1) - X_ref(Slice(), -1);
+  const auto dxN = X_(Slice(), -1) * scale_x_ + X0(Slice(), -1) - X_ref(Slice(), -1);
   cost += 0.5 * MX::mtimes({dxN.T(), config_->Qf, dxN});
-  opti.minimize(cost);
+  opti_.minimize(cost);
 
   // boundary constraints in frenet frame
-  const auto P = X(Slice(0, 2), Slice()) * scale_x_(Slice(0, 2));
+  const auto P = X_(Slice(0, 2), Slice()) * scale_x_(Slice(0, 2));
   const auto Pf = g_to_f_({P, MX::zeros(2, config_->N), Yaws})[0];
   // opti.subject_to(Pf(0, Slice()) == 0.0);
   const auto margin = config_->margin + model_->get_base_config().chassis_config->b / 2.0;
   const auto dl = norm_2_(bound_left - P0)[0];
   const auto dr = norm_2_(bound_right - P0)[0] * -1.0;
-  opti.subject_to(opti.bounded(dr + margin, Pf(1, Slice()), dl - margin));
+  opti_.subject_to(opti_.bounded(dr + margin, Pf(1, Slice()), dl - margin));
 
   for (size_t i = 0; i < config_->N - 1; i++) {
-    const auto xi = X(Slice(), i) * scale_x_ + X0(Slice(), i);
-    const auto xip1 = X(Slice(), i + 1) * scale_x_ + X0(Slice(), i + 1);
-    const auto ui = U(Slice(), i) * scale_u_;
+    const auto xi = X_(Slice(), i) * scale_x_ + X0(Slice(), i);
+    const auto xip1 = X_(Slice(), i + 1) * scale_x_ + X0(Slice(), i + 1);
+    const auto ui = U_(Slice(), i) * scale_u_;
     const auto ti = T(i);
-    const auto gamma_y = Gamma_y(i) * scale_gamma_y_;
+    const auto gamma_y = Gamma_y_(i) * scale_gamma_y_;
 
     // model constraints
     casadi::MXDict constraint_in = {
@@ -113,57 +129,50 @@ void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out)
       {"t", ti}
     };
     if (i < config_->N - 2) {
-      const auto uip1 = U(Slice(), i + 1) * scale_u_;
+      const auto uip1 = U_(Slice(), i + 1) * scale_u_;
       constraint_in["uip1"] = uip1;
     }
-    model_->add_nlp_constraints(opti, constraint_in);
+    model_->add_nlp_constraints(opti_, constraint_in);
   }
-  const auto & X_optm_ref = in.at("X_optm_ref");
-  const auto & U_optm_ref = in.at("U_optm_ref");
-  const auto & T_optm_ref = in.at("T_optm_ref");
-  const auto & Gamma_y_optm_ref = in.at("Gamma_y_optm_ref");
-  opti.set_initial(X * scale_x_, X_optm_ref - X0);
-  opti.set_initial(U * scale_u_, U_optm_ref);
-  opti.set_initial(T, T_optm_ref);
-  opti.set_initial(Gamma_y * scale_gamma_y_, Gamma_y_optm_ref);
+
+  if (in.count("X_optm_ref")) {
+    const auto & X_optm_ref = in.at("X_optm_ref");
+    const auto & U_optm_ref = in.at("U_optm_ref");
+    const auto & T_optm_ref = in.at("T_optm_ref");
+    const auto & Gamma_y_optm_ref = in.at("Gamma_y_optm_ref");
+    opti_.set_initial(X_ * scale_x_, X_optm_ref - X0);
+    opti_.set_initial(U_ * scale_u_, U_optm_ref);
+    opti_.set_initial(T, T_optm_ref);
+    opti_.set_initial(Gamma_y_ * scale_gamma_y_, Gamma_y_optm_ref);
+  }
 
   // Starting state must match
-  const auto x0 = X(Slice(), 0) * scale_x_ + X0(Slice(), 0);
-  opti.subject_to(x0 == x_ic);
-
-  // configure solver
-  const auto p_opts = casadi::Dict{
-    {"expand", false},
-    {"print_time", false}
-  };
-  const auto s_opts = casadi::Dict{
-    {"max_cpu_time", config_->max_cpu_time},
-    {"tol", config_->tol},
-    {"constr_viol_tol", config_->constr_viol_tol},
-    {"print_level", 0},
-    {"max_iter", 500}
-  };
-  opti.solver("ipopt", p_opts, s_opts);
+  const auto x0 = X_(Slice(), 0) * scale_x_ + X0(Slice(), 0);
+  opti_.subject_to(x0 == x_ic);
 
   // solve problem
   try {
     const auto start = std::chrono::high_resolution_clock::now();
-    const auto sol = opti.solve_limited();
+    const auto sol = opti_.solve_limited();
     // const auto sol = opti.solve();
     const auto stop = std::chrono::high_resolution_clock::now();
     const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
     std::cout << "Time in IPOPT: " << duration.count() << "ms" << std::endl;
-    out["X_optm"] = sol.value(X) * scale_x_ + X0;
-    out["U_optm"] = sol.value(U) * scale_u_;
+    out["X_optm"] = sol.value(X_) * scale_x_ + X0;
+    out["U_optm"] = sol.value(U_) * scale_u_;
     out["T_optm"] = sol.value(T);
-    out["Gamma_y_optm"] = sol.value(Gamma_y) * scale_gamma_y_;
+    out["Gamma_y_optm"] = sol.value(Gamma_y_) * scale_gamma_y_;
+
+    opti_.set_initial(sol.value_variables());
+    const auto lam_g0 = sol.value(opti_.lam_g());
+    opti_.set_initial(opti_.lam_g(), lam_g0);
   } catch (const std::exception & e) {
     std::cerr << e.what() << '\n';
     // throw e;
-    out["X_optm"] = opti.debug().value(X) * scale_x_ + X0;
-    out["U_optm"] = opti.debug().value(U) * scale_u_;
-    out["T_optm"] = opti.debug().value(T);
-    out["Gamma_y_optm"] = opti.debug().value(Gamma_y) * scale_gamma_y_;
+    out["X_optm"] = opti_.debug().value(X_) * scale_x_ + X0;
+    out["U_optm"] = opti_.debug().value(U_) * scale_u_;
+    out["T_optm"] = opti_.debug().value(T);
+    out["Gamma_y_optm"] = opti_.debug().value(Gamma_y_) * scale_gamma_y_;
   }
 }
 
