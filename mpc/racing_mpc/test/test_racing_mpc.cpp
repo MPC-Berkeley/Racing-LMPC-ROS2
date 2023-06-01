@@ -142,7 +142,7 @@ TEST(RacingMPCTest, RacingMPCSolveInterpolatedTest) {
   }
 
   const auto t_vec = T_accum.get_elements();
-  const auto t_intp = DM::linspace(0.0, 1.0, N);
+  const auto t_intp = DM::linspace(0.0, 2.0, N);
   const auto bound_left_intp = DM::interp1d(
     t_vec, bound_left.T(),
     t_intp.get_elements(), "floor", false).T();
