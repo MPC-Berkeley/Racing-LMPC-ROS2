@@ -28,6 +28,17 @@ namespace vehicle_model
 {
 namespace base_vehicle_model
 {
+
+struct BaseVehicleModelState
+{
+  double wheel_speed_fl_rps = 0.0;
+  double wheel_speed_fr_rps = 0.0;
+  double wheel_speed_rl_rps = 0.0;
+  double wheel_speed_rr_rps = 0.0;
+  double engine_rpm = 0.0;
+  uint8_t gear = 1;
+};
+
 class BaseVehicleModel
 {
 public:
@@ -39,17 +50,20 @@ public:
   void set_base_config(BaseVehicleModelConfig::SharedPtr config);
   const BaseVehicleModelConfig & get_base_config() const;
 
+  BaseVehicleModelState & get_state();
+  const BaseVehicleModelState & get_const_state() const;
+
   /**
    * @brief Get the size of the state variable.
    *
-   * @return size_t state variable size.
+   * @return state variable size.
    */
   virtual size_t nx() const;
 
   /**
    * @brief Get the size of the control variable.
    *
-   * @return size_t control variable size.
+   * @return control variable size.
    */
   virtual size_t nu() const;
 
@@ -77,8 +91,50 @@ public:
    */
   virtual void add_nlp_constraints(casadi::Opti & opti, const casadi::MXDict & in);
 
+  /**
+   * @brief calculate longitudinal control based on control variable.
+   *
+   * @param in "u" (control) required, the rest is optional.
+   * @param throttle output throttle in 1-100.
+   * @param brake_kpa output brake in kpa.
+   */
+  virtual void calc_lon_control(const casadi::DMDict & in, double & throttle, double & brake_kpa);
+
+  /**
+   * @brief calculate lateral control based on control variable.
+   *
+   * @param in "u" (control) required, the rest is optional.
+   * @param steering_rad output front wheel angle in radian.
+   */
+  virtual void calc_lat_control(const casadi::DMDict & in, double & steering_rad);
+
 protected:
   BaseVehicleModelConfig::SharedPtr base_config_ {};
+  BaseVehicleModelState base_state_;
+
+  /**
+   * @brief calculate throttle based on drive force.
+   *        torque vs. RPM needs to monotonically and linearly decrease.
+   *        not designed for gas engine car.
+   *        override to customize.
+   *        `base_state_` needs to be populated beforehand.
+   *
+   * @param fd total driving force.
+   * @return target throttle 1-100.
+   */
+  virtual double calc_throttle(const double & fd);
+
+  /**
+   * @brief calculate brake line pressure based on braking force.
+   *        pressure is taken at the master cylinder.
+   *        this sums front and rear pressures.
+   *        override to customize.
+   *        `base_state_` needs to be populated beforehand.
+   *
+   * @param fb total braking force.
+   * @return target brake line pressure in kpa
+   */
+  virtual double calc_brake(const double & fb);
 };
 }  // namespace base_vehicle_model
 }  // namespace vehicle_model

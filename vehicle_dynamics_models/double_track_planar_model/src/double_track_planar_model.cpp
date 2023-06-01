@@ -158,6 +158,28 @@ void DoubleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casa
   }
 }
 
+void DoubleTrackPlanarModel::calc_lon_control(
+  const casadi::DMDict & in, double & throttle,
+  double & brake_kpa)
+{
+  const auto & u = in.at("u").get_elements();
+  const auto & fd = u[UIndex::FD];
+  const auto & fb = u[UIndex::FB];
+  throttle = 0.0;
+  brake_kpa = 0.0;
+  if (abs(fd) > abs(fb)) {
+    throttle = calc_throttle(fd);
+  } else {
+    brake_kpa = calc_brake(fb);
+  }
+}
+
+void DoubleTrackPlanarModel::calc_lat_control(const casadi::DMDict & in, double & steering_rad)
+{
+  const auto & u = in.at("u").get_elements();
+  steering_rad = u[UIndex::STEER];
+}
+
 void DoubleTrackPlanarModel::compile_dynamics()
 {
   using casadi::SX;

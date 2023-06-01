@@ -76,6 +76,8 @@ public:
 
   void forward_dynamics(const casadi::DMDict & in, casadi::DMDict & out) override;
   void add_nlp_constraints(casadi::Opti & opti, const casadi::MXDict & in) override;
+  void calc_lon_control(const casadi::DMDict & in, double & throttle, double & brake_kpa) override;
+  void calc_lat_control(const casadi::DMDict & in, double & steering_rad) override;
 
 private:
   void compile_dynamics();
