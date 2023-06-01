@@ -74,8 +74,6 @@ TEST(DoubleTrackPlanarModelTest, TestDoubleTrackDynamics) {
   auto out = casadi::DMDict{};
   model.forward_dynamics(in, out);
   const auto x_dot = out["x_dot"];
-  // std::cout << x_dot << std::endl;
-  // std::cout << out["gamma_y"] << std::endl;
 
   rclcpp::shutdown();
   SUCCEED();

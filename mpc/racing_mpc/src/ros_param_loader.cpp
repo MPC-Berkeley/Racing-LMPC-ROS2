@@ -38,22 +38,26 @@ RacingMPCConfig::SharedPtr load_parameters(rclcpp::Node * node)
   auto declare_int = [&](const char * name) {
       return lmpc::utils::declare_parameter<int64_t>(node, name);
     };
+  auto declare_bool = [&](const char * name) {
+      return lmpc::utils::declare_parameter<bool>(node, name);
+    };
 
   return std::make_shared<RacingMPCConfig>(
     RacingMPCConfig{
-          declare_double("max_cpu_time"),
-          declare_double("tol"),
-          declare_double("constr_viol_tol"),
-          static_cast<size_t>(declare_int("n")),
-          declare_double("margin"),
-          declare_double("average_track_width"),
-          casadi::DM::reshape(casadi::DM(declare_vec("q")), 6, 6),
-          casadi::DM::reshape(casadi::DM(declare_vec("r")), 3, 3),
-          casadi::DM::reshape(casadi::DM(declare_vec("qf")), 6, 6),
-          casadi::DM(declare_vec("x_max")),
-          casadi::DM(declare_vec("x_min")),
-          casadi::DM(declare_vec("u_max")),
-          casadi::DM(declare_vec("u_min")),
+          declare_double("racing_mpc.max_cpu_time"),
+          declare_double("racing_mpc.tol"),
+          declare_double("racing_mpc.constr_viol_tol"),
+          static_cast<size_t>(declare_int("racing_mpc.n")),
+          declare_double("racing_mpc.margin"),
+          declare_double("racing_mpc.average_track_width"),
+          declare_bool("racing_mpc.verbose"),
+          casadi::DM::reshape(casadi::DM(declare_vec("racing_mpc.q")), 6, 6),
+          casadi::DM::reshape(casadi::DM(declare_vec("racing_mpc.r")), 3, 3),
+          casadi::DM::reshape(casadi::DM(declare_vec("racing_mpc.qf")), 6, 6),
+          casadi::DM(declare_vec("racing_mpc.x_max")),
+          casadi::DM(declare_vec("racing_mpc.x_min")),
+          casadi::DM(declare_vec("racing_mpc.u_max")),
+          casadi::DM(declare_vec("racing_mpc.u_min")),
         }
   );
 }

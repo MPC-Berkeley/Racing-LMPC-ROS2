@@ -40,6 +40,7 @@ struct RacingMPCConfig
   size_t N;  // steps
   double margin;  // safety margin to obstacle (m)
   double average_track_width;  // averange track width for scaling the variables
+  bool verbose;  // print debug
 
   // MPC settings
   casadi::DM Q;  // state cost-to-go

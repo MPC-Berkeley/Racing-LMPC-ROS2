@@ -54,13 +54,13 @@ RacingMPC::RacingMPC(
   // configure solver
   const auto p_opts = casadi::Dict{
     {"expand", false},
-    {"print_time", false}
+    {"print_time", config_->verbose ? true : false}
   };
   const auto s_opts = casadi::Dict{
     {"max_cpu_time", config_->max_cpu_time},
     {"tol", config_->tol},
     {"constr_viol_tol", config_->constr_viol_tol},
-    {"print_level", 0},
+    {"print_level", config_->verbose ? 5 : 0},
     {"max_iter", 500}
   };
   opti_.solver("ipopt", p_opts, s_opts);
@@ -152,12 +152,8 @@ void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out)
 
   // solve problem
   try {
-    const auto start = std::chrono::high_resolution_clock::now();
     const auto sol = opti_.solve_limited();
     // const auto sol = opti.solve();
-    const auto stop = std::chrono::high_resolution_clock::now();
-    const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
-    std::cout << "Time in IPOPT: " << duration.count() << "ms" << std::endl;
     out["X_optm"] = sol.value(X_) * scale_x_ + X0;
     out["U_optm"] = sol.value(U_) * scale_u_;
     out["T_optm"] = sol.value(T);
