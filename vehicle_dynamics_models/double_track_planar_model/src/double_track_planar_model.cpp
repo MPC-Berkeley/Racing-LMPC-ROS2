@@ -115,7 +115,13 @@ void DoubleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casa
     lmpc::utils::align_yaw<casadi::MX>(xip1_temp(XIndex::YAW), x(XIndex::YAW));
   const auto out1 = dynamics_({{"x", x}, {"u", u}, {"gamma_y", gamma_y}});
   const auto k1 = out1.at("x_dot");
-  opti.subject_to(x + t * k1 - xip1_temp == 0);
+  const auto out2 = dynamics_({{"x", x + t / 2.0 * k1}, {"u", u}, {"gamma_y", gamma_y}});
+  const auto k2 = out2.at("x_dot");
+  const auto out3 = dynamics_({{"x", x + t / 2.0 * k2}, {"u", u}, {"gamma_y", gamma_y}});
+  const auto k3 = out3.at("x_dot");
+  const auto out4 = dynamics_({{"x", x + t * k3}, {"u", u}, {"gamma_y", gamma_y}});
+  const auto k4 = out4.at("x_dot");
+  opti.subject_to(x + t / 6 * (k1 + 2 * k2 + 2 * k3 + k4) - xip1_temp == 0);
 
   // tyre constraints
   const auto Fx_ij = out1.at("Fx_ij");
