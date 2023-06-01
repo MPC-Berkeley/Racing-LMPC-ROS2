@@ -89,7 +89,6 @@ TEST(RacingMPCTest, RacingMPCSolveTest) {
   auto x_ic = DM(sol_in["X_ref"](Slice(), 0));
   x_ic(0) += 0.3;
   x_ic(1) += 0.3;
-  x_ic(5) *= 1.1;
   sol_in["x_ic"] = x_ic;
   sol_in["x_g"] = sol_in["X_ref"](Slice(), -1);
   sol_in["bound_left"] = bound_left;

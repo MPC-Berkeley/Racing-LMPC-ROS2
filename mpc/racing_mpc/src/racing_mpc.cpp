@@ -91,7 +91,7 @@ void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out)
   // boundary constraints in frenet frame
   const auto P = X(Slice(0, 2), Slice()) * scale_x_(Slice(0, 2));
   const auto Pf = g_to_f_({P, MX::zeros(2, config_->N), Yaws})[0];
-  opti.subject_to(Pf(0, Slice()) == 0.0);
+  // opti.subject_to(Pf(0, Slice()) == 0.0);
   const auto margin = config_->margin + model_->get_base_config().chassis_config->b / 2.0;
   const auto dl = norm_2_(bound_left - P0)[0];
   const auto dr = norm_2_(bound_right - P0)[0] * -1.0;
