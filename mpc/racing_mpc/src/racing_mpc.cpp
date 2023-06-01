@@ -68,7 +68,6 @@ void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out)
   const auto P0 = X_ref(Slice(0, 2), Slice());
   const auto X0 = DM::vertcat({P0, DM::zeros(model_->nx() - 2, config_->N)});
   const auto Yaws = X_ref(XIndex::YAW, Slice());
-  const auto V = X_ref(XIndex::V, Slice());
 
   auto opti = casadi::Opti();
   auto X = opti.variable(model_->nx(), config_->N);

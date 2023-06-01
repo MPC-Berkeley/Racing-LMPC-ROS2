@@ -1,6 +1,6 @@
 /**:
   ros__parameters:
-    max_cpu_time: 0.02
+    max_cpu_time: 0.2
     tol: 0.1
     constr_viol_tol: 0.1
     n: 20
