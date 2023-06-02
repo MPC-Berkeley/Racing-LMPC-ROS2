@@ -97,7 +97,7 @@ double BaseVehicleModel::calc_throttle(const double & fd)
   const auto & pt_config = *base_config_->powertrain_config.get();
 
   if (base_state_.gear > pt_config.gear_ratio.size()) {
-    printf("Gear number of %lu is not possible.", base_state_.gear);
+    printf("Gear number of %d is not possible.", base_state_.gear);
     return 0.0;
   }
 
