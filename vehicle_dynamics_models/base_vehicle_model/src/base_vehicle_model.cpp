@@ -92,13 +92,13 @@ void BaseVehicleModel::calc_lat_control(const casadi::DMDict & in, double & stee
 double BaseVehicleModel::calc_throttle(const double & fd)
 {
   if (fd < 0.0) {
-    return;
+    return 0.0;
   }
   const auto & pt_config = *base_config_->powertrain_config.get();
 
   if (base_state_.gear > pt_config.gear_ratio.size()) {
     printf("Gear number of %lu is not possible.", base_state_.gear);
-    return;
+    return 0.0;
   }
 
   const auto target_front_wheel_torque = fd * base_config_->front_tyre_config->radius *
@@ -119,7 +119,7 @@ double BaseVehicleModel::calc_throttle(const double & fd)
 double BaseVehicleModel::calc_brake(const double & fb)
 {
   if (fb > 0.0) {
-    return;
+    return 0.0;
   }
   const auto & fb_config = *base_config_->front_brake_config.get();
   const auto & rb_config = *base_config_->rear_brake_config.get();
