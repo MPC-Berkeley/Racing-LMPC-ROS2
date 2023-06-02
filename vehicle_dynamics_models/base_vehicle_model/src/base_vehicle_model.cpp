@@ -76,20 +76,20 @@ void BaseVehicleModel::add_nlp_constraints(casadi::Opti & opti, const casadi::MX
 
 void BaseVehicleModel::calc_lon_control(
   const casadi::DMDict & in, double & throttle,
-  double & brake_kpa)
+  double & brake_kpa) const
 {
   (void) in;
   (void) throttle;
   (void) brake_kpa;
 }
 
-void BaseVehicleModel::calc_lat_control(const casadi::DMDict & in, double & steering_rad)
+void BaseVehicleModel::calc_lat_control(const casadi::DMDict & in, double & steering_rad) const
 {
   (void) in;
   (void) steering_rad;
 }
 
-double BaseVehicleModel::calc_throttle(const double & fd)
+double BaseVehicleModel::calc_throttle(const double & fd) const
 {
   if (fd < 0.0) {
     return 0.0;
@@ -116,7 +116,7 @@ double BaseVehicleModel::calc_throttle(const double & fd)
     target_engine_torque, false);
 }
 
-double BaseVehicleModel::calc_brake(const double & fb)
+double BaseVehicleModel::calc_brake(const double & fb) const
 {
   if (fb > 0.0) {
     return 0.0;

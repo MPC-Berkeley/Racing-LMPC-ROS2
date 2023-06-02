@@ -160,7 +160,7 @@ void DoubleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casa
 
 void DoubleTrackPlanarModel::calc_lon_control(
   const casadi::DMDict & in, double & throttle,
-  double & brake_kpa)
+  double & brake_kpa) const
 {
   const auto & u = in.at("u").get_elements();
   const auto & fd = u[UIndex::FD];
@@ -174,7 +174,9 @@ void DoubleTrackPlanarModel::calc_lon_control(
   }
 }
 
-void DoubleTrackPlanarModel::calc_lat_control(const casadi::DMDict & in, double & steering_rad)
+void DoubleTrackPlanarModel::calc_lat_control(
+  const casadi::DMDict & in,
+  double & steering_rad) const
 {
   const auto & u = in.at("u").get_elements();
   steering_rad = u[UIndex::STEER];

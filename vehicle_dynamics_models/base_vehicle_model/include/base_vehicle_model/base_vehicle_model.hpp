@@ -98,7 +98,9 @@ public:
    * @param throttle output throttle in 1-100.
    * @param brake_kpa output brake in kpa.
    */
-  virtual void calc_lon_control(const casadi::DMDict & in, double & throttle, double & brake_kpa);
+  virtual void calc_lon_control(
+    const casadi::DMDict & in, double & throttle,
+    double & brake_kpa) const;
 
   /**
    * @brief calculate lateral control based on control variable.
@@ -106,7 +108,7 @@ public:
    * @param in "u" (control) required, the rest is optional.
    * @param steering_rad output front wheel angle in radian.
    */
-  virtual void calc_lat_control(const casadi::DMDict & in, double & steering_rad);
+  virtual void calc_lat_control(const casadi::DMDict & in, double & steering_rad) const;
 
 protected:
   BaseVehicleModelConfig::SharedPtr base_config_ {};
@@ -122,7 +124,7 @@ protected:
    * @param fd total driving force.
    * @return target throttle 1-100.
    */
-  virtual double calc_throttle(const double & fd);
+  virtual double calc_throttle(const double & fd) const;
 
   /**
    * @brief calculate brake line pressure based on braking force.
@@ -134,7 +136,7 @@ protected:
    * @param fb total braking force.
    * @return target brake line pressure in kpa
    */
-  virtual double calc_brake(const double & fb);
+  virtual double calc_brake(const double & fb) const;
 };
 }  // namespace base_vehicle_model
 }  // namespace vehicle_model

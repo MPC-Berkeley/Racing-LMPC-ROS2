@@ -50,6 +50,8 @@ public:
 
   void create_warm_start(const casadi::DMDict & in, casadi::DMDict & out);
 
+  const DoubleTrackPlanarModel & get_model() const;
+
 protected:
   RacingMPCConfig::SharedPtr config_ {};
   DoubleTrackPlanarModel::SharedPtr model_ {};

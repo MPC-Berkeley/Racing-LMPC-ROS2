@@ -230,6 +230,11 @@ void RacingMPC::create_warm_start(const casadi::DMDict & in, casadi::DMDict & ou
   out["U_ref"] = U_ref;
   out["T_ref"] = T_ref;
 }
+
+const DoubleTrackPlanarModel & RacingMPC::get_model() const
+{
+  return *model_;
+}
 }  // namespace racing_mpc
 }  // namespace mpc
 }  // namespace lmpc
