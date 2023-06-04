@@ -52,8 +52,10 @@ void RacingLQR::solve(const casadi::DMDict & in, casadi::DMDict & out)
   const auto & U_ref = in.at("U_ref");
   const auto & Gamma_y_ref = in.at("Gamma_y_ref");
 
-  auto P = DM(config_->Qf);
-  auto K = DM::zeros(model_->nu(), model_->nx());
+  auto P = casadi::DMVector(config_->N, config_->Qf);
+  auto K = casadi::DMVector(config_->N - 1, DM::zeros(model_->nu(), model_->nx()));
+  auto As = casadi::DMVector(config_->N - 1, DM::zeros(model_->nx(), model_->nx()));
+  auto Bs = casadi::DMVector(config_->N - 1, DM::zeros(model_->nx(), model_->nu()));
   for (int k = config_->N - 2; k >= 0; k--) {
     // obtain linearlized continuious dynamics
     casadi::DMDict dyn_jac;
@@ -65,16 +67,32 @@ void RacingLQR::solve(const casadi::DMDict & in, casadi::DMDict & out)
 
     // convert continuious dynamics to discrete
     const auto dyn_d = c2d_(casadi::DMDict{{"Ac", Ac}, {"Bc", Bc}});
-    const auto & A = dyn_d.at("A");
-    const auto & B = dyn_d.at("B");
+    As[k] = dyn_d.at("A");
+    Bs[k] = dyn_d.at("B");
 
     // Ricatti
-    K = DM::mtimes({DM::inv(config_->R + DM::mtimes({B.T(), P, B})), B.T(), P, A});
-    P = config_->Q + DM::mtimes({A.T(), P, A - DM::mtimes(B, K)});
+    K[k] =
+      DM::mtimes(
+      {DM::inv(config_->R + DM::mtimes({Bs[k].T(), P[k + 1], Bs[k]})), Bs[k].T(),
+        P[k + 1], As[k]});
+    P[k] = config_->Q + DM::mtimes({As[k].T(), P[k + 1], As[k] - DM::mtimes(Bs[k], K[k])});
+  }
+
+  // simulate
+  auto X_optm = DM::zeros(model_->nx(), config_->N);
+  X_optm(Slice(), 0) = x_ic;
+  auto U_optm = DM::zeros(model_->nu(), config_->N - 1);
+  for (int k = 0; k < config_->N - 1; k++) {
+    U_optm(Slice(), k) =
+      U_ref(Slice(), k) - DM::mtimes(K[k], X_optm(Slice(), k) - X_ref(Slice(), k));
+    X_optm(Slice(), k + 1) =
+      DM::mtimes(As[k], X_optm(Slice(), k)) + DM::mtimes(Bs[k], U_optm(Slice(), k));
   }
 
   // calculate control
-  out["u"] = U_ref(Slice(), 0) - DM::mtimes(K, x_ic - X_ref(Slice(), 0));
+  out["u"] = U_optm(Slice(), 0);
+  out["U_optm"] = U_optm;
+  out["X_optm"] = X_optm;
 }
 
 const DoubleTrackPlanarModel & RacingLQR::get_model() const
