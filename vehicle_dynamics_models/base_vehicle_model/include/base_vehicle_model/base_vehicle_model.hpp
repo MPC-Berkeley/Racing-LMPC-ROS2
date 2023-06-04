@@ -78,7 +78,7 @@ public:
 /**
  * @brief Override to implement Jacobian of dynamics
  *
- * @param in "x" (state) and "u" (control)
+ * @param in optional. typically "x" (state) and "u" (control).
  * @param out Jacobian of "x_dot" with respect to x (A matrix) and u (B matrix) evaulated at their given point.
  */
   virtual void dynamics_jacobian(const casadi::DMDict & in, casadi::DMDict & out);

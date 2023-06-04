@@ -81,6 +81,12 @@ void DoubleTrackPlanarModel::forward_dynamics(const casadi::DMDict & in, casadi:
   out["gamma_y"] = gamma_y_solve;
 }
 
+void DoubleTrackPlanarModel::dynamics_jacobian(const casadi::DMDict & in, casadi::DMDict & out)
+{
+  const auto jac = dynamics_jac_(in);
+  out.insert(jac.begin(), jac.end());
+}
+
 void DoubleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casadi::MXDict & in)
 {
   // using casadi::MX;
@@ -110,9 +116,6 @@ void DoubleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casa
     get_base_config().steer_config->max_steer_rate;
 
   // dynamics constraint
-  auto xip1_temp = casadi::MX(xip1);
-  xip1_temp(XIndex::YAW) =
-    lmpc::utils::align_yaw<casadi::MX>(xip1_temp(XIndex::YAW), x(XIndex::YAW));
   const auto out1 = dynamics_({{"x", x}, {"u", u}, {"gamma_y", gamma_y}});
   const auto k1 = out1.at("x_dot");
   const auto out2 = dynamics_({{"x", x + t / 2.0 * k1}, {"u", u}, {"gamma_y", gamma_y}});
@@ -121,7 +124,7 @@ void DoubleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casa
   const auto k3 = out3.at("x_dot");
   const auto out4 = dynamics_({{"x", x + t * k3}, {"u", u}, {"gamma_y", gamma_y}});
   const auto k4 = out4.at("x_dot");
-  opti.subject_to(x + t / 6 * (k1 + 2 * k2 + 2 * k3 + k4) - xip1_temp == 0);
+  opti.subject_to(x + t / 6 * (k1 + 2 * k2 + 2 * k3 + k4) - xip1 == 0);
 
   // tyre constraints
   const auto Fx_ij = out1.at("Fx_ij");
@@ -300,6 +303,18 @@ void DoubleTrackPlanarModel::compile_dynamics()
     {x_dot, Fx_ij, Fy_ij, Fz_ij},
     {"x", "u", "gamma_y"},
     {"x_dot", "Fx_ij", "Fy_ij", "Fz_ij"});
+
+  const auto Ac = SX::jacobian(x_dot, x);
+  const auto Bc = SX::jacobian(x_dot, u);
+  const auto B2c = SX::jacobian(x_dot, gamma_y);
+
+  dynamics_jac_ = casadi::Function(
+    "double_track_planar_model_jacobian",
+    {x, u, gamma_y},
+    {Ac, Bc, B2c},
+    {"x", "u", "gamma_y"},
+    {"A", "B", "B2"}
+  );
 }
 }  // namespace double_track_planar_model
 }  // namespace vehicle_model

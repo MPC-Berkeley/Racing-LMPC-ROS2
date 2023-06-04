@@ -75,6 +75,7 @@ public:
   size_t nu() const override;
 
   void forward_dynamics(const casadi::DMDict & in, casadi::DMDict & out) override;
+  void dynamics_jacobian(const casadi::DMDict & in, casadi::DMDict & out) override;
   void add_nlp_constraints(casadi::Opti & opti, const casadi::MXDict & in) override;
   void calc_lon_control(
     const casadi::DMDict & in, double & throttle,
@@ -86,6 +87,7 @@ private:
 
   DoubleTrackPlanarModelConfig::SharedPtr config_ {};
   casadi::Function dynamics_;
+  casadi::Function dynamics_jac_;
 };
 }  // namespace double_track_planar_model
 }  // namespace vehicle_model
