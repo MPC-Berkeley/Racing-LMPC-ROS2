@@ -76,7 +76,7 @@ casadi::Function c2d_function(const casadi_int & nx, const casadi_int & nu, cons
   const auto exp_M = MX::expm(M * dt);
   const auto A = exp_M(Slice(0, nx), Slice(0, nx));
   const auto B = exp_M(Slice(0, nx), Slice(nx, nx + nu));
-  return casadi::Function("c2d", {Ac, Bc}, {A, B});
+  return casadi::Function("c2d", {Ac, Bc}, {A, B}, {"Ac", "Bc"}, {"A", "B"});
 }
 
 enum TyreIndex : size_t

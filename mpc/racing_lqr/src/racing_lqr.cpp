@@ -1,0 +1,86 @@
+// Copyright 2023 Haoru Xue
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+#include <math.h>
+#include <exception>
+#include <vector>
+#include <iostream>
+#include <chrono>
+
+#include "racing_lqr/racing_lqr.hpp"
+#include "lmpc_utils/utils.hpp"
+
+namespace lmpc
+{
+namespace mpc
+{
+namespace racing_lqr
+{
+RacingLQR::RacingLQR(
+  RacingLQRConfig::SharedPtr mpc_config,
+  DoubleTrackPlanarModel::SharedPtr model)
+: config_(mpc_config), model_(model),
+  c2d_(utils::c2d_function(model_->nx(), model_->nu(), config_->dt))
+{
+}
+
+const RacingLQRConfig & RacingLQR::get_config() const
+{
+  return *config_.get();
+}
+
+void RacingLQR::solve(const casadi::DMDict & in, casadi::DMDict & out)
+{
+  using casadi::DM;
+  using casadi::MX;
+  using casadi::Slice;
+
+  const auto & x_ic = in.at("x_ic");
+  const auto & X_ref = in.at("X_ref");
+  const auto & U_ref = in.at("U_ref");
+  const auto & Gamma_y_ref = in.at("Gamma_y_ref");
+
+  auto P = DM(config_->Qf);
+  auto K = DM::zeros(model_->nu(), model_->nx());
+  for (int k = config_->N - 2; k >= 0; k--) {
+    // obtain linearlized continuious dynamics
+    casadi::DMDict dyn_jac;
+    model_->dynamics_jacobian(
+      {{"x", X_ref(Slice(), k)}, {"u", U_ref(
+            Slice(), k)}, {"gamma_y", Gamma_y_ref(k)}}, dyn_jac);
+    const auto & Ac = dyn_jac.at("A");
+    const auto & Bc = dyn_jac.at("B");
+
+    // convert continuious dynamics to discrete
+    const auto dyn_d = c2d_(casadi::DMDict{{"Ac", Ac}, {"Bc", Bc}});
+    const auto & A = dyn_d.at("A");
+    const auto & B = dyn_d.at("B");
+
+    // Ricatti
+    K = DM::mtimes({DM::inv(config_->R + DM::mtimes({B.T(), P, B})), B.T(), P, A});
+    P = config_->Q + DM::mtimes({A.T(), P, A - DM::mtimes(B, K)});
+  }
+
+  // calculate control
+  out["u"] = U_ref(Slice(), 0) - DM::mtimes(K, x_ic - X_ref(Slice(), 0));
+}
+
+const DoubleTrackPlanarModel & RacingLQR::get_model() const
+{
+  return *model_;
+}
+}  // namespace racing_lqr
+}  // namespace mpc
+}  // namespace lmpc
