@@ -64,6 +64,21 @@ casadi::Function norm_2_function(const casadi_int & n)
   return casadi::Function("norm_2", {p}, {out}).map(n);
 }
 
+casadi::Function c2d_function(const casadi_int & nx, const casadi_int & nu, const double & dt)
+{
+  using casadi::MX;
+  using casadi::Slice;
+  const auto Ac = MX::sym("Ac", nx, nx);
+  const auto Bc = MX::sym("Bc", nx, nu);
+  auto M = MX::zeros(nx + nu, nx + nu);
+  M(Slice(0, nx), Slice(0, nx)) = Ac;
+  M(Slice(0, nx), Slice(nx, nx + nu)) = Bc;
+  const auto exp_M = MX::expm(M * dt);
+  const auto A = exp_M(Slice(0, nx), Slice(0, nx));
+  const auto B = exp_M(Slice(0, nx), Slice(nx, nx + nu));
+  return casadi::Function("c2d", {Ac, Bc}, {A, B});
+}
+
 enum TyreIndex : size_t
 {
   FL = 0,
