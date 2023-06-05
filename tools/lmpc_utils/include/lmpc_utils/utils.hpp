@@ -79,6 +79,24 @@ casadi::Function c2d_function(const casadi_int & nx, const casadi_int & nu, cons
   return casadi::Function("c2d", {Ac, Bc}, {A, B}, {"Ac", "Bc"}, {"A", "B"});
 }
 
+casadi::Function rk4_function(const casadi_int & nx, const casadi_int & nu, const double & dt, casadi::Function & dynamics)
+{
+  using casadi::SX;
+  const auto x = SX::sym("x", nx, 1);
+  const auto u = SX::sym("u", nu, 1);
+
+  const auto out1 = dynamics(casadi::SXDict{{"x", x}, {"u", u}});
+  const auto k1 = out1.at("x_dot");
+  const auto out2 = dynamics(casadi::SXDict{{"x", x + dt / 2.0 * k1}, {"u", u}});
+  const auto k2 = out2.at("x_dot");
+  const auto out3 = dynamics(casadi::SXDict{{"x", x + dt / 2.0 * k2}, {"u", u}});
+  const auto k3 = out3.at("x_dot");
+  const auto out4 = dynamics(casadi::SXDict{{"x", x + dt * k3}, {"u", u}});
+  const auto k4 = out4.at("x_dot");
+  const auto out = x + dt / 6 * (k1 + 2 * k2 + 2 * k3 + k4);
+  return casadi::Function("rk4", {x, u}, {out}, {"x", "u"}, {"xip1"});
+}
+
 enum TyreIndex : size_t
 {
   FL = 0,
