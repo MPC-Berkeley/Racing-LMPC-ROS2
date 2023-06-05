@@ -56,6 +56,7 @@ void RacingLQR::solve(const casadi::DMDict & in, casadi::DMDict & out)
   auto K = casadi::DMVector(config_->N - 1, DM::zeros(model_->nu(), model_->nx()));
   auto As = casadi::DMVector(config_->N - 1, DM::zeros(model_->nx(), model_->nx()));
   auto Bs = casadi::DMVector(config_->N - 1, DM::zeros(model_->nx(), model_->nu()));
+  auto B2s = casadi::DMVector(config_->N - 1, DM::zeros(model_->nx(), 1));
   for (int k = config_->N - 2; k >= 0; k--) {
     // obtain linearlized continuious dynamics
     casadi::DMDict dyn_jac;
@@ -64,11 +65,16 @@ void RacingLQR::solve(const casadi::DMDict & in, casadi::DMDict & out)
             Slice(), k)}, {"gamma_y", Gamma_y_ref(k)}}, dyn_jac);
     const auto & Ac = dyn_jac.at("A");
     const auto & Bc = dyn_jac.at("B");
+    const auto & B2c = dyn_jac.at("B2");
 
     // convert continuious dynamics to discrete
     const auto dyn_d = c2d_(casadi::DMDict{{"Ac", Ac}, {"Bc", Bc}});
     As[k] = dyn_d.at("A");
     Bs[k] = dyn_d.at("B");
+
+    const auto c2d2 = utils::c2d_function(model_->nx(), 1, config_->dt);
+    const auto dyn_d2 = c2d2(casadi::DMDict{{"Ac", Ac}, {"Bc", B2c}});
+    B2s[k] = dyn_d2.at("B");
 
     // Ricatti
     K[k] =
@@ -86,7 +92,7 @@ void RacingLQR::solve(const casadi::DMDict & in, casadi::DMDict & out)
     U_optm(Slice(), k) =
       U_ref(Slice(), k) - DM::mtimes(K[k], X_optm(Slice(), k) - X_ref(Slice(), k));
     X_optm(Slice(), k + 1) =
-      DM::mtimes(As[k], X_optm(Slice(), k)) + DM::mtimes(Bs[k], U_optm(Slice(), k));
+      DM::mtimes(As[k], X_optm(Slice(), k)) + DM::mtimes(Bs[k], U_optm(Slice(), k)) + DM::mtimes(B2s[k], Gamma_y_ref(k));
   }
 
   // calculate control
