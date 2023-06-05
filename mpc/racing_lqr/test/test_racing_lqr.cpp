@@ -122,5 +122,7 @@ TEST(RacingLQRTest, RacingLQRSolveTest) {
     std::cout << U_optm_ref_intp(Slice(), 0) << std::endl;
     std::cout << sol_out["u"] << std::endl;
   }
+  sol_out["X_optm"].T().to_file("X_optm.txt", "txt");
+  sol_out["U_optm"].T().to_file("U_optm.txt", "txt");
   SUCCEED();
 }

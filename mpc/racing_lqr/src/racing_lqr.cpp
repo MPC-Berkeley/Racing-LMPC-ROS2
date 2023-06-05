@@ -88,11 +88,12 @@ void RacingLQR::solve(const casadi::DMDict & in, casadi::DMDict & out)
   auto X_optm = DM::zeros(model_->nx(), config_->N);
   X_optm(Slice(), 0) = x_ic;
   auto U_optm = DM::zeros(model_->nu(), config_->N - 1);
-  for (int k = 0; k < config_->N - 1; k++) {
+  for (size_t k = 0; k < config_->N - 1; k++) {
     U_optm(Slice(), k) =
       U_ref(Slice(), k) - DM::mtimes(K[k], X_optm(Slice(), k) - X_ref(Slice(), k));
     X_optm(Slice(), k + 1) =
-      DM::mtimes(As[k], X_optm(Slice(), k)) + DM::mtimes(Bs[k], U_optm(Slice(), k)) + DM::mtimes(B2s[k], Gamma_y_ref(k));
+      DM::mtimes(As[k], X_optm(Slice(), k)) + DM::mtimes(Bs[k], U_optm(Slice(), k)) + DM::mtimes(
+      B2s[k], Gamma_y_ref(k));
   }
 
   // calculate control
