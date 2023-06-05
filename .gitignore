@@ -251,3 +251,8 @@ AMENT_IGNORE
 .ionide
 
 # End of https://www.toptal.com/developers/gitignore/api/c++,python,ros2,visualstudiocode
+
+test_X_optm.txt
+test_U_optm.txt
+test_T_optm.txt
+test_optm.py

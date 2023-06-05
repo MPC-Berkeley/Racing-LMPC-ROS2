@@ -182,8 +182,8 @@ TEST(RacingMPCTest, RacingMPCSolveInterpolatedTest) {
     sol_in.erase("U_optm_ref");
     sol_in.erase("T_optm_ref");
   }
-  sol_out["X_optm"].T().to_file("X_optm.txt", "txt");
-  sol_out["U_optm"].T().to_file("U_optm.txt", "txt");
-  sol_out["T_optm"].T().to_file("T_optm.txt", "txt");
+  sol_out["X_optm"].T().to_file("test_X_optm.txt", "txt");
+  sol_out["U_optm"].T().to_file("test_U_optm.txt", "txt");
+  sol_out["T_optm"].T().to_file("test_T_optm.txt", "txt");
   SUCCEED();
 }
