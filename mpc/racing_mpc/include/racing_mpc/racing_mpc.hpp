@@ -61,8 +61,18 @@ protected:
   casadi::Function g_to_f_;
   casadi::Function norm_2_;
   casadi::Opti opti_;
+
+  // optimization variables
   casadi::MX X_;
   casadi::MX U_;
+
+  // optimization parameters
+  casadi::MX X_ref_;
+  casadi::MX U_ref_;
+  casadi::MX T_ref_;
+  casadi::MX x_ic_;
+  casadi::MX bound_left_;
+  casadi::MX bound_right_;
 };
 }  // namespace racing_mpc
 }  // namespace mpc

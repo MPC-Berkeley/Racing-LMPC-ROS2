@@ -110,9 +110,9 @@ TEST(RacingMPCTest, RacingMPCSolveTest) {
     sol_in.erase("U_optm_ref");
     sol_in.erase("T_optm_ref");
   }
-  sol_out["X_optm"].T().to_file("X_optm.txt", "txt");
-  sol_out["U_optm"].T().to_file("U_optm.txt", "txt");
-  sol_out["T_optm"].T().to_file("T_optm.txt", "txt");
+  sol_out["X_optm"].T().to_file("test_X_optm.txt", "txt");
+  sol_out["U_optm"].T().to_file("test_U_optm.txt", "txt");
+  sol_out["T_optm"].T().to_file("test_T_optm.txt", "txt");
   SUCCEED();
 }
 
@@ -172,7 +172,7 @@ TEST(RacingMPCTest, RacingMPCSolveInterpolatedTest) {
   sol_in["x_g"] = sol_in["X_ref"](Slice(), -1);
 
   auto sol_out = casadi::DMDict{};
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < 10; i++) {
     const auto start = std::chrono::high_resolution_clock::now();
     mpc->solve(sol_in, sol_out);
     const auto stop = std::chrono::high_resolution_clock::now();
@@ -184,6 +184,6 @@ TEST(RacingMPCTest, RacingMPCSolveInterpolatedTest) {
   }
   sol_out["X_optm"].T().to_file("test_X_optm.txt", "txt");
   sol_out["U_optm"].T().to_file("test_U_optm.txt", "txt");
-  sol_out["T_optm"].T().to_file("test_T_optm.txt", "txt");
+  T_optm_ref_intp.T().to_file("test_T_optm.txt", "txt");
   SUCCEED();
 }
