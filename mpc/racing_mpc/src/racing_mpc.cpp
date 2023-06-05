@@ -141,49 +141,6 @@ void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out)
   const auto & bound_right = in.at("bound_right");
   const auto P0 = X_ref(Slice(0, 2), Slice());
   const auto X0 = DM::vertcat({P0, DM::zeros(model_->nx() - 2, config_->N)});
-  // const auto Yaws = X_ref(XIndex::YAW, Slice());
-
-  // // trajectory tracking cost
-  // auto cost = MX::zeros(1);
-  // for (size_t i = 0; i < config_->N - 1; i++) {
-  //   const auto xi = X_(Slice(), i) * scale_x_ + X0(Slice(), i);
-  //   const auto ui = U_(Slice(), i) * scale_u_;
-  //   const auto dx = xi - X_ref(Slice(), i);
-  //   const auto du = ui - U_ref(Slice(), i);
-  //   cost += 0.5 * MX::mtimes({dx.T(), config_->Q, dx}) + 0.5 * MX::mtimes({du.T(), config_->R, du});
-  // }
-  // const auto dxN = X_(Slice(), -1) * scale_x_ + X0(Slice(), -1) - X_ref(Slice(), -1);
-  // cost += 0.5 * MX::mtimes({dxN.T(), config_->Qf, dxN});
-  // opti_.minimize(cost);
-
-  // // boundary constraints in frenet frame
-  // const auto P = X_(Slice(0, 2), Slice()) * scale_x_(Slice(0, 2));
-  // const auto Pf = g_to_f_({P, MX::zeros(2, config_->N), Yaws})[0];
-  // // opti.subject_to(Pf(0, Slice()) == 0.0);
-  // const auto margin = config_->margin + model_->get_base_config().chassis_config->b / 2.0;
-  // const auto dl = norm_2_(bound_left - P0)[0];
-  // const auto dr = norm_2_(bound_right - P0)[0] * -1.0;
-  // opti_.subject_to(opti_.bounded(dr + margin, Pf(1, Slice()), dl - margin));
-
-  // for (size_t i = 0; i < config_->N - 1; i++) {
-  //   const auto xi = X_(Slice(), i) * scale_x_ + X0(Slice(), i);
-  //   const auto xip1 = X_(Slice(), i + 1) * scale_x_ + X0(Slice(), i + 1);
-  //   const auto ui = U_(Slice(), i) * scale_u_;
-  //   const auto ti = T(i);
-
-  //   // model constraints
-  //   casadi::MXDict constraint_in = {
-  //     {"x", xi},
-  //     {"u", ui},
-  //     {"xip1", xip1},
-  //     {"t", ti}
-  //   };
-  //   if (i < config_->N - 2) {
-  //     const auto uip1 = U_(Slice(), i + 1) * scale_u_;
-  //     constraint_in["uip1"] = uip1;
-  //   }
-  //   model_->add_nlp_constraints(opti_, constraint_in);
-  // }
 
   // if optimal reference given, initialize with the reference
   if (in.count("X_optm_ref")) {
