@@ -30,7 +30,7 @@ namespace racing_lqr
 {
 RacingLQR::RacingLQR(
   RacingLQRConfig::SharedPtr mpc_config,
-  DoubleTrackPlanarModel::SharedPtr model)
+  SingleTrackPlanarModel::SharedPtr model)
 : config_(mpc_config), model_(model),
   c2d_(utils::c2d_function(model_->nx(), model_->nu(), config_->dt))
 {
@@ -50,31 +50,23 @@ void RacingLQR::solve(const casadi::DMDict & in, casadi::DMDict & out)
   const auto & x_ic = in.at("x_ic");
   const auto & X_ref = in.at("X_ref");
   const auto & U_ref = in.at("U_ref");
-  const auto & Gamma_y_ref = in.at("Gamma_y_ref");
 
   auto P = casadi::DMVector(config_->N, config_->Qf);
   auto K = casadi::DMVector(config_->N - 1, DM::zeros(model_->nu(), model_->nx()));
   auto As = casadi::DMVector(config_->N - 1, DM::zeros(model_->nx(), model_->nx()));
   auto Bs = casadi::DMVector(config_->N - 1, DM::zeros(model_->nx(), model_->nu()));
-  auto B2s = casadi::DMVector(config_->N - 1, DM::zeros(model_->nx(), 1));
   for (int k = config_->N - 2; k >= 0; k--) {
     // obtain linearlized continuious dynamics
     casadi::DMDict dyn_jac;
     model_->dynamics_jacobian(
-      {{"x", X_ref(Slice(), k)}, {"u", U_ref(
-            Slice(), k)}, {"gamma_y", Gamma_y_ref(k)}}, dyn_jac);
+      {{"x", X_ref(Slice(), k)}, {"u", U_ref(Slice(), k)}}, dyn_jac);
     const auto & Ac = dyn_jac.at("A");
     const auto & Bc = dyn_jac.at("B");
-    const auto & B2c = dyn_jac.at("B2");
 
     // convert continuious dynamics to discrete
     const auto dyn_d = c2d_(casadi::DMDict{{"Ac", Ac}, {"Bc", Bc}});
     As[k] = dyn_d.at("A");
     Bs[k] = dyn_d.at("B");
-
-    const auto c2d2 = utils::c2d_function(model_->nx(), 1, config_->dt);
-    const auto dyn_d2 = c2d2(casadi::DMDict{{"Ac", Ac}, {"Bc", B2c}});
-    B2s[k] = dyn_d2.at("B");
 
     // Ricatti
     K[k] =
@@ -92,8 +84,7 @@ void RacingLQR::solve(const casadi::DMDict & in, casadi::DMDict & out)
     U_optm(Slice(), k) =
       U_ref(Slice(), k) - DM::mtimes(K[k], X_optm(Slice(), k) - X_ref(Slice(), k));
     X_optm(Slice(), k + 1) =
-      DM::mtimes(As[k], X_optm(Slice(), k)) + DM::mtimes(Bs[k], U_optm(Slice(), k)) + DM::mtimes(
-      B2s[k], Gamma_y_ref(k));
+      DM::mtimes(As[k], X_optm(Slice(), k)) + DM::mtimes(Bs[k], U_optm(Slice(), k));
   }
 
   // calculate control
@@ -102,7 +93,7 @@ void RacingLQR::solve(const casadi::DMDict & in, casadi::DMDict & out)
   out["X_optm"] = X_optm;
 }
 
-const DoubleTrackPlanarModel & RacingLQR::get_model() const
+const SingleTrackPlanarModel & RacingLQR::get_model() const
 {
   return *model_;
 }

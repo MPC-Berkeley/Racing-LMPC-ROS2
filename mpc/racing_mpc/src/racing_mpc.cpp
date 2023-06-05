@@ -30,7 +30,7 @@ namespace racing_mpc
 {
 RacingMPC::RacingMPC(
   RacingMPCConfig::SharedPtr mpc_config,
-  DoubleTrackPlanarModel::SharedPtr model)
+  SingleTrackPlanarModel::SharedPtr model)
 : config_(mpc_config), model_(model),
   scale_x_({
         config_->average_track_width,
@@ -43,13 +43,11 @@ RacingMPC::RacingMPC(
         abs(model_->get_config().Fb_max),
         abs(model_->get_base_config().steer_config->max_steer)
       }),
-  scale_gamma_y_(model_->get_base_config().chassis_config->total_mass * 50.0),
   g_to_f_(utils::global_to_frenet_function<casadi::MX>(config_->N)),
   norm_2_(utils::norm_2_function(config_->N)),
   opti_(casadi::Opti()),
   X_(opti_.variable(model_->nx(), config_->N)),
-  U_(opti_.variable(model_->nu(), config_->N - 1)),
-  Gamma_y_(opti_.variable(config_->N - 1))
+  U_(opti_.variable(model_->nu(), config_->N - 1))
 {
   // configure solver
   const auto p_opts = casadi::Dict{
@@ -118,13 +116,11 @@ void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out)
     const auto xip1 = X_(Slice(), i + 1) * scale_x_ + X0(Slice(), i + 1);
     const auto ui = U_(Slice(), i) * scale_u_;
     const auto ti = T(i);
-    const auto gamma_y = Gamma_y_(i) * scale_gamma_y_;
 
     // model constraints
     casadi::MXDict constraint_in = {
       {"x", xi},
       {"u", ui},
-      {"gamma_y", gamma_y},
       {"xip1", xip1},
       {"t", ti}
     };
@@ -139,11 +135,9 @@ void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out)
     const auto & X_optm_ref = in.at("X_optm_ref");
     const auto & U_optm_ref = in.at("U_optm_ref");
     const auto & T_optm_ref = in.at("T_optm_ref");
-    const auto & Gamma_y_optm_ref = in.at("Gamma_y_optm_ref");
     opti_.set_initial(X_ * scale_x_, X_optm_ref - X0);
     opti_.set_initial(U_ * scale_u_, U_optm_ref);
     opti_.set_initial(T, T_optm_ref);
-    opti_.set_initial(Gamma_y_ * scale_gamma_y_, Gamma_y_optm_ref);
   }
 
   // Starting state must match
@@ -157,7 +151,6 @@ void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out)
     out["X_optm"] = sol.value(X_) * scale_x_ + X0;
     out["U_optm"] = sol.value(U_) * scale_u_;
     out["T_optm"] = sol.value(T);
-    out["Gamma_y_optm"] = sol.value(Gamma_y_) * scale_gamma_y_;
 
     opti_.set_initial(sol.value_variables());
     const auto lam_g0 = sol.value(opti_.lam_g());
@@ -168,7 +161,6 @@ void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out)
     out["X_optm"] = opti_.debug().value(X_) * scale_x_ + X0;
     out["U_optm"] = opti_.debug().value(U_) * scale_u_;
     out["T_optm"] = opti_.debug().value(T);
-    out["Gamma_y_optm"] = opti_.debug().value(Gamma_y_) * scale_gamma_y_;
   }
 }
 
@@ -231,7 +223,7 @@ void RacingMPC::create_warm_start(const casadi::DMDict & in, casadi::DMDict & ou
   out["T_ref"] = T_ref;
 }
 
-const DoubleTrackPlanarModel & RacingMPC::get_model() const
+const SingleTrackPlanarModel & RacingMPC::get_model() const
 {
   return *model_;
 }

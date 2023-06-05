@@ -21,7 +21,7 @@
 #include <casadi/casadi.hpp>
 
 #include "racing_lqr/racing_lqr_config.hpp"
-#include "double_track_planar_model/double_track_planar_model.hpp"
+#include "single_track_planar_model/single_track_planar_model.hpp"
 
 namespace lmpc
 {
@@ -30,10 +30,10 @@ namespace mpc
 namespace racing_lqr
 {
 using lmpc::vehicle_model::base_vehicle_model::BaseVehicleModelConfig;
-using lmpc::vehicle_model::double_track_planar_model::DoubleTrackPlanarModel;
-using lmpc::vehicle_model::double_track_planar_model::DoubleTrackPlanarModelConfig; \
-  using lmpc::vehicle_model::double_track_planar_model::XIndex;
-using lmpc::vehicle_model::double_track_planar_model::UIndex;
+using lmpc::vehicle_model::single_track_planar_model::SingleTrackPlanarModel;
+using lmpc::vehicle_model::single_track_planar_model::SingleTrackPlanarModelConfig; \
+  using lmpc::vehicle_model::single_track_planar_model::XIndex;
+using lmpc::vehicle_model::single_track_planar_model::UIndex;
 
 class RacingLQR
 {
@@ -43,16 +43,16 @@ public:
 
   explicit RacingLQR(
     RacingLQRConfig::SharedPtr mpc_config,
-    DoubleTrackPlanarModel::SharedPtr model);
+    SingleTrackPlanarModel::SharedPtr model);
   const RacingLQRConfig & get_config() const;
 
   void solve(const casadi::DMDict & in, casadi::DMDict & out);
 
-  const DoubleTrackPlanarModel & get_model() const;
+  const SingleTrackPlanarModel & get_model() const;
 
 protected:
   RacingLQRConfig::SharedPtr config_ {};
-  DoubleTrackPlanarModel::SharedPtr model_ {};
+  SingleTrackPlanarModel::SharedPtr model_ {};
   casadi::Function c2d_;
 };
 }  // namespace racing_lqr

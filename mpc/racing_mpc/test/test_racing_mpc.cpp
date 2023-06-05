@@ -22,14 +22,14 @@
 #include <ament_index_cpp/get_package_share_directory.hpp>
 
 #include "base_vehicle_model/ros_param_loader.hpp"
-#include "double_track_planar_model/ros_param_loader.hpp"
+#include "single_track_planar_model/ros_param_loader.hpp"
 #include "racing_mpc/racing_mpc.hpp"
 #include "racing_mpc/ros_param_loader.hpp"
 
 using lmpc::mpc::racing_mpc::RacingMPC;
-using lmpc::vehicle_model::double_track_planar_model::DoubleTrackPlanarModel;
-using lmpc::vehicle_model::double_track_planar_model::XIndex;
-using lmpc::vehicle_model::double_track_planar_model::UIndex;
+using lmpc::vehicle_model::single_track_planar_model::SingleTrackPlanarModel;
+using lmpc::vehicle_model::single_track_planar_model::XIndex;
+using lmpc::vehicle_model::single_track_planar_model::UIndex;
 
 const auto share_dir = ament_index_cpp::get_package_share_directory("racing_mpc");
 
@@ -38,7 +38,7 @@ RacingMPC::SharedPtr get_mpc()
   rclcpp::init(0, nullptr);
   const auto base_share_dir = ament_index_cpp::get_package_share_directory("base_vehicle_model");
   const auto model_share_dir = ament_index_cpp::get_package_share_directory(
-    "double_track_planar_model");
+    "single_track_planar_model");
   rclcpp::NodeOptions options;
   options.arguments(
   {
@@ -50,8 +50,8 @@ RacingMPC::SharedPtr get_mpc()
   auto test_node = rclcpp::Node("test_racing_mpc_node", options);
 
   auto base_config = lmpc::vehicle_model::base_vehicle_model::load_parameters(&test_node);
-  auto model_config = lmpc::vehicle_model::double_track_planar_model::load_parameters(&test_node);
-  auto model = std::make_shared<DoubleTrackPlanarModel>(base_config, model_config);
+  auto model_config = lmpc::vehicle_model::single_track_planar_model::load_parameters(&test_node);
+  auto model = std::make_shared<SingleTrackPlanarModel>(base_config, model_config);
 
   auto config = lmpc::mpc::racing_mpc::load_parameters(&test_node);
   auto mpc = std::make_shared<RacingMPC>(config, model);
@@ -93,7 +93,6 @@ TEST(RacingMPCTest, RacingMPCSolveTest) {
   sol_in["x_g"] = sol_in["X_ref"](Slice(), -1);
   sol_in["bound_left"] = bound_left;
   sol_in["bound_right"] = bound_right;
-  sol_in["Gamma_y_optm_ref"] = U_optm_ref(3, Slice());
 
   const auto & X_ref = sol_in["X_ref"];
   const auto & V = X_ref(XIndex::V, Slice());
@@ -110,12 +109,10 @@ TEST(RacingMPCTest, RacingMPCSolveTest) {
     sol_in.erase("X_optm_ref");
     sol_in.erase("U_optm_ref");
     sol_in.erase("T_optm_ref");
-    sol_in.erase("Gamma_y_optm_ref");
   }
   sol_out["X_optm"].T().to_file("X_optm.txt", "txt");
   sol_out["U_optm"].T().to_file("U_optm.txt", "txt");
   sol_out["T_optm"].T().to_file("T_optm.txt", "txt");
-  sol_out["Gamma_y_optm"].T().to_file("Gamma_y_optm.txt", "txt");
   SUCCEED();
 }
 
@@ -173,7 +170,6 @@ TEST(RacingMPCTest, RacingMPCSolveInterpolatedTest) {
   x_ic(1) += 0.3;
   sol_in["x_ic"] = x_ic;
   sol_in["x_g"] = sol_in["X_ref"](Slice(), -1);
-  sol_in["Gamma_y_optm_ref"] = U_optm_ref_intp(3, Slice());
 
   auto sol_out = casadi::DMDict{};
   for (int i = 0; i < 3; i++) {
@@ -185,11 +181,9 @@ TEST(RacingMPCTest, RacingMPCSolveInterpolatedTest) {
     sol_in.erase("X_optm_ref");
     sol_in.erase("U_optm_ref");
     sol_in.erase("T_optm_ref");
-    sol_in.erase("Gamma_y_optm_ref");
   }
   sol_out["X_optm"].T().to_file("X_optm.txt", "txt");
   sol_out["U_optm"].T().to_file("U_optm.txt", "txt");
   sol_out["T_optm"].T().to_file("T_optm.txt", "txt");
-  sol_out["Gamma_y_optm"].T().to_file("Gamma_y_optm.txt", "txt");
   SUCCEED();
 }

@@ -22,14 +22,14 @@
 #include <ament_index_cpp/get_package_share_directory.hpp>
 
 #include "base_vehicle_model/ros_param_loader.hpp"
-#include "double_track_planar_model/ros_param_loader.hpp"
+#include "single_track_planar_model/ros_param_loader.hpp"
 #include "racing_lqr/racing_lqr.hpp"
 #include "racing_lqr/ros_param_loader.hpp"
 
 using lmpc::mpc::racing_lqr::RacingLQR;
-using lmpc::vehicle_model::double_track_planar_model::DoubleTrackPlanarModel;
-using lmpc::vehicle_model::double_track_planar_model::XIndex;
-using lmpc::vehicle_model::double_track_planar_model::UIndex;
+using lmpc::vehicle_model::single_track_planar_model::SingleTrackPlanarModel;
+using lmpc::vehicle_model::single_track_planar_model::XIndex;
+using lmpc::vehicle_model::single_track_planar_model::UIndex;
 
 const auto share_dir = ament_index_cpp::get_package_share_directory("racing_lqr");
 
@@ -38,7 +38,7 @@ RacingLQR::SharedPtr get_lqr()
   rclcpp::init(0, nullptr);
   const auto base_share_dir = ament_index_cpp::get_package_share_directory("base_vehicle_model");
   const auto model_share_dir = ament_index_cpp::get_package_share_directory(
-    "double_track_planar_model");
+    "single_track_planar_model");
   rclcpp::NodeOptions options;
   options.arguments(
   {
@@ -50,8 +50,8 @@ RacingLQR::SharedPtr get_lqr()
   auto test_node = rclcpp::Node("test_racing_lqr_node", options);
 
   auto base_config = lmpc::vehicle_model::base_vehicle_model::load_parameters(&test_node);
-  auto model_config = lmpc::vehicle_model::double_track_planar_model::load_parameters(&test_node);
-  auto model = std::make_shared<DoubleTrackPlanarModel>(base_config, model_config);
+  auto model_config = lmpc::vehicle_model::single_track_planar_model::load_parameters(&test_node);
+  auto model = std::make_shared<SingleTrackPlanarModel>(base_config, model_config);
 
   auto config = lmpc::mpc::racing_lqr::load_parameters(&test_node);
   auto lqr = std::make_shared<RacingLQR>(config, model);
@@ -102,8 +102,7 @@ TEST(RacingLQRTest, RacingLQRSolveTest) {
   auto sol_in = casadi::DMDict{
     {"X_ref", X_optm_ref_intp},
     {"U_ref", U_optm_ref_intp(Slice(0, 3), Slice())},
-    {"T_ref", T_optm_ref_intp},
-    {"Gamma_y_ref", U_optm_ref_intp(3, Slice())}
+    {"T_ref", T_optm_ref_intp}
   };
   auto x_ic = DM(sol_in["X_ref"](Slice(), 0));
   x_ic(XIndex::PX) += 0.3;
