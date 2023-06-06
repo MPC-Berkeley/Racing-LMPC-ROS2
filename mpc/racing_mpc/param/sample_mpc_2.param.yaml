@@ -1,7 +1,7 @@
 /**:
   ros__parameters:
     racing_mpc:
-      max_cpu_time: 10.0
+      max_cpu_time: 0.2
       tol: 0.1
       constr_viol_tol: 0.1
       n: 10
