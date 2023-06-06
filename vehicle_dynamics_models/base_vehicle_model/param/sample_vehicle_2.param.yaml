@@ -8,7 +8,7 @@
       pacejka_b: 9.62
       pacejka_c: 2.59
       pacejka_e: 1.0
-      pacejka_fz0: 550.0
+      pacejka_fz0: 512.0
       pacejka_eps: -0.0813
 
     rear_tyre:
@@ -19,7 +19,7 @@
       pacejka_b: 8.62
       pacejka_c: 2.65
       pacejka_e: 1.0
-      pacejka_fz0: 550.0
+      pacejka_fz0: 512.0
       pacejka_eps: -0.1263
 
     front_brake:
@@ -46,15 +46,15 @@
       turn_left_bias: 0.0
 
     chassis:
-      total_mass: 245.0
-      sprung_mass: 237.0
+      total_mass: 209.0
+      sprung_mass: 201.0
       unsprung_mass: 8.0
       cg_ratio: 0.45
       cg_height: 0.25
       wheel_base: 1.05
       tw_f: 1.0
       tw_r: 1.0
-      moi: 245.0 # rotational moment of inertia
+      moi: 209.0 # rotational moment of inertia
       b: 1.0
       fr: 0.012
 
