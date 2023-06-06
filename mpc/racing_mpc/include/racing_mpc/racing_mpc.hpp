@@ -31,8 +31,8 @@ namespace racing_mpc
 {
 using lmpc::vehicle_model::base_vehicle_model::BaseVehicleModelConfig;
 using lmpc::vehicle_model::single_track_planar_model::SingleTrackPlanarModel;
-using lmpc::vehicle_model::single_track_planar_model::SingleTrackPlanarModelConfig; \
-  using lmpc::vehicle_model::single_track_planar_model::XIndex;
+using lmpc::vehicle_model::single_track_planar_model::SingleTrackPlanarModelConfig;
+using lmpc::vehicle_model::single_track_planar_model::XIndex;
 using lmpc::vehicle_model::single_track_planar_model::UIndex;
 
 class RacingMPC
@@ -52,6 +52,8 @@ public:
 
   const SingleTrackPlanarModel & get_model() const;
 
+  const bool & solved() const;
+
 protected:
   RacingMPCConfig::SharedPtr config_ {};
   SingleTrackPlanarModel::SharedPtr model_ {};
@@ -60,6 +62,7 @@ protected:
   casadi::DM scale_u_;
   casadi::Function g_to_f_;
   casadi::Function norm_2_;
+  casadi::Function align_yaw_;
   casadi::Opti opti_;
 
   // optimization variables
@@ -73,6 +76,10 @@ protected:
   casadi::MX x_ic_;
   casadi::MX bound_left_;
   casadi::MX bound_right_;
+
+  // flag if the nlp has been solved at least once
+  bool solved_;
+  std::shared_ptr<casadi::OptiSol> sol_;
 };
 }  // namespace racing_mpc
 }  // namespace mpc

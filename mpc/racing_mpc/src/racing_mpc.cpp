@@ -45,6 +45,7 @@ RacingMPC::RacingMPC(
       }),
   g_to_f_(utils::global_to_frenet_function<casadi::MX>(config_->N)),
   norm_2_(utils::norm_2_function(config_->N)),
+  align_yaw_(utils::align_yaw_function(config_->N)),
   opti_(casadi::Opti()),
   X_(opti_.variable(model_->nx(), config_->N)),
   U_(opti_.variable(model_->nu(), config_->N - 1)),
@@ -53,7 +54,9 @@ RacingMPC::RacingMPC(
   T_ref_(opti_.parameter(1, config_->N - 1)),
   x_ic_(opti_.parameter(model_->nx(), 1)),
   bound_left_(opti_.parameter(2, config_->N)),
-  bound_right_(opti_.parameter(2, config_->N))
+  bound_right_(opti_.parameter(2, config_->N)),
+  solved_(false),
+  sol_()
 {
   using casadi::MX;
   using casadi::Slice;
@@ -141,6 +144,7 @@ void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out)
   const auto & bound_right = in.at("bound_right");
   const auto P0 = X_ref(Slice(0, 2), Slice());
   const auto X0 = DM::vertcat({P0, DM::zeros(model_->nx() - 2, config_->N)});
+  const auto Yaws = X_ref(XIndex::YAW, Slice());
 
   // if optimal reference given, initialize with the reference
   if (in.count("X_optm_ref")) {
@@ -152,6 +156,15 @@ void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out)
     opti_.set_value(T_ref_, T_optm_ref);
   } else {
     opti_.set_value(T_ref_, in.at("T_ref"));
+    opti_.set_initial(sol_->value_variables());
+    const auto last_Yaw_optm = (sol_->value(X_) * scale_x_)(XIndex::YAW, Slice());
+    const auto this_Yaw_optm =
+      align_yaw_(
+      casadi::DMDict{{"yaw_1", last_Yaw_optm},
+        {"yaw_2", Yaws}}).at("yaw_1_aligned");
+    opti_.set_initial((X_ * scale_x_)(XIndex::YAW, Slice()), this_Yaw_optm);
+    const auto lam_g0 = sol_->value(opti_.lam_g());
+    opti_.set_initial(opti_.lam_g(), lam_g0);
   }
 
   // starting state must match
@@ -165,14 +178,11 @@ void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out)
 
   // solve problem
   try {
-    const auto sol = opti_.solve_limited();
+    sol_ = std::make_shared<casadi::OptiSol>(opti_.solve_limited());
     // const auto sol = opti.solve();
-    out["X_optm"] = sol.value(X_) * scale_x_ + X0;
-    out["U_optm"] = sol.value(U_) * scale_u_;
-
-    opti_.set_initial(sol.value_variables());
-    const auto lam_g0 = sol.value(opti_.lam_g());
-    opti_.set_initial(opti_.lam_g(), lam_g0);
+    solved_ = true;
+    out["X_optm"] = sol_->value(X_) * scale_x_ + X0;
+    out["U_optm"] = sol_->value(U_) * scale_u_;
   } catch (const std::exception & e) {
     std::cerr << e.what() << '\n';
     // throw e;
@@ -242,6 +252,11 @@ void RacingMPC::create_warm_start(const casadi::DMDict & in, casadi::DMDict & ou
 const SingleTrackPlanarModel & RacingMPC::get_model() const
 {
   return *model_;
+}
+
+const bool & RacingMPC::solved() const
+{
+  return solved_;
 }
 }  // namespace racing_mpc
 }  // namespace mpc

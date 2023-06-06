@@ -30,6 +30,14 @@ T align_yaw(const T & yaw_1, const T & yaw_2)
   return yaw_1 + l * sign(yaw_2 - yaw_1);
 }
 
+casadi::Function align_yaw_function(const casadi_int & n)
+{
+  const auto yaw_1 = casadi::SX::sym("yaw_1", 1, 1);
+  const auto yaw_2 = casadi::SX::sym("yaw_2", 1, 1);
+  const auto yaw_1_aligned = align_yaw<casadi::SX>(yaw_1, yaw_2);
+  return casadi::Function("align_yaw", {yaw_1, yaw_2}, {yaw_1_aligned}, {"yaw_1", "yaw_2"}, {"yaw_1_aligned"}).map(n);
+}
+
 template<typename T>
 T global_to_frenet(const T & p, const T & p0, const T & yaw)
 {
