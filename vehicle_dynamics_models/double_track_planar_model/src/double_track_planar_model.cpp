@@ -117,8 +117,8 @@ void DoubleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casa
 
   // dynamics constraint
   auto xip1_temp = casadi::MX(xip1);
-    xip1_temp(XIndex::YAW) =
-      lmpc::utils::align_yaw<casadi::MX>(xip1_temp(XIndex::YAW), x(XIndex::YAW));
+  xip1_temp(XIndex::YAW) =
+    lmpc::utils::align_yaw<casadi::MX>(xip1_temp(XIndex::YAW), x(XIndex::YAW));
   const auto out1 = dynamics_({{"x", x}, {"u", u}, {"gamma_y", gamma_y}});
   const auto k1 = out1.at("x_dot");
   const auto out2 = dynamics_({{"x", x + t / 2.0 * k1}, {"u", u}, {"gamma_y", gamma_y}});

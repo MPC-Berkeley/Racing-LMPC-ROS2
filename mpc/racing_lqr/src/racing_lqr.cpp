@@ -84,7 +84,9 @@ void RacingLQR::solve(const casadi::DMDict & in, casadi::DMDict & out)
   for (size_t k = 0; k < config_->N - 1; k++) {
     U_optm(Slice(), k) =
       U_ref(Slice(), k) - DM::mtimes(K[k], X_optm(Slice(), k) - X_ref(Slice(), k));
-    X_optm(Slice(), k + 1) = rk4_(casadi::DMDict{{"x", X_optm(Slice(), k)}, {"u", U_optm(Slice(), k)}}).at("xip1");
+    X_optm(Slice(), k + 1) = rk4_(
+      casadi::DMDict{{"x", X_optm(Slice(), k)}, {"u", U_optm(
+            Slice(), k)}}).at("xip1");
   }
 
   // calculate control
