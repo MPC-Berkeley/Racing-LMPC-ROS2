@@ -69,6 +69,7 @@ public:
     SingleTrackPlanarModelConfig::SharedPtr config);
 
   const SingleTrackPlanarModelConfig & get_config() const;
+  casadi::Function & dynamics() { return dynamics_; }
 
   size_t nx() const override;
   size_t nu() const override;

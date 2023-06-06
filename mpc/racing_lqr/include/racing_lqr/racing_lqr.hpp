@@ -54,6 +54,7 @@ protected:
   RacingLQRConfig::SharedPtr config_ {};
   SingleTrackPlanarModel::SharedPtr model_ {};
   casadi::Function c2d_;
+  casadi::Function rk4_;
 };
 }  // namespace racing_lqr
 }  // namespace mpc

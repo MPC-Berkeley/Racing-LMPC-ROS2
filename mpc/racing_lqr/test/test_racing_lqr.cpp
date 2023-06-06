@@ -86,17 +86,17 @@ TEST(RacingLQRTest, RacingLQRSolveTest) {
   const auto t_intp = DM::linspace(0.0, 1.0, N);
   const auto bound_left_intp = DM::interp1d(
     t_vec, bound_left.T(),
-    t_intp.get_elements(), "floor", false).T();
+    t_intp.get_elements(), "", false).T();
   const auto bound_right_intp = DM::interp1d(
     t_vec, bound_right.T(),
-    t_intp.get_elements(), "floor", false).T();
+    t_intp.get_elements(), "", false).T();
   const auto X_optm_ref_intp =
-    DM::interp1d(t_vec, X_optm_ref, t_intp.get_elements(), "floor", false).T();
+    DM::interp1d(t_vec, X_optm_ref, t_intp.get_elements(), "", false).T();
   const auto U_optm_ref_intp =
     DM::interp1d(
     T_accum(Slice(0, -1)).get_elements(), U_optm_ref, t_intp(
       Slice(
-        0, -1)).get_elements(), "floor", false).T();
+        0, -1)).get_elements(), "", false).T();
   const auto T_optm_ref_intp = DM::zeros(N - 1) + t_intp(1) - t_intp(0);
 
   auto sol_in = casadi::DMDict{
@@ -123,5 +123,6 @@ TEST(RacingLQRTest, RacingLQRSolveTest) {
   }
   sol_out["X_optm"].T().to_file("test_X_optm.txt", "txt");
   sol_out["U_optm"].T().to_file("test_U_optm.txt", "txt");
+  T_optm_ref_intp.T().to_file("test_T_optm.txt", "txt");
   SUCCEED();
 }

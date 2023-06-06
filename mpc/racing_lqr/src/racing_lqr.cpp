@@ -32,7 +32,8 @@ RacingLQR::RacingLQR(
   RacingLQRConfig::SharedPtr mpc_config,
   SingleTrackPlanarModel::SharedPtr model)
 : config_(mpc_config), model_(model),
-  c2d_(utils::c2d_function(model_->nx(), model_->nu(), config_->dt))
+  c2d_(utils::c2d_function(model_->nx(), model_->nu(), config_->dt)),
+  rk4_(utils::rk4_function(model_->nx(), model_->nu(), config_->dt, model_->dynamics()))
 {
 }
 
@@ -83,8 +84,7 @@ void RacingLQR::solve(const casadi::DMDict & in, casadi::DMDict & out)
   for (size_t k = 0; k < config_->N - 1; k++) {
     U_optm(Slice(), k) =
       U_ref(Slice(), k) - DM::mtimes(K[k], X_optm(Slice(), k) - X_ref(Slice(), k));
-    X_optm(Slice(), k + 1) =
-      DM::mtimes(As[k], X_optm(Slice(), k)) + DM::mtimes(Bs[k], U_optm(Slice(), k));
+    X_optm(Slice(), k + 1) = rk4_(casadi::DMDict{{"x", X_optm(Slice(), k)}, {"u", U_optm(Slice(), k)}}).at("xip1");
   }
 
   // calculate control
