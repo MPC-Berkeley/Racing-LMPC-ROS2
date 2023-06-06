@@ -81,6 +81,9 @@ void SingleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casa
     get_base_config().steer_config->max_steer_rate;
 
   // dynamics constraint
+  auto xip1_temp = casadi::MX(xip1);
+    xip1_temp(XIndex::YAW) =
+      lmpc::utils::align_yaw<casadi::MX>(xip1_temp(XIndex::YAW), x(XIndex::YAW));
   const auto out1 = dynamics_({{"x", x}, {"u", u}});
   const auto k1 = out1.at("x_dot");
   const auto out2 = dynamics_({{"x", x + t / 2.0 * k1}, {"u", u}});
@@ -89,7 +92,7 @@ void SingleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casa
   const auto k3 = out3.at("x_dot");
   const auto out4 = dynamics_({{"x", x + t * k3}, {"u", u}});
   const auto k4 = out4.at("x_dot");
-  opti.subject_to(x + t / 6 * (k1 + 2 * k2 + 2 * k3 + k4) - xip1 == 0);
+  opti.subject_to(x + t / 6 * (k1 + 2 * k2 + 2 * k3 + k4) - xip1_temp == 0);
 
   // tyre constraints
   const auto Fx_ij = out1.at("Fx_ij");
