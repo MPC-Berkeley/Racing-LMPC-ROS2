@@ -105,7 +105,7 @@ TEST(RacingLQRTest, RacingLQRSolveTest) {
     {"T_ref", T_optm_ref_intp}
   };
   auto x_ic = DM(sol_in["X_ref"](Slice(), 0));
-  x_ic(XIndex::PX) += 0.3;
+  x_ic(XIndex::PX) += 1.0;
   x_ic(XIndex::PY) += 0.3;
   x_ic(XIndex::YAW) += 0.01;
   // x_ic(XIndex::V) *= 1.1;

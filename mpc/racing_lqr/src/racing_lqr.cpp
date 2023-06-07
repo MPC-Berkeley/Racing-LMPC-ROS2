@@ -71,9 +71,9 @@ void RacingLQR::solve(const casadi::DMDict & in, casadi::DMDict & out)
 
     // Ricatti
     K[k] =
-      DM::mtimes(
-      {DM::inv(config_->R + DM::mtimes({Bs[k].T(), P[k + 1], Bs[k]})), Bs[k].T(),
-        P[k + 1], As[k]});
+      DM::solve(
+      config_->R + DM::mtimes({Bs[k].T(), P[k + 1], Bs[k]}),
+      DM::mtimes({Bs[k].T(), P[k + 1], As[k]}));
     P[k] = config_->Q + DM::mtimes({As[k].T(), P[k + 1], As[k] - DM::mtimes(Bs[k], K[k])});
   }
 
