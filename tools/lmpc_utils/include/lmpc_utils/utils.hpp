@@ -35,7 +35,9 @@ casadi::Function align_yaw_function(const casadi_int & n)
   const auto yaw_1 = casadi::SX::sym("yaw_1", 1, 1);
   const auto yaw_2 = casadi::SX::sym("yaw_2", 1, 1);
   const auto yaw_1_aligned = align_yaw<casadi::SX>(yaw_1, yaw_2);
-  return casadi::Function("align_yaw", {yaw_1, yaw_2}, {yaw_1_aligned}, {"yaw_1", "yaw_2"}, {"yaw_1_aligned"}).map(n);
+  return casadi::Function(
+    "align_yaw", {yaw_1, yaw_2}, {yaw_1_aligned}, {"yaw_1", "yaw_2"},
+    {"yaw_1_aligned"}).map(n);
 }
 
 template<typename T>
@@ -87,7 +89,18 @@ casadi::Function c2d_function(const casadi_int & nx, const casadi_int & nu, cons
   return casadi::Function("c2d", {Ac, Bc}, {A, B}, {"Ac", "Bc"}, {"A", "B"});
 }
 
-casadi::Function rk4_function(const casadi_int & nx, const casadi_int & nu, const double & dt, casadi::Function & dynamics)
+/**
+ * @brief Create a RK4 integrator whith fixed dt
+ *
+ * @param nx size of state
+ * @param nu size of control
+ * @param dt time step
+ * @param dynamics continuious dynamics function
+ * @return casadi::Function with inputs `x`, `u` and outputs next state `xip1`.
+ */
+casadi::Function rk4_function(
+  const casadi_int & nx, const casadi_int & nu, const double & dt,
+  casadi::Function & dynamics)
 {
   using casadi::SX;
   const auto x = SX::sym("x", nx, 1);
@@ -103,6 +116,35 @@ casadi::Function rk4_function(const casadi_int & nx, const casadi_int & nu, cons
   const auto k4 = out4.at("x_dot");
   const auto out = x + dt / 6 * (k1 + 2 * k2 + 2 * k3 + k4);
   return casadi::Function("rk4", {x, u}, {out}, {"x", "u"}, {"xip1"});
+}
+
+/**
+ * @brief Create a RK4 integrator whith dt as an input
+ *
+ * @param nx size of state
+ * @param nu size of control
+ * @param dynamics continuious dynamics function
+ * @return casadi::Function with inputs `x`, `u` and `dt` and outputs next state `xip1`.
+ */
+casadi::Function rk4_function(
+  const casadi_int & nx, const casadi_int & nu,
+  casadi::Function & dynamics)
+{
+  using casadi::SX;
+  const auto x = SX::sym("x", nx, 1);
+  const auto u = SX::sym("u", nu, 1);
+  const auto dt = SX::sym("dt", 1, 1);
+
+  const auto out1 = dynamics(casadi::SXDict{{"x", x}, {"u", u}});
+  const auto k1 = out1.at("x_dot");
+  const auto out2 = dynamics(casadi::SXDict{{"x", x + dt / 2.0 * k1}, {"u", u}});
+  const auto k2 = out2.at("x_dot");
+  const auto out3 = dynamics(casadi::SXDict{{"x", x + dt / 2.0 * k2}, {"u", u}});
+  const auto k3 = out3.at("x_dot");
+  const auto out4 = dynamics(casadi::SXDict{{"x", x + dt * k3}, {"u", u}});
+  const auto k4 = out4.at("x_dot");
+  const auto out = x + dt / 6 * (k1 + 2 * k2 + 2 * k3 + k4);
+  return casadi::Function("rk4", {x, u, dt}, {out}, {"x", "u", "dt"}, {"xip1"});
 }
 
 enum TyreIndex : size_t
