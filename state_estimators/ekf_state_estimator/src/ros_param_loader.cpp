@@ -34,6 +34,7 @@ EKFStateEstimatorConfig::SharedPtr load_parameters(rclcpp::Node * node)
     };
   return std::make_shared<EKFStateEstimatorConfig>(
     EKFStateEstimatorConfig{
+          casadi::DM::reshape(casadi::DM(declare_vec("ekf_state_estimator.x0")), 6, 6),
           casadi::DM::reshape(casadi::DM(declare_vec("ekf_state_estimator.p0")), 6, 6),
           casadi::DM::reshape(casadi::DM(declare_vec("ekf_state_estimator.q")), 6, 6),
         }

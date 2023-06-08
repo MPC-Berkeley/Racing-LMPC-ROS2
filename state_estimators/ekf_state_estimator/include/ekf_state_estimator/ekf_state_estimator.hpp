@@ -24,8 +24,9 @@
 
 #include <casadi/casadi.hpp>
 
+#include <lmpc_utils/logging.hpp>
+#include <single_track_planar_model/single_track_planar_model.hpp>
 #include "ekf_state_estimator/ekf_state_estimator_config.hpp"
-#include "single_track_planar_model/single_track_planar_model.hpp"
 
 namespace lmpc
 {
@@ -39,21 +40,21 @@ using lmpc::vehicle_model::single_track_planar_model::SingleTrackPlanarModelConf
 using lmpc::vehicle_model::single_track_planar_model::XIndex;
 using lmpc::vehicle_model::single_track_planar_model::UIndex;
 
-class EKFUncompiledException : public std::exception
+class EKFUninitializedException : public std::exception
 {
 public:
   const char * what()
   {
-    return "Call EKFStateEstimator::compile() before making any observation updates.";
+    return "Call EKFStateEstimator::initialize() before making any observation updates.";
   }
 };
 
-class EKFAlreadyCompiledException : public std::exception
+class EKFAlreadyInitializedException : public std::exception
 {
 public:
   const char * what()
   {
-    return "Changes to observations are not allowed after the filter is compiled.";
+    return "Changes to observations are not allowed after the filter is initialized.";
   }
 };
 
@@ -114,6 +115,11 @@ public:
   const SingleTrackPlanarModel & get_model() const;
 
   /**
+   * @brief Check if the filter has been initialized.
+   */
+  const bool & is_initialized() const;
+
+  /**
    * @brief Get the latest filter update's timestamp.
    *
    * @return const int64_t& timestamp in nanosecond.
@@ -127,7 +133,7 @@ public:
    * @param nz size of this observation.
    * @param h observation function taking nx x 1 state and outputs nz * 1 observation.
    *
-   * @throws EKFAlreadyCompiledException if the filter is already compiled.
+   * @throws EKFAlreadyInitializedException if the filter is already initialized.
    * @throws ObservationNameAlreadyExistsException if the observation name is already taken.
    */
   void register_observation(const std::string & name, const casadi_int & nz, casadi::Function & h);
@@ -135,21 +141,20 @@ public:
   /**
    * @brief Call this after all observations are registered and before calling any filter updates.
    * No further changes to the observations is allowed afterwards.
+   * Re-initialization is also allowed through this function, which will reset state estimate and
+   * covariance estimate to initial value in config.
+   *
+   * @param timestamp nanosecond of time at initialization.
    *
    */
-  void compile();
-
-  /**
-   * @brief Check if the filter has been compiled.
-   */
-  const bool & is_compiled() const;
+  void initialize(const int64_t & timestamp);
 
   /**
    * @brief Carry a filter update.
    *
    * @param name observation name at registration. leave empty to carry a pure prediction.
    * @param in observations:
-   * - `z` column vector of size nz.
+   * - `z` column vector of size nz x 1.
    * - `R` n x n observation covariance matrix.
    * - `timestamp` timestamp of this update in nanosecond.
    *    no update is carried out if this is earlier than the latest time of the filter.
@@ -159,7 +164,7 @@ public:
    *  - `K` Kalman gain of all observations.
    *  - `Kz` Kalman gain with respect to this observation.
    *
-   * @throws EKFUncompiledException if calling before the filter is compiled.
+   * @throws EKFUninitializedException if calling before the filter is initialized.
    * @throws ObservationNameNotFoundException if the observation name is not registered.
    */
   void update_observation(const StrOpt & name, const casadi::DMDict & in, casadi::DMDict & out);
@@ -171,13 +176,20 @@ public:
    */
   void update_control(const casadi::DM & u);
 
+  /**
+   * @brief Get access to the EKF logger to listen to callbacks.
+   *
+   * @return utils::Logger& internal logger object.
+   */
+  utils::Logger & get_logger();
+
 protected:
   EKFStateEstimatorConfig::SharedPtr config_ {};
   SingleTrackPlanarModel::SharedPtr model_ {};
   casadi::Function rk4_;
   casadi::Function F_;  // jacobian of discrete dynamics w.r.t. state
 
-  bool compiled_;  // signal if all observations are registered and no further changes are allowed.
+  bool initialized_;  // signal if all observations are registered.
   FunctionDict hs_;  // store (h) observation models
   FunctionDict h_jacs_;  // store (H) jacobian of observation models w.r.t. state
   SliceDict slices_;  // store how to slice the Kalman gain for a certain observation
@@ -187,6 +199,30 @@ protected:
   casadi::DM P_;  // estimate covariance
   casadi::DM K_;  // Kalman gain
   int64_t nanosec_;  // timestamp of the last update
+
+  utils::Logger logger_;
+
+  /**
+   * @brief invokes m.is_regular()
+   * and sends a log to dump the matrix if NaN or infinity exists.
+   *
+   * @param m matrix
+   * @return true (ok) if no NaN or infinity exists.
+   * @return false (bad) if NaN or infinity exist.
+   */
+  bool check_nan_inf(const casadi::DM & m, const std::string & name);
+
+  /**
+   * @brief sanity check the covariance matrix.
+   * all elements must be non-negative. diagnals must be positive.
+   * negative elements are zeroed out.
+   * non-positive diagnal elements are set to 1e-6.
+   *
+   * @param cov
+   * @return true if the covariance is ok and no modification was done.
+   * @return false some modification was done as described above.
+   */
+  bool check_cov(casadi::DM & cov, const std::string & name);
 };
 }  // namespace ekf_state_estimator
 }  // namespace state_estimator

@@ -33,9 +33,10 @@ EKFStateEstimator::EKFStateEstimator(
   SingleTrackPlanarModel::SharedPtr model)
 : config_(ekf_config), model_(model),
   rk4_(utils::rk4_function(model_->nx(), model_->nu(), model_->dynamics())),
-  compiled_(false), hs_(), h_jacs_(), x_(model_->nx(), 1), u_(model_->nu(), 1),
+  initialized_(false), hs_(), h_jacs_(), x_(config_->x0), u_(model_->nu(), 1),
   P_(config_->P0), K_(model_->nx(), 0)
 {
+  // build jacobian of discrete dynamics
   const auto x = casadi::SX::sym("x", model_->nx(), 1);
   const auto u = casadi::SX::sym("u", model_->nu(), 1);
   const auto xip1 = rk4_(casadi::SXDict{{"x", x}, {"u", u}}).at("xip1");
@@ -58,12 +59,17 @@ const int64_t & EKFStateEstimator::get_latest_timestamp() const
   return nanosec_;
 }
 
+const bool & EKFStateEstimator::is_initialized() const
+{
+  return initialized_;
+}
+
 void EKFStateEstimator::register_observation(
   const std::string & name, const casadi_int & nz,
   casadi::Function & h)
 {
-  if (is_compiled()) {
-    throw EKFAlreadyCompiledException();
+  if (is_initialized()) {
+    throw EKFAlreadyInitializedException();
   }
 
   if (hs_.count(name)) {
@@ -86,17 +92,15 @@ void EKFStateEstimator::register_observation(
   K_ = casadi::DM::horzcat({K_, casadi::DM::zeros(model_->nx(), nz)});
 }
 
-void EKFStateEstimator::compile()
+void EKFStateEstimator::initialize(const int64_t & timestamp)
 {
   if (K_.size2() == 0) {
     throw NoObservationRegisteredException();
   }
-  compiled_ = true;
-}
-
-const bool & EKFStateEstimator::is_compiled() const
-{
-  return compiled_;
+  initialized_ = true;
+  nanosec_ = timestamp;
+  x_ = config_->x0;
+  P_ = config_->P0;
 }
 
 void EKFStateEstimator::update_observation(
@@ -106,8 +110,8 @@ void EKFStateEstimator::update_observation(
   using casadi::DM;
   using casadi::Slice;
 
-  if (!is_compiled()) {
-    throw EKFUncompiledException();
+  if (!is_initialized()) {
+    throw EKFUninitializedException();
   }
   if (name.has_value() && hs_.count(name.value()) == 0) {
     throw ObservationNameNotFoundException(name.value().c_str());
@@ -117,38 +121,47 @@ void EKFStateEstimator::update_observation(
   const auto time = static_cast<int64_t>(static_cast<double>(in.at("timestamp")));
   const auto dt = time - nanosec_;
 
-  // TODO(haoru): deal with timestamp jumping back
+  // timestamp jumps back? reset the fitler.
   if (dt < 0) {
-    // for now just output the last estimate if timestamp jumps
-    out["x"] = x_;
-    out["P"] = P_;
-    out["K"] = K_;
-    out["Kz"] = K_(Slice(), slice_z);
-    return;
+    initialize(time);
   }
 
   // EKF prediction
   const auto in_dict = casadi::DMDict{{"x", x_}, {"u", u_}, {"dt", dt * 1e-9}};
-  const auto x_p = rk4_(in_dict).at("xip1");
+  const auto & x_p = rk4_(in_dict).at("xip1");
   const auto F = F_(in_dict).at("F");
   const auto P_p = DM::mtimes({F, P_, F.T()}) + config_->Q;
 
   // EKF update
   if (name.has_value()) {
-    const auto z = in.at("z");
-    const auto R = in.at("R");
-    auto h = hs_.at(name.value());
-    auto H = h_jacs_.at(name.value())(x_p)[0];
-    // innovation
-    const auto y = z - h(x_p);
-    // innovation covariance
-    const auto S = DM::mtimes({H, P_p, H.T() + R});
-    // Kalman gain
-    K_(Slice(), slice_z) = DM::mtimes({P_p, H.T(), DM::inv(S)});
-    // update estimates
-    x_ = x_p + DM::mtimes(K_, y);
-    // update covariance
-    P_ = DM::mtimes(DM::eye(model_->nx()) - DM::mtimes(K_(Slice(), slice_z), H), P_p);
+    const auto & z = in.at("z");
+    auto R = in.at("R");
+    if (!(check_nan_inf(
+        z,
+        "input observation z") && check_nan_inf(R, "input observation covariance R")))
+    {
+      // NaN and Inf check fails for this input. Carry out pure prediction.
+      logger_.send_log(
+        utils::LogLevel::WARN,
+        "NaN or Inf detected in filter input. Falling back to a pure prediction update.");
+      x_ = x_p;
+      P_ = P_p;
+    } else {
+      check_cov(R, "input observation covariance R");
+      // carry out normal EKF update.
+      auto & h = hs_.at(name.value());
+      auto H = h_jacs_.at(name.value())(x_p)[0];
+      // innovation
+      const auto y = z - h(x_p);
+      // innovation covariance
+      const auto S = DM::mtimes({H, P_p, H.T() + R});
+      // Kalman gain
+      K_(Slice(), slice_z) = DM::mtimes({P_p, H.T(), DM::inv(S)});
+      // update estimates
+      x_ = x_p + DM::mtimes(K_, y);
+      // update covariance
+      P_ = DM::mtimes(DM::eye(model_->nx()) - DM::mtimes(K_(Slice(), slice_z), H), P_p);
+    }
   } else {
     // pure prediction update
     x_ = x_p;
@@ -165,6 +178,51 @@ void EKFStateEstimator::update_observation(
 void EKFStateEstimator::update_control(const casadi::DM & u)
 {
   u_ = u;
+}
+
+utils::Logger & EKFStateEstimator::get_logger()
+{
+  return logger_;
+}
+
+bool EKFStateEstimator::check_nan_inf(const casadi::DM & m, const std::string & name)
+{
+  if (m.is_regular()) {
+    return false;
+  } else {
+    const auto what = "NaN or Inf detected in matrix \"" + name + "\":\n" + m.get_str();
+    logger_.send_log(utils::LogLevel::ERROR, what);
+    return true;
+  }
+  return false;
+}
+
+bool EKFStateEstimator::check_cov(casadi::DM & cov, const std::string & name)
+{
+  using casadi::DM;
+  bool has_issue = false;
+  const auto zero = DM::zeros(1, 1);
+
+  for (casadi_int i = 0; i < cov.size1(); i++) {
+    for (casadi_int j = 0; i < cov.size2(); i++) {
+      if (static_cast<casadi_int>(cov(i, j) < 0.0)) {
+        has_issue = true;
+        cov(i, j) = 0.0;
+      }
+      if (i == j && static_cast<casadi_int>(cov(i, j) <= 0.0)) {
+        has_issue = true;
+        cov(i, j) = 1e-6;
+      }
+    }
+  }
+
+  if (has_issue) {
+    const auto what = "Covariance matrix \"" + name +
+      "\" is ill-formed. It must be non-negative and have positive diagnals:\n" +
+      cov.get_str();
+    logger_.send_log(utils::LogLevel::WARN, what);
+  }
+  return !has_issue;
 }
 }  // namespace ekf_state_estimator
 }  // namespace state_estimator

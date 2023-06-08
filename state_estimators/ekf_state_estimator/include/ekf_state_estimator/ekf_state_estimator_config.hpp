@@ -30,7 +30,7 @@ namespace ekf_state_estimator
 struct EKFStateEstimatorConfig
 {
   typedef std::shared_ptr<EKFStateEstimatorConfig> SharedPtr;
-
+  casadi::DM x0;  // initial estimate
   casadi::DM P0;  // initial estimate covariance
   casadi::DM Q;  // process noise covariance
 };

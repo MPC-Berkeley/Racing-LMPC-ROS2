@@ -40,7 +40,6 @@ public:
   typedef void (* LoggerCallback)(const LogLevel &, const std::string &);
 
 protected:
-  typedef void (* LoggerCallback)(const LogLevel &, const std::string &);
   typedef std::map<LoggerCallback, LogLevel> LoggerCallbackDict;
 
   LoggerCallbackDict callbacks_;
