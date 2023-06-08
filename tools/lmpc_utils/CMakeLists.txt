@@ -35,6 +35,7 @@ set(${PROJECT_NAME}_HEADER
   include/lmpc_utils/ros_param_helper.hpp
   include/lmpc_utils/lookup.hpp
   include/lmpc_utils/utils.hpp
+  include/lmpc_utils/logging.hpp
 )
 
 ament_auto_add_library(${PROJECT_NAME} SHARED
