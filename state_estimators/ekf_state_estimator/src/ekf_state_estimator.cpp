@@ -81,9 +81,10 @@ void EKFStateEstimator::register_observation(
 
   // create and store jacobian
   const auto x = casadi::SX::sym("x", model_->nx(), 1);
-  const auto z = h(x)[0];
-  const auto jac = casadi::SX::jacobian(z, x);
-  h_jacs_[name] = casadi::Function("h_jac_" + name, {x}, {jac}, {"x"}, {"H"});
+  const auto z = casadi::SX::sym("z", nz, 1);
+  const auto z_p = h(casadi::SXVector{x, z})[0];
+  const auto jac = casadi::SX::jacobian(z_p, x);
+  h_jacs_[name] = casadi::Function("h_jac_" + name, {x, z}, {jac});
 
   // update Kalman gain size
   const auto idx_begin = K_.size2();
@@ -127,8 +128,10 @@ void EKFStateEstimator::update_observation(
   }
 
   // EKF prediction
-  const auto in_dict = casadi::DMDict{{"x", x_}, {"u", u_}, {"dt", dt * 1e-9}};
-  const auto & x_p = rk4_(in_dict).at("xip1");
+  const auto in_dict = casadi::DMDict{{"x", x_}, {"u", u_}};
+  auto dyn_in_dict = in_dict;
+  dyn_in_dict["dt"] = dt * 1e-9;
+  const auto x_p = rk4_(dyn_in_dict).at("xip1");
   const auto F = F_(in_dict).at("F");
   const auto P_p = DM::mtimes({F, P_, F.T()}) + config_->Q;
 
@@ -150,15 +153,18 @@ void EKFStateEstimator::update_observation(
       check_cov(R, "input observation covariance R");
       // carry out normal EKF update.
       auto & h = hs_.at(name.value());
-      auto H = h_jacs_.at(name.value())(x_p)[0];
+      auto H = h_jacs_.at(name.value())(casadi::DMVector{x_p, z})[0];
       // innovation
-      const auto y = z - h(x_p);
+      const auto y = z - h(casadi::DMVector{x_p, z})[0];
+      std::cout << "x_p " << x_p << std::endl;
+      std::cout << "z " << z << std::endl;
+      std::cout << "h " << h(casadi::DMVector{x_p, z})[0] << std::endl;
       // innovation covariance
-      const auto S = DM::mtimes({H, P_p, H.T() + R});
+      const auto S = DM::mtimes({H, P_p, H.T()}) + R;
       // Kalman gain
       K_(Slice(), slice_z) = DM::mtimes({P_p, H.T(), DM::inv(S)});
       // update estimates
-      x_ = x_p + DM::mtimes(K_, y);
+      x_ = x_p + DM::mtimes(K_(Slice(), slice_z), y);
       // update covariance
       P_ = DM::mtimes(DM::eye(model_->nx()) - DM::mtimes(K_(Slice(), slice_z), H), P_p);
     }
@@ -169,6 +175,9 @@ void EKFStateEstimator::update_observation(
   }
 
   // output
+  std::cout << "x_ " << x_ << std::endl;
+  // std::cout << "P_ " << P_ << std::endl;
+  // std::cout << "K_ " << K_ << std::endl;
   out["x"] = x_;
   out["P"] = P_;
   out["K"] = K_;
@@ -188,13 +197,13 @@ utils::Logger & EKFStateEstimator::get_logger()
 bool EKFStateEstimator::check_nan_inf(const casadi::DM & m, const std::string & name)
 {
   if (m.is_regular()) {
-    return false;
+    return true;
   } else {
     const auto what = "NaN or Inf detected in matrix \"" + name + "\":\n" + m.get_str();
     logger_.send_log(utils::LogLevel::ERROR, what);
-    return true;
+    return false;
   }
-  return false;
+  return true;
 }
 
 bool EKFStateEstimator::check_cov(casadi::DM & cov, const std::string & name)
@@ -223,6 +232,20 @@ bool EKFStateEstimator::check_cov(casadi::DM & cov, const std::string & name)
     logger_.send_log(utils::LogLevel::WARN, what);
   }
   return !has_issue;
+}
+
+const casadi::DM & EKFStateEstimator::get_latest_estimate() const
+{
+  return x_;
+}
+
+const casadi::DM & EKFStateEstimator::get_latest_estimate_covariance() const
+{
+  return P_;
+}
+const casadi::DM & EKFStateEstimator::get_latest_kalman_gain() const
+{
+  return K_;
 }
 }  // namespace ekf_state_estimator
 }  // namespace state_estimator

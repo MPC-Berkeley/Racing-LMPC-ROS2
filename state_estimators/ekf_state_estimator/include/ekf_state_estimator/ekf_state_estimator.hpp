@@ -118,13 +118,6 @@ public:
   const bool & is_initialized() const;
 
   /**
-   * @brief Get the latest filter update's timestamp.
-   *
-   * @return const int64_t& timestamp in nanosecond.
-   */
-  const int64_t & get_latest_timestamp() const;
-
-  /**
    * @brief Register a new observation for this filter.
    *
    * @param name name for this observation to be referenced during update.
@@ -180,6 +173,34 @@ public:
    * @return utils::Logger& internal logger object.
    */
   utils::Logger & get_logger();
+
+  /**
+   * @brief Get the latest filter update's timestamp.
+   *
+   * @return const int64_t& timestamp in nanosecond.
+   */
+  const int64_t & get_latest_timestamp() const;
+
+  /**
+   * @brief Get the latest estimate.
+   *
+   * @return const casadi::DM& latest estimate.
+   */
+  const casadi::DM & get_latest_estimate() const;
+
+  /**
+   * @brief Get the latest estimate covariance.
+   *
+   * @return const casadi::DM& latest estimate covariance.
+   */
+  const casadi::DM & get_latest_estimate_covariance() const;
+
+  /**
+   * @brief Get the latest Kalman gain.
+   *
+   * @return const casadi::DM& latest Kalman gain.
+   */
+  const casadi::DM & get_latest_kalman_gain() const;
 
 protected:
   typedef std::map<std::string, casadi::Function> FunctionDict;
