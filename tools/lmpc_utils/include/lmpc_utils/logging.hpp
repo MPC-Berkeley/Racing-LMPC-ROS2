@@ -52,7 +52,7 @@ protected:
   LoggerCallbackDict callbacks_;
 
 public:
-  Logger() {}
+  Logger();
 
   /**
    * @brief Register a new callback function for this logger.
@@ -60,17 +60,13 @@ public:
    * @param callback a callback function taking a LogLevel and a std::string message.
    * @param min_level minimum log level to trigger this callback. Default to debug.
    *
-   * @note a callback can be registered only once. re-registration will overwrite the previous minimum log level.
+   * @note a callback with the same name can be registered only once.
+   *       Re-registration will overwrite the previous minimum log level.
    */
   void register_callback(
     const LoggerCallbackKey & name,
     const LoggerCallback & callback,
-    const LogLevel & min_level = LogLevel::DEBUG)
-  {
-    if (callback) {
-      callbacks_[name] = {callback, min_level};
-    }
-  }
+    const LogLevel & min_level = LogLevel::DEBUG);
 
   /**
    * @brief Unregister a callback from the logger.
@@ -80,10 +76,7 @@ public:
    * @returns True if the callback exists and is unregistered.
    * @returns False if the callback was never registered.
    */
-  bool unregister_callback(const LoggerCallbackKey & name)
-  {
-    return callbacks_.erase(name);
-  }
+  bool unregister_callback(const LoggerCallbackKey & name);
 
   /**
    * @brief Send a log to the callbacks.
@@ -91,14 +84,7 @@ public:
    * @param level log level.
    * @param what message.
    */
-  void send_log(const LogLevel & level, const std::string & what)
-  {
-    for (const auto & callback : callbacks_) {
-      if (level > callback.second.second) {
-        callback.second.first(level, what);
-      }
-    }
-  }
+  void send_log(const LogLevel & level, const std::string & what);
 
   /**
    * @brief use this helper function to get a logger callback that dumps to RCLCPP.
@@ -106,33 +92,7 @@ public:
    * @param node the ROS node
    * @return LoggerCallback
    */
-  static LoggerCallback log_to_rclcpp(rclcpp::Node * node)
-  {
-    return [&](const LogLevel & level, const std::string & what)
-           {
-             switch (level) {
-               case LogLevel::DEBUG:
-                 RCLCPP_DEBUG(node->get_logger(), what.c_str());
-                 break;
-
-               case LogLevel::INFO:
-                 RCLCPP_INFO(node->get_logger(), what.c_str());
-                 break;
-
-               case LogLevel::WARN:
-                 RCLCPP_WARN(node->get_logger(), what.c_str());
-                 break;
-
-               case LogLevel::ERROR:
-                 RCLCPP_ERROR(node->get_logger(), what.c_str());
-                 break;
-
-               case LogLevel::FATAL:
-                 RCLCPP_FATAL(node->get_logger(), what.c_str());
-                 break;
-             }
-           };
-  }
+  static LoggerCallback log_to_rclcpp(rclcpp::Node * node);
 };
 }  // namespace utils
 }  // namespace lmpc
