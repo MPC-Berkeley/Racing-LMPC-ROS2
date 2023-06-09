@@ -45,7 +45,7 @@ void Logger::send_log(const LogLevel & level, const std::string & what)
   }
 }
 
-Logger::LoggerCallback log_to_rclcpp(rclcpp::Node * node)
+Logger::LoggerCallback Logger::log_to_rclcpp(rclcpp::Node * node)
 {
   return [&](const LogLevel & level, const std::string & what)
          {
