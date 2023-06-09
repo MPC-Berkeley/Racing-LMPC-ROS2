@@ -104,8 +104,6 @@ class EKFStateEstimator
 public:
   typedef std::shared_ptr<EKFStateEstimator> SharedPtr;
   typedef std::unique_ptr<EKFStateEstimator> UniquePtr;
-  typedef std::map<std::string, casadi::Function> FunctionDict;
-  typedef std::map<std::string, casadi::Slice> SliceDict;
   typedef std::optional<std::string> StrOpt;
 
   explicit EKFStateEstimator(
@@ -184,6 +182,9 @@ public:
   utils::Logger & get_logger();
 
 protected:
+  typedef std::map<std::string, casadi::Function> FunctionDict;
+  typedef std::map<std::string, casadi::Slice> SliceDict;
+
   EKFStateEstimatorConfig::SharedPtr config_ {};
   SingleTrackPlanarModel::SharedPtr model_ {};
   casadi::Function rk4_;
