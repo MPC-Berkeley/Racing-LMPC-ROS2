@@ -22,6 +22,9 @@
 #include "ekf_state_estimator/ekf_state_estimator.hpp"
 #include "lmpc_utils/utils.hpp"
 
+#define DCAST(m) \
+  static_cast<double>(m)
+
 namespace lmpc
 {
 namespace state_estimator
@@ -33,7 +36,7 @@ EKFStateEstimator::EKFStateEstimator(
   SingleTrackPlanarModel::SharedPtr model)
 : config_(ekf_config), model_(model),
   rk4_(utils::rk4_function(model_->nx(), model_->nu(), model_->dynamics())),
-  initialized_(false), hs_(), h_jacs_(), x_(config_->x0), u_(model_->nu(), 1),
+  initialized_(false), hs_(), h_jacs_(), x_(config_->x0), u_(casadi::DM::zeros(model_->nu(), 1)),
   P_(config_->P0), K_(model_->nx(), 0)
 {
   // build jacobian of discrete dynamics
@@ -100,8 +103,8 @@ void EKFStateEstimator::initialize(const int64_t & timestamp)
   }
   initialized_ = true;
   nanosec_ = timestamp;
-  x_ = config_->x0;
-  P_ = config_->P0;
+  // x_ = config_->x0;
+  // P_ = config_->P0;
 }
 
 void EKFStateEstimator::update_observation(
@@ -119,7 +122,7 @@ void EKFStateEstimator::update_observation(
   }
 
   const auto slice_z = name.has_value() ? slices_[name.value()] : Slice();
-  const auto time = static_cast<int64_t>(static_cast<double>(in.at("timestamp")));
+  const auto time = static_cast<int64_t>(DCAST(in.at("timestamp")));
   const auto dt = time - nanosec_;
 
   // timestamp jumps back? reset the fitler.
@@ -130,6 +133,7 @@ void EKFStateEstimator::update_observation(
   // EKF prediction
   const auto in_dict = casadi::DMDict{{"x", x_}, {"u", u_}};
   auto dyn_in_dict = in_dict;
+  std::cout << "dt " << dt * 1e-6 << "ms" << std::endl;
   dyn_in_dict["dt"] = dt * 1e-9;
   const auto x_p = rk4_(dyn_in_dict).at("xip1");
   const auto F = F_(in_dict).at("F");
@@ -174,10 +178,16 @@ void EKFStateEstimator::update_observation(
     P_ = P_p;
   }
 
+  // clip state
+  for (casadi_int i = 0; i < model_->nx(); i++) {
+    x_(i) = std::clamp<double>(DCAST(x_(i)), config_->x_min[i], config_->x_max[i]);
+  }
+
   // output
-  std::cout << "x_ " << x_ << std::endl;
+  std::cout << "x_ out " << x_ << std::endl << std::endl;
   // std::cout << "P_ " << P_ << std::endl;
   // std::cout << "K_ " << K_ << std::endl;
+  nanosec_ = time;
   out["x"] = x_;
   out["P"] = P_;
   out["K"] = K_;

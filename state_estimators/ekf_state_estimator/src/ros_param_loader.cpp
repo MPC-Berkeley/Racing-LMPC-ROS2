@@ -37,6 +37,8 @@ EKFStateEstimatorConfig::SharedPtr load_parameters(rclcpp::Node * node)
           casadi::DM::reshape(casadi::DM(declare_vec("ekf_state_estimator.x0")), 6, 1),
           casadi::DM::reshape(casadi::DM(declare_vec("ekf_state_estimator.p0")), 6, 6),
           casadi::DM::reshape(casadi::DM(declare_vec("ekf_state_estimator.q")), 6, 6),
+          declare_vec("ekf_state_estimator.x_max"),
+          declare_vec("ekf_state_estimator.x_min"),
         }
   );
 }

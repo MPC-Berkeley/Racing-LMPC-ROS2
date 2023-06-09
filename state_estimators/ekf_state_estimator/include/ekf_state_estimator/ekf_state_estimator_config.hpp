@@ -33,6 +33,8 @@ struct EKFStateEstimatorConfig
   casadi::DM x0;  // initial estimate
   casadi::DM P0;  // initial estimate covariance
   casadi::DM Q;  // process noise covariance
+  std::vector<double> x_max;  // state upper bound
+  std::vector<double> x_min;  // state lower bound
 };
 }  // namespace ekf_state_estimator
 }  // namespace state_estimator
