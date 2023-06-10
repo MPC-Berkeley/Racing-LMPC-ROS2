@@ -25,9 +25,9 @@ namespace utils
 template<typename T>
 T align_yaw(const T & yaw_1, const T & yaw_2)
 {
-  const auto k = fabs(yaw_2 - yaw_1) + M_PI;
-  const auto l = k - fmod(fabs(yaw_2 - yaw_1) + M_PI, 2 * M_PI);
-  return yaw_1 + l * sign(yaw_2 - yaw_1);
+  const auto d_yaw = yaw_1 - yaw_2;
+  const auto d_yaw_aligned = atan2(sin(d_yaw), cos(d_yaw));
+  return d_yaw_aligned + yaw_2;
 }
 
 casadi::Function align_yaw_function(const casadi_int & n)
