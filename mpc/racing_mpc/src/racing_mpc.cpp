@@ -249,7 +249,7 @@ void RacingMPC::create_warm_start(const casadi::DMDict & in, casadi::DMDict & ou
   out["U_ref"] = U_ref;
 }
 
-const SingleTrackPlanarModel & RacingMPC::get_model() const
+SingleTrackPlanarModel & RacingMPC::get_model()
 {
   return *model_;
 }

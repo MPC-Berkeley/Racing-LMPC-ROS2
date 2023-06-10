@@ -110,7 +110,7 @@ public:
     EKFStateEstimatorConfig::SharedPtr ekf_config,
     SingleTrackPlanarModel::SharedPtr model);
   const EKFStateEstimatorConfig & get_config() const;
-  const SingleTrackPlanarModel & get_model() const;
+  SingleTrackPlanarModel & get_model();
 
   /**
    * @brief Check if the filter has been initialized.

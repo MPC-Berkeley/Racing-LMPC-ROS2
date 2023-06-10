@@ -48,7 +48,7 @@ public:
 
   void solve(const casadi::DMDict & in, casadi::DMDict & out);
 
-  const SingleTrackPlanarModel & get_model() const;
+  SingleTrackPlanarModel & get_model();
 
 protected:
   RacingLQRConfig::SharedPtr config_ {};

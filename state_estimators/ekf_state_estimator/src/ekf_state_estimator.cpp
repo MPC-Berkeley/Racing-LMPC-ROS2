@@ -52,7 +52,7 @@ const EKFStateEstimatorConfig & EKFStateEstimator::get_config() const
   return *config_.get();
 }
 
-const SingleTrackPlanarModel & EKFStateEstimator::get_model() const
+SingleTrackPlanarModel & EKFStateEstimator::get_model()
 {
   return *model_;
 }

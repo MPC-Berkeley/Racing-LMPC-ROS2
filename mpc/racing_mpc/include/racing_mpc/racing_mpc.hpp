@@ -50,7 +50,7 @@ public:
 
   void create_warm_start(const casadi::DMDict & in, casadi::DMDict & out);
 
-  const SingleTrackPlanarModel & get_model() const;
+  SingleTrackPlanarModel & get_model();
 
   const bool & solved() const;
 

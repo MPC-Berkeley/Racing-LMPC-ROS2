@@ -95,7 +95,7 @@ void RacingLQR::solve(const casadi::DMDict & in, casadi::DMDict & out)
   out["X_optm"] = X_optm;
 }
 
-const SingleTrackPlanarModel & RacingLQR::get_model() const
+SingleTrackPlanarModel & RacingLQR::get_model()
 {
   return *model_;
 }
