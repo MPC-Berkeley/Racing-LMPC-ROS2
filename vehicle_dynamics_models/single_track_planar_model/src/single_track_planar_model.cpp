@@ -160,7 +160,7 @@ void SingleTrackPlanarModel::compile_dynamics()
   const auto & fd = u(UIndex::FD);  // drive force
   const auto & fb = u(UIndex::FB);  // brake forcce
   const auto & delta = u(UIndex::STEER);  // front wheel angle
-  const auto & v_sq = pow(v, 2);
+  const auto & v_sq = v * v;
 
   const auto & kd_f = get_base_config().powertrain_config->kd;
   const auto & kb_f = get_base_config().front_brake_config->bias;  // front brake force bias
@@ -248,8 +248,8 @@ void SingleTrackPlanarModel::compile_dynamics()
     ((Fy_fl + Fy_fr) * cos(delta) + (Fx_fl + Fx_fr) * sin(delta)) * lf);
 
   // cg position
-  const auto vx = v * cos(phi);
-  const auto vy = v * sin(phi);
+  const auto vx = v * cos(phi + beta);
+  const auto vy = v * sin(phi + beta);
 
   const auto x_dot = vertcat(vx, vy, omega, omega_dot, beta_dot, v_dot);
   const auto Fx_ij = vertcat(Fx_fl, Fx_fr, Fx_rl, Fx_rr);

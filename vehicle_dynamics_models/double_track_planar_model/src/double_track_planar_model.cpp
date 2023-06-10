@@ -292,8 +292,8 @@ void DoubleTrackPlanarModel::compile_dynamics()
     ((Fy_fl + Fy_fr) * cos(delta) + (Fx_fl + Fx_fr) * sin(delta)) * lf);
 
   // cg position
-  const auto vx = v * cos(phi);
-  const auto vy = v * sin(phi);
+  const auto vx = v * cos(phi + beta);
+  const auto vy = v * sin(phi + beta);
 
   const auto x_dot = vertcat(vx, vy, omega, omega_dot, beta_dot, v_dot);
   const auto Fx_ij = vertcat(Fx_fl, Fx_fr, Fx_rl, Fx_rr);
