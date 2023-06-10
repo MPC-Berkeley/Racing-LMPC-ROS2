@@ -145,6 +145,47 @@ double BaseVehicleModel::calc_brake(const double & fb) const
   return std::clamp(front_brake_kpa, 0.0, fb_config.max_brake) +
          std::clamp(rear_brake_kpa, 0.0, rb_config.max_brake);
 }
+
+double BaseVehicleModel::calc_drive_force(const double & throttle)
+{
+  const auto throttle_in = std::clamp(throttle, 0.0, 100.0);
+
+  const auto & pt_config = *base_config_->powertrain_config.get();
+
+  if (base_state_.gear > pt_config.gear_ratio.size()) {
+    printf("Gear number of %d is not possible.", base_state_.gear);
+    return 0.0;
+  }
+  const auto engine_torque = bilinear_interpolate(
+    pt_config.torque_v_rpm_throttle, base_state_.engine_rpm, throttle_in, false);
+  const auto total_wheel_torque = engine_torque * pt_config.gear_ratio[base_state_.gear - 1] *
+    pt_config.final_drive_ratio;
+  const auto front_wheel_force = total_wheel_torque * pt_config.kd /
+    base_config_->front_tyre_config->radius;
+  const auto rear_wheel_force = total_wheel_torque * (1 - pt_config.kd) /
+    base_config_->rear_tyre_config->radius;
+  return front_wheel_force + rear_wheel_force;
+}
+
+double BaseVehicleModel::calc_brake_force(const double & brake_kpa)
+{
+  const auto & fb_config = *base_config_->front_brake_config;
+  const auto & rb_config = *base_config_->rear_brake_config;
+  const auto front_brake_kpa = std::clamp(fb_config.bias * brake_kpa, 0.0, fb_config.max_brake);
+  const auto rear_brake_kpa = std::clamp(rb_config.bias * brake_kpa, 0.0, rb_config.max_brake);
+  const auto front_brake_lever =
+    (fb_config.brake_pad_in_r + fb_config.brake_pad_out_r) /
+    2.0;
+  const auto rear_brake_lever =
+    (rb_config.brake_pad_in_r + rb_config.brake_pad_out_r) /
+    2.0;
+  const auto front_brake_torque = front_brake_kpa * 1000.0 * fb_config.piston_area *
+    fb_config.brake_pad_friction_coeff * front_brake_lever;
+  const auto rear_brake_torque = rear_brake_kpa * 1000.0 * rb_config.piston_area *
+    rb_config.brake_pad_friction_coeff * rear_brake_lever;
+  return front_brake_torque / base_config_->front_tyre_config->radius + rear_brake_torque /
+         base_config_->rear_tyre_config->radius;
+}
 }  // namespace base_vehicle_model
 }  // namespace vehicle_model
 }  // namespace lmpc

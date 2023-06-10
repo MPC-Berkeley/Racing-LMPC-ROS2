@@ -110,10 +110,6 @@ public:
    */
   virtual void calc_lat_control(const casadi::DMDict & in, double & steering_rad) const;
 
-protected:
-  BaseVehicleModelConfig::SharedPtr base_config_ {};
-  BaseVehicleModelState base_state_;
-
   /**
    * @brief calculate throttle based on drive force.
    *        torque vs. RPM needs to monotonically and linearly decrease.
@@ -137,6 +133,28 @@ protected:
    * @return target brake line pressure in kpa
    */
   virtual double calc_brake(const double & fb) const;
+
+  /**
+   * @brief the inverse of calc_throttle.
+   * calculate drive force given throttle.
+   *
+   * @param throttle
+   * @return double drive force
+   */
+  virtual double calc_drive_force(const double & throttle);
+
+  /**
+   * @brief the inverse of calc_brake.
+   * calculate brake force given brake pressure.
+   *
+   * @param brake_kpa brake master cylinder pressure in kpa
+   * @return double brake force
+   */
+  virtual double calc_brake_force(const double & brake_kpa);
+
+protected:
+  BaseVehicleModelConfig::SharedPtr base_config_ {};
+  BaseVehicleModelState base_state_;
 };
 }  // namespace base_vehicle_model
 }  // namespace vehicle_model
