@@ -42,9 +42,10 @@ EKFStateEstimator::EKFStateEstimator(
   // build jacobian of discrete dynamics
   const auto x = casadi::SX::sym("x", model_->nx(), 1);
   const auto u = casadi::SX::sym("u", model_->nu(), 1);
-  const auto xip1 = rk4_(casadi::SXDict{{"x", x}, {"u", u}}).at("xip1");
+  const auto dt = casadi::SX::sym("dt", 1, 1);
+  const auto xip1 = rk4_(casadi::SXDict{{"x", x}, {"u", u}, {"dt", dt}}).at("xip1");
   const auto F = casadi::SX::jacobian(xip1, x);
-  F_ = casadi::Function("discrete_dynamics_jacobian", {x, u}, {F}, {"x", "u"}, {"F"});
+  F_ = casadi::Function("discrete_dynamics_jacobian", {x, u, dt}, {F}, {"x", "u", "dt"}, {"F"});
 }
 
 const EKFStateEstimatorConfig & EKFStateEstimator::get_config() const
@@ -122,22 +123,31 @@ void EKFStateEstimator::update_observation(
   }
 
   const auto slice_z = name.has_value() ? slices_[name.value()] : Slice();
-  const auto time = static_cast<int64_t>(DCAST(in.at("timestamp")));
-  const auto dt = time - nanosec_;
+  const auto time_ns = static_cast<int64_t>(DCAST(in.at("timestamp")));
+  const auto dt_ns = time_ns - nanosec_;
 
   // timestamp jumps back? reset the fitler.
-  if (dt < 0) {
-    initialize(time);
+  if (dt_ns < 0) {
+    initialize(time_ns);
   }
 
   // EKF prediction
-  const auto in_dict = casadi::DMDict{{"x", x_}, {"u", u_}};
-  auto dyn_in_dict = in_dict;
-  std::cout << "dt " << dt * 1e-6 << "ms" << std::endl;
-  dyn_in_dict["dt"] = dt * 1e-9;
-  const auto x_p = rk4_(dyn_in_dict).at("xip1");
+  std::cout << "*********** EKF Cycle Begins ***********" << std::endl;
+  if (name.has_value())
+  {
+    std::cout << "source name: " << name.value() << std::endl;
+  }
+  const auto in_dict = casadi::DMDict{{"x", x_}, {"u", u_}, {"dt", dt_ns * 1e-9}};
+  std::cout << "dt " << dt_ns * 1e-6 << "ms" << std::endl;
+  const auto x_p = rk4_(in_dict).at("xip1");
   const auto F = F_(in_dict).at("F");
   const auto P_p = DM::mtimes({F, P_, F.T()}) + config_->Q;
+
+  std::cout << "*********** EKF Prediction ***********" << std::endl;
+  std::cout << "[state prediction x_p]\n" << x_p << std::endl;
+  std::cout << "[linearized state dynamics F]" << F << std::endl;
+  std::cout << "[covariance prediction P_p]" << P_p << std::endl;
+  std::cout << "*********** EKF Correction ***********" << std::endl;
 
   // EKF update
   if (name.has_value()) {
@@ -160,17 +170,23 @@ void EKFStateEstimator::update_observation(
       auto H = h_jacs_.at(name.value())(casadi::DMVector{x_p, z})[0];
       // innovation
       const auto y = z - h(casadi::DMVector{x_p, z})[0];
-      std::cout << "x_p " << x_p << std::endl;
-      std::cout << "z " << z << std::endl;
-      std::cout << "h " << h(casadi::DMVector{x_p, z})[0] << std::endl;
+      std::cout << "[Observation z]\n" << z << std::endl;
+      std::cout << "[Observation prediction h]\n" << h(casadi::DMVector{x_p, z})[0] << std::endl;
+      std::cout << "[Innovation y]\n" << y << std::endl;
       // innovation covariance
       const auto S = DM::mtimes({H, P_p, H.T()}) + R;
+      std::cout << "[Observation jacobian H]" << H << std::endl;
+      std::cout << "[Observation covariance R]" << R << std::endl;
+      std::cout << "[Innovation covairance S]" << S << std::endl;
       // Kalman gain
       K_(Slice(), slice_z) = DM::mtimes({P_p, H.T(), DM::inv(S)});
+      std::cout << "[Kalman gain K]\n" << K_(Slice(), slice_z) << std::endl;
       // update estimates
       x_ = x_p + DM::mtimes(K_(Slice(), slice_z), y);
+      std::cout << "[Final estimate x_]\n" << x_ << std::endl;
       // update covariance
       P_ = DM::mtimes(DM::eye(model_->nx()) - DM::mtimes(K_(Slice(), slice_z), H), P_p);
+      std::cout << "[Final estimate covariance P_]" << P_ << std::endl;
     }
   } else {
     // pure prediction update
@@ -184,14 +200,14 @@ void EKFStateEstimator::update_observation(
   }
 
   // output
-  std::cout << "x_ out " << x_ << std::endl << std::endl;
-  // std::cout << "P_ " << P_ << std::endl;
-  // std::cout << "K_ " << K_ << std::endl;
-  nanosec_ = time;
   out["x"] = x_;
   out["P"] = P_;
   out["K"] = K_;
   out["Kz"] = K_(Slice(), slice_z);
+  std::cout << "*********** EKF Cycle Ends ***********" << std::endl;
+
+  // advance time
+  nanosec_ = time_ns;
 }
 
 void EKFStateEstimator::update_control(const casadi::DM & u)
