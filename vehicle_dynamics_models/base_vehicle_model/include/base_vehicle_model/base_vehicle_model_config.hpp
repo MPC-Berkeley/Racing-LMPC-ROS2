@@ -112,6 +112,18 @@ struct PowerTrainConfig
   // TODO(haoru): add mechanical loss
 };
 
+/**
+ * @brief Additional configurations that doesn't really concern the vehicle parameters
+ *
+ */
+struct ModelingConfig
+{
+  typedef std::shared_ptr<ModelingConfig> SharedPtr;
+
+  // Express the dynamics in frenet frame?
+  bool use_frenet;
+};
+
 struct BaseVehicleModelConfig
 {
   typedef std::shared_ptr<BaseVehicleModelConfig> SharedPtr;
@@ -124,6 +136,7 @@ struct BaseVehicleModelConfig
   base_vehicle_model::ChassisConfig::SharedPtr chassis_config;
   base_vehicle_model::AeroConfig::SharedPtr aero_config;
   base_vehicle_model::PowerTrainConfig::SharedPtr powertrain_config;
+  base_vehicle_model::ModelingConfig::SharedPtr modeling_config;
 };
 }  // namespace base_vehicle_model
 }  // namespace vehicle_model

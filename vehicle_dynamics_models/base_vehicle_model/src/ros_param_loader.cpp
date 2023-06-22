@@ -35,6 +35,9 @@ BaseVehicleModelConfig::SharedPtr load_parameters(rclcpp::Node * node)
   auto declare_vec = [&](const char * name) {
       return lmpc::utils::declare_parameter<std::vector<double>>(node, name);
     };
+  auto declare_bool = [&](const char * name) {
+      return lmpc::utils::declare_parameter<bool>(node, name);
+    };
   auto front_tyre_config = std::make_shared<TyreConfig>(
     TyreConfig{
           declare_double("front_tyre.radius"),
@@ -132,6 +135,12 @@ BaseVehicleModelConfig::SharedPtr load_parameters(rclcpp::Node * node)
         }
   );
 
+  auto modeling_config = std::make_shared<ModelingConfig>(
+    ModelingConfig{
+          declare_bool("modeling.use_frenet")
+        }
+  );
+
   return std::make_shared<BaseVehicleModelConfig>(
     BaseVehicleModelConfig{
           front_tyre_config,
@@ -141,7 +150,8 @@ BaseVehicleModelConfig::SharedPtr load_parameters(rclcpp::Node * node)
           steer_config,
           chassis_config,
           aero_config,
-          powertrain_config
+          powertrain_config,
+          modeling_config
         }
   );
 }

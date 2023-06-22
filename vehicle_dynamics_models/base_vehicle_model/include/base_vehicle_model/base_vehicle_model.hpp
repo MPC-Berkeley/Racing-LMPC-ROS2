@@ -29,6 +29,12 @@ namespace vehicle_model
 namespace base_vehicle_model
 {
 
+/**
+ * @brief Anxillary state information commonly present in VD models.
+ * They are also used in the throttle and brake calculation.
+ *
+ *
+ */
 struct BaseVehicleModelState
 {
   double wheel_speed_fl_rps = 0.0;

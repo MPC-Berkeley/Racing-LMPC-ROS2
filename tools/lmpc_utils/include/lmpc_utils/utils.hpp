@@ -41,6 +41,14 @@ casadi::Function align_yaw_function(const casadi_int & n)
 }
 
 template<typename T>
+T align_abscissa(const T & s1, const T & s2, const T & s_total)
+{
+  const auto k = fabs(s2 - s1) + s_total / 2.0;
+  const auto l = k - fmod(fabs(s2 - s1) + s_total / 2.0, s_total);
+  return s1 + l * sign(s2 - s1);
+}
+
+template<typename T>
 T global_to_frenet(const T & p, const T & p0, const T & yaw)
 {
   using casadi::SX;

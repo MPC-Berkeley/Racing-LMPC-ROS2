@@ -69,11 +69,13 @@ TEST(DoubleTrackPlanarModelTest, TestDoubleTrackDynamics) {
   const auto u = casadi::DM{500.0, 0.0, 0.1};
   const auto in = casadi::DMDict{
     {"x", x},
-    {"u", u}
+    {"u", u},
+    {"k", 0.1}
   };
   auto out = casadi::DMDict{};
   model.forward_dynamics(in, out);
   const auto x_dot = out["x_dot"];
+  std::cout << x_dot << std::endl;
 
   rclcpp::shutdown();
   SUCCEED();

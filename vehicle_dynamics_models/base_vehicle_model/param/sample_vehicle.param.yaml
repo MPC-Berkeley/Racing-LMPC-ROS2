@@ -144,3 +144,6 @@
       gear_ratio: [2.9167, 1.875, 1.3809, 1.1154, 0.96, 0.8889]
       final_drive_ratio: 3.0
       kd: 0.0
+
+    modeling:
+      use_frenet: true
