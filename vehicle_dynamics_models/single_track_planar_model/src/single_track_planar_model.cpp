@@ -48,6 +48,10 @@ size_t SingleTrackPlanarModel::nu() const
 
 void SingleTrackPlanarModel::forward_dynamics(const casadi::DMDict & in, casadi::DMDict & out)
 {
+  auto dyn_in = in;
+  if (base_config_->modeling_config->use_frenet) {
+    dyn_in["k"] = 0.0;
+  }
   const auto dyn_out = dynamics_(in);
   out.insert(dyn_out.begin(), dyn_out.end());
 }
@@ -64,6 +68,8 @@ void SingleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casa
   const auto & u = in.at("u");
   const auto & xip1 = in.at("xip1");
   const auto & t = in.at("t");
+  const auto k =
+    base_config_->modeling_config->use_frenet ? in.at("k") : casadi::MX::sym("k", 1, 1);
 
   const auto & v = x(XIndex::V);
   const auto & fd = u(UIndex::FD);
@@ -84,13 +90,20 @@ void SingleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casa
   auto xip1_temp = casadi::MX(xip1);
   xip1_temp(XIndex::YAW) =
     lmpc::utils::align_yaw<casadi::MX>(xip1_temp(XIndex::YAW), x(XIndex::YAW));
-  const auto out1 = dynamics_({{"x", x}, {"u", u}});
+  if (base_config_->modeling_config->use_frenet) {
+    xip1_temp(XIndex::PX) =
+      lmpc::utils::align_abscissa<casadi::MX>(
+      xip1_temp(XIndex::PX), x(XIndex::PX),
+      in.at("track_length"));
+  }
+
+  const auto out1 = dynamics_({{"x", x}, {"u", u}, {"k", k}});
   const auto k1 = out1.at("x_dot");
-  const auto out2 = dynamics_({{"x", x + t / 2.0 * k1}, {"u", u}});
+  const auto out2 = dynamics_({{"x", x + t / 2.0 * k1}, {"u", u}, {"k", k}});
   const auto k2 = out2.at("x_dot");
-  const auto out3 = dynamics_({{"x", x + t / 2.0 * k2}, {"u", u}});
+  const auto out3 = dynamics_({{"x", x + t / 2.0 * k2}, {"u", u}, {"k", k}});
   const auto k3 = out3.at("x_dot");
-  const auto out4 = dynamics_({{"x", x + t * k3}, {"u", u}});
+  const auto out4 = dynamics_({{"x", x + t * k3}, {"u", u}, {"k", k}});
   const auto k4 = out4.at("x_dot");
   opti.subject_to(x + t / 6 * (k1 + 2 * k2 + 2 * k3 + k4) - xip1_temp == 0);
 
@@ -150,9 +163,11 @@ void SingleTrackPlanarModel::compile_dynamics()
 {
   using casadi::SX;
 
-  auto x = SX::sym("x", nx());
-  auto u = SX::sym("u", nu());
+  const auto x = SX::sym("x", nx());
+  const auto u = SX::sym("u", nu());
+  const auto k = SX::sym("k", 1);  // curvature for frenet frame
 
+  const auto & py = x(XIndex::PY);
   const auto & phi = x(XIndex::YAW);  // yaw
   const auto & omega = x(XIndex::V_YAW);  // yaw rate
   const auto & beta = x(XIndex::SLIP);  // slip angle
@@ -248,19 +263,25 @@ void SingleTrackPlanarModel::compile_dynamics()
     ((Fy_fl + Fy_fr) * cos(delta) + (Fx_fl + Fx_fr) * sin(delta)) * lf);
 
   // cg position
-  const auto vx = v * cos(phi + beta);
-  const auto vy = v * sin(phi + beta);
+  auto vx = v * cos(phi + beta);
+  auto vy = v * sin(phi + beta);
+  auto phi_dot = omega;
+  if (base_config_->modeling_config->use_frenet) {
+    // convert to frenet frame
+    vx /= (1 - py * k);
+    phi_dot -= k * vx;
+  }
 
-  const auto x_dot = vertcat(vx, vy, omega, omega_dot, beta_dot, v_dot);
+  const auto x_dot = vertcat(vx, vy, phi_dot, omega_dot, beta_dot, v_dot);
   const auto Fx_ij = vertcat(Fx_fl, Fx_fr, Fx_rl, Fx_rr);
   const auto Fy_ij = vertcat(Fy_fl, Fy_fr, Fy_rl, Fy_rr);
   const auto Fz_ij = vertcat(Fz_fl, Fz_fr, Fz_rl, Fz_rr);
 
   dynamics_ = casadi::Function(
     "single_track_planar_model",
-    {x, u},
+    {x, u, k},
     {x_dot, Fx_ij, Fy_ij, Fz_ij},
-    {"x", "u"},
+    {"x", "u", "k"},
     {"x_dot", "Fx_ij", "Fy_ij", "Fz_ij"});
 
   const auto Ac = SX::jacobian(x_dot, x);
@@ -268,9 +289,9 @@ void SingleTrackPlanarModel::compile_dynamics()
 
   dynamics_jac_ = casadi::Function(
     "single_track_planar_model_jacobian",
-    {x, u},
+    {x, u, k},
     {Ac, Bc},
-    {"x", "u"},
+    {"x", "u", "k"},
     {"A", "B"}
   );
 }
