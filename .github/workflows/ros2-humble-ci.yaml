@@ -21,7 +21,7 @@ jobs:
           apt install -y --no-install-recommends coinor-libipopt-dev; \
           git clone https://github.com/casadi/casadi.git -b main casadi; \
           cd casadi; mkdir build; cd build;
-          cmake -DWITH_IPOPT=ON ..; make; make install;
+          cmake -DWITH_IPOPT=ON -DWITH_SLICOT=ON -DWITH_LAPACK=ON -DWITH_QPOASES=ON ..; make; make install;
           echo export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/usr/local/lib" >> /etc/bash.bashrc'
       - name: Install ROS Dependencies
         run: |
