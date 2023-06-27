@@ -48,6 +48,19 @@ T align_abscissa(const T & s1, const T & s2, const T & s_total)
   return s1 + l * sign(s2 - s1);
 }
 
+casadi::Function align_abscissa_function(const casadi_int & n)
+{
+  const auto abscissa_1 = casadi::SX::sym("abscissa_1", 1, 1);
+  const auto abscissa_2 = casadi::SX::sym("abscissa_2", 1, 1);
+  const auto total_distance = casadi::SX::sym("total_distance", 1, 1);
+  const auto abscissa_1_aligned =
+    align_abscissa<casadi::SX>(abscissa_1, abscissa_2, total_distance);
+  return casadi::Function(
+    "align_abscissa", {abscissa_1, abscissa_2, total_distance}, {abscissa_1_aligned}, {"abscissa_1",
+      "abscissa_2", "total_distance"},
+    {"abscissa_1_aligned"}).map(n);
+}
+
 template<typename T>
 T global_to_frenet(const T & p, const T & p0, const T & yaw)
 {

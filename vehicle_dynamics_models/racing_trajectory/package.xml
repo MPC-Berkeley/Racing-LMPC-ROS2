@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>racing_trajectory</name>
+  <version>1.0.0</version>
+  <description>defines a race track trajectory</description>
+  <maintainer email="haorux@andrew.cmu.edu">Haoru Xue</maintainer>
+  <license>LGPLv3</license>
+
+  <buildtool_depend>ament_cmake_auto</buildtool_depend>
+
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+  <test_depend>ament_cmake_gtest</test_depend>
+
+  <depend>rclcpp</depend>
+  <depend>backward_ros</depend>
+  <depend>cgal</depend>
+
+  <depend>lmpc_utils</depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

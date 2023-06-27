@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(lmpc_utils)
+project(racing_trajectory)
 
 # Default to C++17.
 if(NOT CMAKE_CXX_STANDARD)
@@ -21,6 +21,7 @@ elseif(${ROS_DISTRO} STREQUAL "humble")
 endif()
 
 # Require that dependencies from package.xml be available.
+find_package(casadi REQUIRED)
 find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies(REQUIRED
   ${${PROJECT_NAME}_BUILD_DEPENDS}
@@ -28,16 +29,13 @@ ament_auto_find_build_dependencies(REQUIRED
 )
 
 set(${PROJECT_NAME}_SRC
-  src/lookup.cpp
-  src/logging.cpp
+  src/racing_trajectory.cpp
+  src/trajectory_kd_tree.cpp
 )
 
 set(${PROJECT_NAME}_HEADER
-  include/lmpc_utils/ros_param_helper.hpp
-  include/lmpc_utils/lookup.hpp
-  include/lmpc_utils/utils.hpp
-  include/lmpc_utils/logging.hpp
-  include/lmpc_utils/primitives.hpp
+  include/racing_trajectory/racing_trajectory.hpp
+  include/racing_trajectory/trajectory_kd_tree.hpp
 )
 
 ament_auto_add_library(${PROJECT_NAME} SHARED
@@ -45,14 +43,18 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
   ${${PROJECT_NAME}_HEADER}
 )
 
+target_link_libraries(${PROJECT_NAME} casadi)
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   ament_lint_auto_find_test_dependencies()
-  set(TEST_SOURCES test/test_lmpc_utils.cpp)
-  set(TEST_LMPC_UTILS_EXE test_lmpc_utils)
-  ament_add_gtest(${TEST_LMPC_UTILS_EXE} ${TEST_SOURCES})
-  target_link_libraries(${TEST_LMPC_UTILS_EXE} ${PROJECT_NAME})
+  set(TEST_SOURCES test/test_racing_trajectory.cpp)
+  set(TEST_TRAJECTORY_EXE test_trajectory)
+  ament_add_gtest(${TEST_TRAJECTORY_EXE} ${TEST_SOURCES})
+  target_link_libraries(${TEST_TRAJECTORY_EXE} ${PROJECT_NAME})
 endif()
 
 # Create & install ament package.
-ament_auto_package()
+ament_auto_package(INSTALL_TO_SHARE
+  test_data
+)
