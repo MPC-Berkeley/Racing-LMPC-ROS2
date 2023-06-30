@@ -38,9 +38,11 @@ RacingTrajectory::RacingTrajectory(const casadi::DM & traj)
   {
     // create the interpolants
     auto interpolants = DM(traj_);
-    // cubic spline interpolation requires 3 points on both ends to garantee smoothness and interpolatability at the ends.
+    // cubic spline interpolation requires 3 points on both ends to
+    // garantee smoothness and interpolatability at the ends.
     // lets repeat the first 3 points at the end and the last 3 points at the beginning.
-    // note that we are actually appending the first 4 points to the end in order to close the trajectory loop.
+    // note that we are actually appending the first 4 points to the end
+    // in order to close the trajectory loop.
 
     // append the first 4 points
     interpolants = DM::horzcat({interpolants, interpolants(Slice(), Slice(0, 4))});
@@ -137,29 +139,42 @@ RacingTrajectory::RacingTrajectory(const casadi::DM & traj)
     const auto s0_mod = utils::align_abscissa<MX>(s0, total_length_ / 2.0, total_length_);
     const auto t0 = MX::sym("t0", 1, 1);
     const auto s = MX::sym("s", 1, 1);
-    const auto t = MX::sym("t", 1, 1);
     const auto dist_sq = MX::sumsqr(
-      frenet_to_global_(MX::vertcat({s, t, 0.0}))[0](Slice(
+      frenet_to_global_(MX::vertcat({s, 0.0, 0.0}))[0](Slice(
         0,
         2)) - MX::vertcat(
         {x, y}));
-    const auto qp = casadi::MXDict{{"x", MX::vertcat({s, t})}, {"f", dist_sq}, {"p", MX::vertcat(
-          {x,
-            y})}};
-    global_to_frenet_sol_ = casadi::qpsol(
-      "global_to_frenet_sol", "qpoases", qp, {{"printLevel",
-        "none"}});
+    const auto qp = casadi::MXDict{{"x", s}, {"f", dist_sq}, {"p", MX::vertcat(
+          {x, y})}};
+    global_to_frenet_sol_ = casadi::nlpsol(
+      "global_to_frenet_sol", "qrsqp", qp,
+          {
+            {"print_time", false}, {"print_header", false}, {"print_iteration", false},
+            {"qpsol_options", casadi::Dict
+              {
+                {"print_header", false}, {"print_iter", false}, {"print_info", false}
+              }
+            }
+          }
+    );
     const auto sol =
-      global_to_frenet_sol_({{"x0", MX::vertcat({s0_mod, t0})}, {"p", MX::vertcat({x, y})}});
-    auto x_out = sol.at("x");
-    x_out(0) = utils::align_abscissa<MX>(x_out(0), total_length_ / 2.0, total_length_);
-    const auto yaw = yaw_intp_(x_out(0))[0];
-    const auto xi_out = utils::align_yaw<MX>(phi, yaw) - yaw;
+      global_to_frenet_sol_({{"x0", s0_mod}, {"p", MX::vertcat({x, y})}});
+    auto s_out = sol.at("x");
+    s_out = utils::align_abscissa<MX>(s_out, total_length_ / 2.0, total_length_);
+    const auto x_out = x_intp_(s_out)[0];
+    const auto y_out = y_intp_(s_out)[0];
+    const auto yaw_out = yaw_intp_(s_out)[0];
+    const auto t_out = MX::hypot(x - x_out, y - y_out) * lateral_sign<MX>(
+      MX::vertcat(
+        {x,
+          y}), MX::vertcat(
+        {x_out, y_out, yaw_out}));
+    const auto xi_out = utils::align_yaw<MX>(phi, yaw_out) - yaw_out;
     global_to_frenet_ = Function(
       "global_to_frenet", {MX::vertcat(
           {x, y, phi, s0,
             t0})},
-      {MX::vertcat({x_out, xi_out})});
+      {MX::vertcat({s_out, t_out, xi_out})});
   }
 }
 
@@ -203,8 +218,10 @@ void RacingTrajectory::global_to_frenet(
   }
 
   const auto out = global_to_frenet_(
-    casadi::DM{global_pose.position.x, global_pose.position.y, global_pose.yaw, p0.position.s, p0.position.t}
-    )[0].get_elements();
+    casadi::DM{
+          global_pose.position.x, global_pose.position.y, global_pose.yaw,
+          p0.position.s, p0.position.t
+        })[0].get_elements();
   frenet_pose.position.s = out[0];
   frenet_pose.position.t = out[1];
   frenet_pose.yaw = out[2];
@@ -248,6 +265,11 @@ casadi::Function & RacingTrajectory::y_interpolation_function()
 casadi::Function & RacingTrajectory::yaw_interpolation_function()
 {
   return yaw_intp_;
+}
+
+const double & RacingTrajectory::total_length() const
+{
+  return total_length_;
 }
 }  // namespace racing_trajectory
 }  // namespace vehicle_model

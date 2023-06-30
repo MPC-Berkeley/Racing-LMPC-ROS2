@@ -32,20 +32,12 @@ RacingMPC::RacingMPC(
   RacingMPCConfig::SharedPtr mpc_config,
   SingleTrackPlanarModel::SharedPtr model)
 : config_(mpc_config), model_(model),
-  scale_x_({
-        config_->average_track_width,
-        config_->average_track_width,
-        3.14, 1.0, 0.5,
-        static_cast<double>(mpc_config->x_max(XIndex::V))
-      }),
-  scale_u_({
-        abs(model_->get_config().Fd_max),
-        abs(model_->get_config().Fb_max),
-        abs(model_->get_base_config().steer_config->max_steer)
-      }),
+  scale_x_(casadi::DM::ones(model_->nx())),
+  scale_u_(casadi::DM::ones(model_->nu())),
   g_to_f_(utils::global_to_frenet_function<casadi::MX>(config_->N)),
   norm_2_(utils::norm_2_function(config_->N)),
   align_yaw_(utils::align_yaw_function(config_->N)),
+  align_abscissa_(utils::align_abscissa_function(config_->N)),
   opti_(casadi::Opti()),
   X_(opti_.variable(model_->nx(), config_->N)),
   U_(opti_.variable(model_->nu(), config_->N - 1)),
@@ -53,8 +45,10 @@ RacingMPC::RacingMPC(
   U_ref_(opti_.parameter(model_->nu(), config_->N - 1)),
   T_ref_(opti_.parameter(1, config_->N - 1)),
   x_ic_(opti_.parameter(model_->nx(), 1)),
-  bound_left_(opti_.parameter(2, config_->N)),
-  bound_right_(opti_.parameter(2, config_->N)),
+  bound_left_(opti_.parameter(1, config_->N)),
+  bound_right_(opti_.parameter(1, config_->N)),
+  total_length_(opti_.parameter(1, 1)),
+  curvatures_(opti_.parameter(1, config_->N)),
   solved_(false),
   sol_()
 {
@@ -75,32 +69,39 @@ RacingMPC::RacingMPC(
   };
   opti_.solver("ipopt", p_opts, s_opts);
 
-  // set up problem
-  const auto P0 = X_ref_(Slice(0, 2), Slice());
-  const auto X0 = MX::vertcat({P0, MX::zeros(model_->nx() - 2, config_->N)});
-  const auto Yaws = X_ref_(XIndex::YAW, Slice());
+  // set up abscissa offsets
+  // this way abscissa is normalized to start from 0 in the NLP
+  const auto P0 = X_ref_(XIndex::PX, Slice());
+  const auto X0 = MX::vertcat({P0, MX::zeros(model_->nx() - 1, config_->N)});
 
-  // --- trajectory tracking cost function ---
+  // --- MPCC cost function ---
   auto cost = MX::zeros(1);
-  for (size_t i = 0; i < config_->N - 1; i++) {
-    const auto xi = X_(Slice(), i) * scale_x_ + X0(Slice(), i);
-    const auto ui = U_(Slice(), i) * scale_u_;
-    const auto dx = xi - X_ref_(Slice(), i);
-    const auto du = ui - U_ref_(Slice(), i);
-    cost += 0.5 * MX::mtimes({dx.T(), config_->Q, dx}) + 0.5 * MX::mtimes({du.T(), config_->R, du});
+  const auto x0 = X_(Slice(), 0) * scale_x_ + X0(Slice(), 0);
+  for (size_t i = 0; i < config_->N; i++) {
+    // xi start with 1 since x0 must equal to x_ic and there is nothing we can do about it
+    if (i >= 1) {
+      const auto xi = X_(Slice(), i) * scale_x_ + X0(Slice(), i);
+      // const auto xim1 = X_(Slice(), i - 1) * scale_x_ + X0(Slice(), i - 1);
+      const auto d_px =
+        utils::align_abscissa<MX>(xi(XIndex::PX), x0(XIndex::PX), total_length_) - x0(XIndex::PX);
+      // must travel in the right direction
+      opti_.subject_to(d_px >= 0.0);
+      cost += config_->q_contour * xi(XIndex::PY) * xi(XIndex::PY) - config_->q_progress * d_px *
+        d_px;
+    }
+    // ui ends at N - 1
+    if (i < config_->N - 1) {
+      const auto ui = U_(Slice(), i) * scale_u_;
+      cost += MX::mtimes({ui.T(), config_->R, ui});
+    }
   }
-  const auto dxN = X_(Slice(), -1) * scale_x_ + X0(Slice(), -1) - X_ref_(Slice(), -1);
-  cost += 0.5 * MX::mtimes({dxN.T(), config_->Qf, dxN});
   opti_.minimize(cost);
 
   // --- boundary constraints in frenet frame ---
-  const auto P = X_(Slice(0, 2), Slice()) * scale_x_(Slice(0, 2));
-  const auto Pf = g_to_f_({P, MX::zeros(2, config_->N), Yaws})[0];
-  // opti.subject_to(Pf(0, Slice()) == 0.0);
+  // TODO(haoru): to ensure solvability, relax this constraint into the cost function
+  const auto PY = X_(XIndex::PY, Slice()) * scale_x_(XIndex::PY);
   const auto margin = config_->margin + model_->get_base_config().chassis_config->b / 2.0;
-  const auto dl = norm_2_(bound_left_ - P0)[0];
-  const auto dr = norm_2_(bound_right_ - P0)[0] * -1.0;
-  opti_.subject_to(opti_.bounded(dr + margin, Pf(1, Slice()), dl - margin));
+  opti_.subject_to(opti_.bounded(bound_right_ + margin, PY, bound_left_ - margin));
 
   // --- model constraints ---
   for (size_t i = 0; i < config_->N - 1; i++) {
@@ -108,13 +109,17 @@ RacingMPC::RacingMPC(
     const auto xip1 = X_(Slice(), i + 1) * scale_x_ + X0(Slice(), i + 1);
     const auto ui = U_(Slice(), i) * scale_u_;
     const auto ti = T_ref_(i);
+    const auto k = curvatures_(i);
     casadi::MXDict constraint_in = {
       {"x", xi},
       {"u", ui},
       {"xip1", xip1},
-      {"t", ti}
+      {"t", ti},
+      {"k", k},
+      {"track_length", total_length_}
     };
     if (i < config_->N - 2) {
+      // some model uses the next control variable to enforce control smoothness
       const auto uip1 = U_(Slice(), i + 1) * scale_u_;
       constraint_in["uip1"] = uip1;
     }
@@ -122,7 +127,6 @@ RacingMPC::RacingMPC(
   }
 
   // --- initial state constraint ---
-  const auto x0 = X_(Slice(), 0) * scale_x_ + X0(Slice(), 0);
   opti_.subject_to(x0 == x_ic_);
 }
 
@@ -142,11 +146,15 @@ void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out)
   const auto & x_ic = in.at("x_ic");
   const auto & bound_left = in.at("bound_left");
   const auto & bound_right = in.at("bound_right");
-  const auto P0 = X_ref(Slice(0, 2), Slice());
-  const auto X0 = DM::vertcat({P0, DM::zeros(model_->nx() - 2, config_->N)});
-  const auto Yaws = X_ref(XIndex::YAW, Slice());
+  const auto & total_length = in.at("total_length");
+  const auto & curvatures = in.at("curvatures");
 
-  // if optimal reference given, initialize with the reference
+  // set up the offsets
+  const auto P0 = X_ref(XIndex::PX, Slice());
+  const auto X0 = DM::vertcat({P0, DM::zeros(model_->nx() - 1, config_->N)});
+
+  // if optimal reference is given, typically from last MPC solution,
+  // initialize with this reference.
   if (in.count("X_optm_ref")) {
     const auto & X_optm_ref = in.at("X_optm_ref");
     const auto & U_optm_ref = in.at("U_optm_ref");
@@ -155,14 +163,16 @@ void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out)
     opti_.set_initial(U_ * scale_u_, U_optm_ref);
     opti_.set_value(T_ref_, T_optm_ref);
   } else {
+    // TODO(haoru): just initialize with X_ref if no optm ref given
     opti_.set_value(T_ref_, in.at("T_ref"));
     opti_.set_initial(sol_->value_variables());
-    const auto last_Yaw_optm = (sol_->value(X_) * scale_x_)(XIndex::YAW, Slice());
-    const auto this_Yaw_optm =
-      align_yaw_(
-      casadi::DMDict{{"yaw_1", last_Yaw_optm},
-        {"yaw_2", Yaws}}).at("yaw_1_aligned");
-    opti_.set_initial((X_ * scale_x_)(XIndex::YAW, Slice()), this_Yaw_optm);
+    const auto last_abscissa_optm = (sol_->value(X_) * scale_x_)(XIndex::PX, Slice());
+    const auto total_lengths = DM::ones(1, config_->N) * total_length;
+    const auto this_abscissa_optm =
+      align_abscissa_(
+      casadi::DMDict{{"abscissa_1", last_abscissa_optm},
+        {"abscissa_2", P0}, {"total_distance", total_lengths}}).at("abscissa_1_aligned");
+    opti_.set_initial((X_ * scale_x_)(XIndex::PX, Slice()), this_abscissa_optm);
     const auto lam_g0 = sol_->value(opti_.lam_g());
     opti_.set_initial(opti_.lam_g(), lam_g0);
   }
@@ -175,6 +185,8 @@ void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out)
   opti_.set_value(U_ref_, U_ref);
   opti_.set_value(bound_left_, bound_left);
   opti_.set_value(bound_right_, bound_right);
+  opti_.set_value(total_length_, total_length);
+  opti_.set_value(curvatures_, curvatures);
 
   // solve problem
   try {

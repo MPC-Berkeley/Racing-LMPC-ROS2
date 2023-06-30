@@ -16,13 +16,13 @@
 #ifndef RACING_TRAJECTORY__TRAJECTORY_KD_TREE_HPP_
 #define RACING_TRAJECTORY__TRAJECTORY_KD_TREE_HPP_
 
-#include <vector>
-#include <unordered_map>
-
 #include <CGAL/Simple_cartesian.h>
 #include <CGAL/point_generators_2.h>
 #include <CGAL/Orthogonal_k_neighbor_search.h>
 #include <CGAL/Search_traits_2.h>
+
+#include <vector>
+#include <unordered_map>
 
 typedef CGAL::Simple_cartesian<double> K;
 typedef K::Point_2 Point_d;

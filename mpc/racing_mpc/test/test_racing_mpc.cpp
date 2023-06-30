@@ -21,8 +21,10 @@
 #include <rclcpp/rclcpp.hpp>
 #include <ament_index_cpp/get_package_share_directory.hpp>
 
-#include "base_vehicle_model/ros_param_loader.hpp"
-#include "single_track_planar_model/ros_param_loader.hpp"
+#include <base_vehicle_model/ros_param_loader.hpp>
+#include <single_track_planar_model/ros_param_loader.hpp>
+#include <lmpc_utils/primitives.hpp>
+#include <racing_trajectory/racing_trajectory.hpp>
 #include "racing_mpc/racing_mpc.hpp"
 #include "racing_mpc/ros_param_loader.hpp"
 
@@ -32,13 +34,14 @@ using lmpc::vehicle_model::single_track_planar_model::XIndex;
 using lmpc::vehicle_model::single_track_planar_model::UIndex;
 
 const auto share_dir = ament_index_cpp::get_package_share_directory("racing_mpc");
-
+const auto base_share_dir = ament_index_cpp::get_package_share_directory("base_vehicle_model");
+const auto model_share_dir = ament_index_cpp::get_package_share_directory(
+  "single_track_planar_model");
+const auto trajectory_share_dir = ament_index_cpp::get_package_share_directory(
+  "racing_trajectory");
 RacingMPC::SharedPtr get_mpc()
 {
   rclcpp::init(0, nullptr);
-  const auto base_share_dir = ament_index_cpp::get_package_share_directory("base_vehicle_model");
-  const auto model_share_dir = ament_index_cpp::get_package_share_directory(
-    "single_track_planar_model");
   rclcpp::NodeOptions options;
   options.arguments(
   {
@@ -60,22 +63,44 @@ RacingMPC::SharedPtr get_mpc()
   return mpc;
 }
 
-TEST(RacingMPCTest, RacingMPCSolveTest) {
+TEST(RacingMPCTest, SingleMPCCSolveTest)
+{
   using casadi::DM;
   using casadi::Slice;
   auto mpc = get_mpc();
   const auto N = static_cast<casadi_int>(mpc->get_config().N);
-  const auto test_data =
-    DM::from_file(share_dir + "/test_data/mgkt_turn_4.txt", "txt")(Slice(0, N), Slice()).T();
-  const auto bound_left = test_data(Slice(9, 11), Slice());
-  const auto bound_right = test_data(Slice(11, 13), Slice());
 
-  const auto X_optm_ref =
-    DM::from_file(share_dir + "/test_data/x_optm.txt", "txt")(Slice(0, N), Slice()).T();
-  const auto U_optm_ref =
-    DM::from_file(share_dir + "/test_data/u_optm.txt", "txt")(Slice(0, N - 1), Slice()).T();
-  const auto T_optm_ref =
-    DM::from_file(share_dir + "/test_data/t_optm.txt", "txt")(Slice(0, N - 1), Slice()).T();
+  // load the test trajectory
+  const auto test_traj_file = trajectory_share_dir + "/test_data/mgkt_optm.txt";
+  auto traj = lmpc::vehicle_model::racing_trajectory::RacingTrajectory(test_traj_file);
+
+  // loop
+  // create the initial reference
+  auto X_optm_ref = DM::zeros(mpc->get_model().nx(), N);
+  const auto U_optm_ref = DM::zeros(mpc->get_model().nu(), N - 1);
+  const auto T_optm_ref = DM::zeros(1, N - 1) + 0.05;
+
+  const lmpc::Pose2D x0_pose2d{
+    84.83, -112.67, -2.3532
+  };
+  lmpc::FrenetPose2D x0_frenet;
+  traj.global_to_frenet(x0_pose2d, x0_frenet);
+
+  const auto x_ic = DM{
+    x0_frenet.position.s, x0_frenet.position.t, x0_frenet.yaw,
+    0.0, 0.0, 10.0
+  };
+
+  X_optm_ref(XIndex::PX, 0) = x0_frenet.position.s;
+  X_optm_ref(XIndex::V, 0) = 10.0;
+
+  for (int i = 1; i < N; i++) {
+    X_optm_ref(XIndex::PX, i) = X_optm_ref(XIndex::PX, i - 1) + 0.05 * 10.0;
+    X_optm_ref(XIndex::V, i) = 10.0;
+  }
+
+  const auto total_length = traj.total_length();
+
   auto sol_in = casadi::DMDict{
     {"X_optm_ref", X_optm_ref},
     {"U_optm_ref", U_optm_ref(Slice(0, 3), Slice())},
@@ -83,107 +108,48 @@ TEST(RacingMPCTest, RacingMPCSolveTest) {
     {"X_ref", X_optm_ref},
     {"U_ref", U_optm_ref(Slice(0, 3), Slice())},
     {"T_ref", T_optm_ref},
-    {"bound_left", bound_left},
-    {"bound_right", bound_right}
+    {"total_length", total_length},
+    {"x_ic", x_ic}
   };
-  auto x_ic = DM(sol_in["X_ref"](Slice(), 0));
-  x_ic(0) += 0.3;
-  x_ic(1) += 0.3;
-  sol_in["x_ic"] = x_ic;
-  sol_in["x_g"] = sol_in["X_ref"](Slice(), -1);
-  sol_in["bound_left"] = bound_left;
-  sol_in["bound_right"] = bound_right;
 
-  const auto & X_ref = sol_in["X_ref"];
-  const auto & V = X_ref(XIndex::V, Slice());
-  for (int i = 0; i < V.size2(); i++) {
-    ASSERT_TRUE(static_cast<double>(V(i)) != 0.0 && !isnan(static_cast<double>(V(i))));
-  }
-  auto sol_out = casadi::DMDict{};
-  for (int i = 0; i < 3; i++) {
-    const auto start = std::chrono::high_resolution_clock::now();
-    mpc->solve(sol_in, sol_out);
-    const auto stop = std::chrono::high_resolution_clock::now();
-    const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
-    std::cout << "MPC Execution Time: " << duration.count() << "ms" << std::endl;
-    sol_in.erase("X_optm_ref");
-    sol_in.erase("U_optm_ref");
-    sol_in.erase("T_optm_ref");
-  }
-  sol_out["X_optm"].T().to_file("test_X_optm.txt", "txt");
-  sol_out["U_optm"].T().to_file("test_U_optm.txt", "txt");
-  sol_out["T_optm"].T().to_file("test_T_optm.txt", "txt");
-  SUCCEED();
-}
-
-TEST(RacingMPCTest, RacingMPCSolveInterpolatedTest) {
-  using casadi::DM;
-  using casadi::Slice;
-  auto mpc = get_mpc();
-  const auto N = static_cast<casadi_int>(mpc->get_config().N);
-  const auto test_data =
-    DM::from_file(share_dir + "/test_data/mgkt_turn_4.txt", "txt").T();
-  const auto bound_left = test_data(Slice(9, 11), Slice());
-  const auto bound_right = test_data(Slice(11, 13), Slice());
-
-  const auto X_optm_ref =
-    DM::from_file(share_dir + "/test_data/x_optm.txt", "txt");
-  const auto U_optm_ref =
-    DM::from_file(share_dir + "/test_data/u_optm.txt", "txt");
-  const auto T_optm_ref =
-    DM::from_file(share_dir + "/test_data/t_optm.txt", "txt");
-
-  auto T_accum = DM::zeros(T_optm_ref.size1() + 1);
-  for (int i = 0; i < T_optm_ref.size1(); i++) {
-    T_accum(i + 1) = T_accum(i) + T_optm_ref(i);
-  }
-
-  const auto t_vec = T_accum.get_elements();
-  const auto t_intp = DM::linspace(0.0, 2.0, N);
-  const auto bound_left_intp = DM::interp1d(
-    t_vec, bound_left.T(),
-    t_intp.get_elements(), "", false).T();
-  const auto bound_right_intp = DM::interp1d(
-    t_vec, bound_right.T(),
-    t_intp.get_elements(), "", false).T();
-  const auto X_optm_ref_intp =
-    DM::interp1d(t_vec, X_optm_ref, t_intp.get_elements(), "", false).T();
-  const auto U_optm_ref_intp =
-    DM::interp1d(
-    T_accum(Slice(0, -1)).get_elements(), U_optm_ref, t_intp(
-      Slice(
-        0, -1)).get_elements(), "", false).T();
-  const auto T_optm_ref_intp = DM::zeros(N - 1) + t_intp(1) - t_intp(0);
-
-  auto sol_in = casadi::DMDict{
-    {"X_optm_ref", X_optm_ref_intp},
-    {"U_optm_ref", U_optm_ref_intp(Slice(0, 3), Slice())},
-    {"T_optm_ref", T_optm_ref_intp},
-    {"X_ref", X_optm_ref_intp},
-    {"U_ref", U_optm_ref_intp(Slice(0, 3), Slice())},
-    {"T_ref", T_optm_ref_intp},
-    {"bound_left", bound_left_intp},
-    {"bound_right", bound_right_intp}
-  };
-  auto x_ic = DM(sol_in["X_ref"](Slice(), 0));
-  x_ic(0) += 0.3;
-  x_ic(1) += 0.3;
-  sol_in["x_ic"] = x_ic;
-  sol_in["x_g"] = sol_in["X_ref"](Slice(), -1);
-
-  auto sol_out = casadi::DMDict{};
   for (int i = 0; i < 10; i++) {
+    const auto left_ref = traj.left_boundary_interpolation_function()(
+      X_optm_ref(
+        XIndex::PX,
+        Slice()))[0];
+    const auto right_ref =
+      traj.right_boundary_interpolation_function()(X_optm_ref(XIndex::PX, Slice()))[0];
+    const auto curvature_ref =
+      traj.curvature_interpolation_function()(X_optm_ref(XIndex::PX, Slice()))[0];
+    sol_in["bound_left"] = left_ref;
+    sol_in["bound_right"] = right_ref;
+    sol_in["curvatures"] = curvature_ref;
+
+
+    auto sol_out = casadi::DMDict{};
     const auto start = std::chrono::high_resolution_clock::now();
     mpc->solve(sol_in, sol_out);
     const auto stop = std::chrono::high_resolution_clock::now();
     const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
     std::cout << "MPC Execution Time: " << duration.count() << "ms" << std::endl;
-    sol_in.erase("X_optm_ref");
-    sol_in.erase("U_optm_ref");
-    sol_in.erase("T_optm_ref");
+    if (mpc->solved()) {
+      sol_in.erase("X_optm_ref");
+      sol_in.erase("U_optm_ref");
+      sol_in.erase("T_optm_ref");
+    }
+
+    auto X_optm_out = sol_out["X_optm"];
+    auto f2g = traj.frenet_to_global_function().map(mpc->get_config().N);
+    X_optm_out(
+      Slice(XIndex::PX, XIndex::YAW + 1),
+      Slice()) = f2g(X_optm_out(Slice(XIndex::PX, XIndex::YAW + 1), Slice()))[0];
+
+    auto U_optm_out = sol_out["U_optm"];
+    X_optm_out.T().to_file("test_X_optm.txt", "txt");
+    U_optm_out.T().to_file("test_U_optm.txt", "txt");
+    T_optm_ref.T().to_file("test_T_optm.txt", "txt");
+
+    X_optm_ref = X_optm_out;
   }
-  sol_out["X_optm"].T().to_file("test_X_optm.txt", "txt");
-  sol_out["U_optm"].T().to_file("test_U_optm.txt", "txt");
-  T_optm_ref_intp.T().to_file("test_T_optm.txt", "txt");
   SUCCEED();
 }

@@ -63,6 +63,7 @@ protected:
   casadi::Function g_to_f_;
   casadi::Function norm_2_;
   casadi::Function align_yaw_;
+  casadi::Function align_abscissa_;
   casadi::Opti opti_;
 
   // optimization variables
@@ -76,6 +77,8 @@ protected:
   casadi::MX x_ic_;
   casadi::MX bound_left_;
   casadi::MX bound_right_;
+  casadi::MX total_length_;
+  casadi::MX curvatures_;
 
   // flag if the nlp has been solved at least once
   bool solved_;

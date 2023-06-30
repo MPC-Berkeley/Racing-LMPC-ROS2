@@ -41,7 +41,7 @@ struct SingleTrackPlanarModelConfig
   double mu;
 };
 
-enum XIndex : size_t
+enum XIndex : casadi_int
 {
   PX = 0,
   PY = 1,
@@ -51,7 +51,7 @@ enum XIndex : size_t
   V = 5
 };
 
-enum UIndex : size_t
+enum UIndex : casadi_int
 {
   FD = 0,
   FB = 1,

@@ -17,6 +17,7 @@
 #define RACING_TRAJECTORY__RACING_TRAJECTORY_HPP_
 
 #include <memory>
+#include <string>
 
 #include <casadi/casadi.hpp>
 
@@ -155,6 +156,8 @@ public:
    * @return casadi::Function&
    */
   casadi::Function & yaw_interpolation_function();
+
+  const double & total_length() const;
 
 protected:
   casadi::DM traj_;  // stores the trajectory table

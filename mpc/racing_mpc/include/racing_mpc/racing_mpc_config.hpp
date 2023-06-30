@@ -43,9 +43,9 @@ struct RacingMPCConfig
   bool verbose;  // print debug
 
   // MPC settings
-  casadi::DM Q;  // state cost-to-go
+  casadi::DM q_contour;  // contour (lateral error) cost-to-go
+  casadi::DM q_progress;  // progress cost-to-go
   casadi::DM R;  // control cost-to-go
-  casadi::DM Qf;  // final state cost
   casadi::DM x_max;  // primal upper bound
   casadi::DM x_min;  // primal lower bound
   casadi::DM u_max;  // primal upper bound

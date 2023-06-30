@@ -13,9 +13,10 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+#include <gtest/gtest.h>
+
 #include <chrono>
 
-#include <gtest/gtest.h>
 #include <rclcpp/rclcpp.hpp>
 #include <ament_index_cpp/get_package_share_directory.hpp>
 
@@ -42,8 +43,8 @@ TEST(RacingTrajectoryTest, TestGlobalToFrenetUninitialized) {
 
 TEST(RacingTrajectoryTest, TestGlobalToFrenetInitialized) {
   const auto share_dir = ament_index_cpp::get_package_share_directory("racing_trajectory");
-  const auto test_file_dir = share_dir + "/test_data/mgkt_optm.txt";
-  auto traj = lmpc::vehicle_model::racing_trajectory::RacingTrajectory(test_file_dir);
+  const auto test_traj_file = share_dir + "/test_data/mgkt_optm.txt";
+  auto traj = lmpc::vehicle_model::racing_trajectory::RacingTrajectory(test_traj_file);
 
   const auto test_global_pose = lmpc::Pose2D{{0.0, 0.0}, -M_PI_2};
   auto test_global_pose_moved = lmpc::Pose2D{{0.5, 0.5}, -M_PI_2};
