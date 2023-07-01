@@ -112,7 +112,7 @@ TEST(RacingMPCTest, SingleMPCCSolveTest)
     {"x_ic", x_ic}
   };
 
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < 20; i++) {
     const auto left_ref = traj.left_boundary_interpolation_function()(
       X_optm_ref(
         XIndex::PX,
@@ -150,6 +150,8 @@ TEST(RacingMPCTest, SingleMPCCSolveTest)
     T_optm_ref.T().to_file("test_T_optm.txt", "txt");
 
     X_optm_ref = X_optm_out;
+    sol_in["X_ref"] = X_optm_out;
+    sol_in["U_ref"] = U_optm_out;
   }
   SUCCEED();
 }
