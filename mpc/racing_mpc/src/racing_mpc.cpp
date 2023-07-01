@@ -168,6 +168,7 @@ void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out)
     opti_.set_initial(sol_->value_variables());
     const auto last_abscissa_optm = (sol_->value(X_) * scale_x_)(XIndex::PX, Slice());
     const auto total_lengths = DM::ones(1, config_->N) * total_length;
+    // Rember to wrap the abscissa to the range [0, total_length]
     const auto this_abscissa_optm =
       align_abscissa_(
       casadi::DMDict{{"abscissa_1", last_abscissa_optm},

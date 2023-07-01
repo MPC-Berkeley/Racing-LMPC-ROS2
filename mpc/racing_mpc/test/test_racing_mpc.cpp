@@ -78,7 +78,7 @@ TEST(RacingMPCTest, SingleMPCCSolveTest)
   // create the initial reference
   auto X_optm_ref = DM::zeros(mpc->get_model().nx(), N);
   const auto U_optm_ref = DM::zeros(mpc->get_model().nu(), N - 1);
-  const auto T_optm_ref = DM::zeros(1, N - 1) + 0.05;
+  const auto T_optm_ref = DM::zeros(1, N - 1) + 0.1;
 
   const lmpc::Pose2D x0_pose2d{
     84.83, -112.67, -2.3532
@@ -95,7 +95,7 @@ TEST(RacingMPCTest, SingleMPCCSolveTest)
   X_optm_ref(XIndex::V, 0) = 10.0;
 
   for (int i = 1; i < N; i++) {
-    X_optm_ref(XIndex::PX, i) = X_optm_ref(XIndex::PX, i - 1) + 0.05 * 10.0;
+    X_optm_ref(XIndex::PX, i) = X_optm_ref(XIndex::PX, i - 1) + 0.1 * 10.0;
     X_optm_ref(XIndex::V, i) = 10.0;
   }
 
