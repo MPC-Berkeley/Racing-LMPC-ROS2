@@ -139,13 +139,14 @@ TEST(RacingMPCTest, SingleMPCCSolveTest)
     }
 
     auto X_optm_out = sol_out["X_optm"];
+    auto X_optm_out_global = X_optm_out;
     auto f2g = traj.frenet_to_global_function().map(mpc->get_config().N);
-    X_optm_out(
+    X_optm_out_global(
       Slice(XIndex::PX, XIndex::YAW + 1),
       Slice()) = f2g(X_optm_out(Slice(XIndex::PX, XIndex::YAW + 1), Slice()))[0];
 
     auto U_optm_out = sol_out["U_optm"];
-    X_optm_out.T().to_file("test_X_optm.txt", "txt");
+    X_optm_out_global.T().to_file("test_X_optm.txt", "txt");
     U_optm_out.T().to_file("test_U_optm.txt", "txt");
     T_optm_ref.T().to_file("test_T_optm.txt", "txt");
 
