@@ -147,9 +147,13 @@ RacingTrajectory::RacingTrajectory(const casadi::DM & traj)
     const auto qp = casadi::MXDict{{"x", s}, {"f", dist_sq}, {"p", MX::vertcat(
           {x, y})}};
     global_to_frenet_sol_ = casadi::nlpsol(
-      "global_to_frenet_sol", "qrsqp", qp,
+      "global_to_frenet_sol", "sqpmethod", qp,
           {
-            {"print_time", false}, {"print_header", false}, {"print_iteration", false},
+            {"print_time", false},
+            {"print_header", false},
+            {"print_iteration", false},
+            {"print_status", false},
+            {"qpsol", "qrqp"},
             {"qpsol_options", casadi::Dict
               {
                 {"print_header", false}, {"print_iter", false}, {"print_info", false}
