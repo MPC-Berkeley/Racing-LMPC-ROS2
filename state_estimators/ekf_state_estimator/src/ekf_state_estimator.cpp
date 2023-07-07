@@ -133,8 +133,7 @@ void EKFStateEstimator::update_observation(
 
   // EKF prediction
   std::cout << "*********** EKF Cycle Begins ***********" << std::endl;
-  if (name.has_value())
-  {
+  if (name.has_value()) {
     std::cout << "source name: " << name.value() << std::endl;
   }
   const auto in_dict = casadi::DMDict{{"x", x_}, {"u", u_}, {"dt", dt_ns * 1e-9}};
