@@ -65,7 +65,7 @@ RacingMPC::RacingMPC(
     {"tol", config_->tol},
     {"constr_viol_tol", config_->constr_viol_tol},
     {"print_level", config_->verbose ? 5 : 0},
-    {"max_iter", 500}
+    {"max_iter", static_cast<casadi_int>(config_->max_iter)}
   };
   opti_.solver("ipopt", p_opts, s_opts);
 

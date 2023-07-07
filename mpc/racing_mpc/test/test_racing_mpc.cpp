@@ -63,7 +63,7 @@ RacingMPC::SharedPtr get_mpc()
   return mpc;
 }
 
-TEST(RacingMPCTest, SingleMPCCSolveTest)
+void test_mpc(const lmpc::Pose2D & p0, const double & v0, const casadi_int & num_step)
 {
   using casadi::DM;
   using casadi::Slice;
@@ -80,23 +80,20 @@ TEST(RacingMPCTest, SingleMPCCSolveTest)
   const auto U_optm_ref = DM::zeros(mpc->get_model().nu(), N - 1);
   const auto T_optm_ref = DM::zeros(1, N - 1) + 0.1;
 
-  const lmpc::Pose2D x0_pose2d{
-    84.83, -112.67, -2.3532
-  };
   lmpc::FrenetPose2D x0_frenet;
-  traj.global_to_frenet(x0_pose2d, x0_frenet);
+  traj.global_to_frenet(p0, x0_frenet);
 
   const auto x_ic = DM{
     x0_frenet.position.s, x0_frenet.position.t, x0_frenet.yaw,
-    0.0, 0.0, 10.0
+    0.0, 0.0, v0
   };
 
   X_optm_ref(XIndex::PX, 0) = x0_frenet.position.s;
-  X_optm_ref(XIndex::V, 0) = 10.0;
+  X_optm_ref(XIndex::V, 0) = v0;
 
   for (int i = 1; i < N; i++) {
-    X_optm_ref(XIndex::PX, i) = X_optm_ref(XIndex::PX, i - 1) + 0.1 * 10.0;
-    X_optm_ref(XIndex::V, i) = 10.0;
+    X_optm_ref(XIndex::PX, i) = X_optm_ref(XIndex::PX, i - 1) + 0.1 * v0;
+    X_optm_ref(XIndex::V, i) = v0;
   }
 
   const auto total_length = traj.total_length();
@@ -112,7 +109,7 @@ TEST(RacingMPCTest, SingleMPCCSolveTest)
     {"x_ic", x_ic}
   };
 
-  for (int i = 0; i < 20; i++) {
+  for (int i = 0; i < num_step; i++) {
     const auto left_ref = traj.left_boundary_interpolation_function()(
       X_optm_ref(
         XIndex::PX,
@@ -153,6 +150,42 @@ TEST(RacingMPCTest, SingleMPCCSolveTest)
     X_optm_ref = X_optm_out;
     sol_in["X_ref"] = X_optm_out;
     sol_in["U_ref"] = U_optm_out;
+
+    // teleport the vehicle to the next position
+    sol_in["x_ic"] = X_optm_out(Slice(), 1);
   }
+  std::cout << sol_in["X_ref"](Slice(), -1) << std::endl;
+}
+
+TEST(RacingMPCTest, MPCSolveTest)
+{
+  const lmpc::Pose2D x0_pose2d{
+    84.83, -112.67, -2.3532
+  };
+  const double v0 = 10.0;
+  const casadi_int num_step = 10;
+  test_mpc(x0_pose2d, v0, num_step);
   SUCCEED();
 }
+
+TEST(RacingMPCTest, MPCSolveTestStartDeviated)
+{
+  const lmpc::Pose2D x0_pose2d{
+    85.4, -113.3, -2.3532
+  };
+  const double v0 = 10.0;
+  const casadi_int num_step = 10;
+  test_mpc(x0_pose2d, v0, num_step);
+  SUCCEED();
+}
+
+// TEST(RacingMPCTest, MPCSolveTestAtJoint)
+// {
+//   const lmpc::Pose2D x0_pose2d{
+//     -6.04, 5.76, -1.11
+//   };
+//   const double v0 = 20.0;
+//   const casadi_int num_step = 10;
+//   test_mpc(x0_pose2d, v0, num_step);
+//   SUCCEED();
+// }

@@ -45,6 +45,7 @@ RacingMPCConfig::SharedPtr load_parameters(rclcpp::Node * node)
   return std::make_shared<RacingMPCConfig>(
     RacingMPCConfig{
           declare_double("racing_mpc.max_cpu_time"),
+          declare_int("racing_mpc.max_iter"),
           declare_double("racing_mpc.tol"),
           declare_double("racing_mpc.constr_viol_tol"),
           static_cast<size_t>(declare_int("racing_mpc.n")),

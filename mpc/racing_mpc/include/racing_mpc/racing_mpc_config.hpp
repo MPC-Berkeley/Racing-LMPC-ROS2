@@ -33,6 +33,7 @@ struct RacingMPCConfig
 
   // optimizer settings
   double max_cpu_time;  // max solving time (s)
+  int64_t max_iter;  // max solver iterations
   double tol;  // convergence tolarance
   double constr_viol_tol;  // constraint violation tolerance
 
