@@ -1,0 +1,87 @@
+// Copyright 2023 Haoru Xue
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+#ifndef RACING_SIMULATOR_NODE__RACING_SIMULATOR_HPP_
+#define RACING_SIMULATOR_NODE__RACING_SIMULATOR_HPP_
+
+#include <memory>
+
+#include <casadi/casadi.hpp>
+
+#include <rclcpp/rclcpp.hpp>
+#include <geometry_msgs/msg/polygon_stamped.hpp>
+#include <geometry_msgs/msg/transform_stamped.hpp>
+#include <nav_msgs/msg/odometry.hpp>
+
+#include <mpclab_msgs/msg/vehicle_state_msg.hpp>
+#include <mpclab_msgs/msg/vehicle_actuation_msg.hpp>
+#include <transform_helper/transform_helper.hpp>
+
+#include "racing_simulator/racing_simulator_config.hpp"
+#include "racing_simulator/racing_simulator.hpp"
+
+namespace lmpc
+{
+namespace simulation
+{
+namespace racing_simulator
+{
+class RacingSimulatorNode: public rclcpp::Node
+{
+public:
+  explicit RacingSimulatorNode(const rclcpp::NodeOptions & options);
+
+protected:
+  RacingSimulatorConfig::SharedPtr config_ {};
+  RacingTrajectory::SharedPtr track_ {};
+  SingleTrackPlanarModel::SharedPtr model_ {};
+  RacingSimulator::SharedPtr simulator_ {};
+  uint64_t sim_step_ {0};
+  uint64_t lap_count_ {0};
+  tf2::Transform cg_to_baselink_ {};
+
+  utils::TransformHelper tf_helper_;
+
+  // publishers (to controller)
+  rclcpp::Publisher<mpclab_msgs::msg::VehicleStateMsg>::SharedPtr vehicle_state_pub_;
+
+  // publishers (to visualization)
+  rclcpp::Publisher<geometry_msgs::msg::PolygonStamped>::SharedPtr vehicle_polygon_pub_;
+  rclcpp::Publisher<geometry_msgs::msg::PolygonStamped>::SharedPtr left_boundary_polygon_pub_;
+  rclcpp::Publisher<geometry_msgs::msg::PolygonStamped>::SharedPtr right_boundary_polygon_pub_;
+  rclcpp::Publisher<geometry_msgs::msg::PolygonStamped>::SharedPtr abscissa_polygon_pub_;
+  rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr vehicle_odom_pub_;
+
+  // subscribers (from controller)
+  rclcpp::Subscription<mpclab_msgs::msg::VehicleActuationMsg>::SharedPtr vehicle_actuation_sub_;
+
+  // subscribers (reset state)
+  rclcpp::Subscription<mpclab_msgs::msg::VehicleStateMsg>::SharedPtr reset_state_sub_;
+
+  // timers
+  rclcpp::TimerBase::SharedPtr static_vis_timer_; // a slow rate timer for visualizing track boundaries and abscissa
+  rclcpp::TimerBase::SharedPtr state_repub_timer_; // republish vehicle state (TODO(haoru): to be replaced by a service)
+
+  // callbacks
+  void on_actuation(const mpclab_msgs::msg::VehicleActuationMsg::SharedPtr msg);
+  void on_reset_state(const mpclab_msgs::msg::VehicleStateMsg::SharedPtr msg);
+  void on_static_vis_timer();
+  void on_state_repub_timer();
+
+};
+}  // namespace racing_simulator
+}  // namespace simulation
+}  // namespace lmpc
+#endif  // RACING_SIMULATOR_NODE__RACING_SIMULATOR_HPP_
