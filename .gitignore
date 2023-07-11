@@ -256,3 +256,6 @@ test_X_optm.txt
 test_U_optm.txt
 test_T_optm.txt
 test_optm.py
+
+src/external/*
+!src/external/.gitkeep

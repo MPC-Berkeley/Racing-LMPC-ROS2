@@ -1,0 +1,5 @@
+repositories:
+  src/external/mpclab_msgs:
+    type: git
+    url: https://github.com/MPC-Berkeley/mpclab_msgs.git
+    version: main
