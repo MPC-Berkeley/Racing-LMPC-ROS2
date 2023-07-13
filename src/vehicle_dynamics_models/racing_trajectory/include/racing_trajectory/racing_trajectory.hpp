@@ -157,6 +157,14 @@ public:
    */
   casadi::Function & yaw_interpolation_function();
 
+  /**
+   * @brief Exposes the velocity interpolation function.
+   * Takes a abscissa as input and returns the interpolated velocity.
+   *
+   * @return casadi::Function&
+   */
+  casadi::Function & velocity_interpolation_function();
+
   const double & total_length() const;
 
 protected:
@@ -169,6 +177,7 @@ protected:
   casadi::Function right_intp_;  // interpolate right boundary
   casadi::Function x_intp_;  // interpolate global x
   casadi::Function y_intp_;  // interpolate global y
+  casadi::Function vel_intp_;  // interpolate velocity
   casadi::Function frenet_to_global_;  // frenet to global conversion function
   casadi::Function global_to_frenet_;  // global to frenet conversion function
   casadi::Function global_to_frenet_sol_;  // g_to_f qp solver

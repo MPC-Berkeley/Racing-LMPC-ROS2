@@ -89,6 +89,9 @@ RacingTrajectory::RacingTrajectory(const casadi::DM & traj)
     const auto y_intp = casadi::interpolant(
       "y_intp_impl", "bspline",
       {abscissa.get_elements()}, interpolants(TrajectoryIndex::PY, Slice()).get_elements());
+    const auto vel_intp = casadi::interpolant(
+      "vel_intp_impl", "bspline",
+      {abscissa.get_elements()}, interpolants(TrajectoryIndex::SPEED, Slice()).get_elements());
 
     const auto s = MX::sym("s", 1, 1);
     const auto s_mod = utils::align_abscissa<MX>(s, total_length_ / 2.0, total_length_);
@@ -112,6 +115,7 @@ RacingTrajectory::RacingTrajectory(const casadi::DM & traj)
     right_intp_ = Function("right_intp", {s}, {right_intp(s_mod)});
     x_intp_ = Function("x_intp", {s}, {x_intp(s_mod)});
     y_intp_ = Function("y_intp", {s}, {y_intp(s_mod)});
+    vel_intp_ = Function("vel_intp", {s}, {vel_intp(s_mod)});
   }
 
   // build the frenet to global transformation
@@ -269,6 +273,11 @@ casadi::Function & RacingTrajectory::y_interpolation_function()
 casadi::Function & RacingTrajectory::yaw_interpolation_function()
 {
   return yaw_intp_;
+}
+
+casadi::Function & RacingTrajectory::velocity_interpolation_function()
+{
+  return vel_intp_;
 }
 
 const double & RacingTrajectory::total_length() const
