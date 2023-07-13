@@ -33,10 +33,10 @@ RacingSimulator::RacingSimulator(
   const casadi::DM & x0,
   RacingTrajectory::SharedPtr track,
   SingleTrackPlanarModel::SharedPtr model)
-  : dt_(dt),
-    x_(x0),
-    track_(track),
-    model_(model)
+: dt_(dt),
+  x_(x0),
+  track_(track),
+  model_(model)
 {
   // check if dt is positive
   if (dt <= 0) {

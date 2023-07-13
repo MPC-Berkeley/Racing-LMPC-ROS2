@@ -30,6 +30,7 @@ ament_auto_find_build_dependencies(REQUIRED
 set(${PROJECT_NAME}_SRC
   src/lookup.cpp
   src/logging.cpp
+  src/primitives.cpp
 )
 
 set(${PROJECT_NAME}_HEADER

@@ -47,15 +47,15 @@ RacingSimulatorConfig::SharedPtr load_parameters(rclcpp::Node * node)
 
   return std::make_shared<RacingSimulatorConfig>(
     RacingSimulatorConfig{
-      declare_double("racing_simulator.dt"),
-      declare_double("racing_simulator.repeat_state_dt"),
-      declare_bool("racing_simulator.publish_tf"),
-      declare_bool("racing_simulator.visualize_boundary"),
-      declare_bool("racing_simulator.visualize_abscissa"),
-      declare_bool("racing_simulator.visualize_vehicle"),
-      declare_string("racing_simulator.race_track_file_path"),
-      casadi::DM(declare_vec("racing_simulator.x0"))
-    }
+          declare_double("racing_simulator.dt"),
+          declare_double("racing_simulator.repeat_state_dt"),
+          declare_bool("racing_simulator.publish_tf"),
+          declare_bool("racing_simulator.visualize_boundary"),
+          declare_bool("racing_simulator.visualize_abscissa"),
+          declare_bool("racing_simulator.visualize_vehicle"),
+          declare_string("racing_simulator.race_track_file_path"),
+          casadi::DM(declare_vec("racing_simulator.x0"))
+        }
   );
 }
 }  // namespace racing_simulator

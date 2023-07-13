@@ -2,7 +2,7 @@
   ros__parameters:
     racing_simulator:
       dt: 0.1
-      repeat_state_dt: 0.1
+      repeat_state_dt: 1.0
       publish_tf: true
       visualize_boundary: true
       visualize_abscissa: true

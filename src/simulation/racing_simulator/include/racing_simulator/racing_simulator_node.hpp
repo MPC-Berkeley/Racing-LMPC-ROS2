@@ -13,8 +13,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#ifndef RACING_SIMULATOR_NODE__RACING_SIMULATOR_HPP_
-#define RACING_SIMULATOR_NODE__RACING_SIMULATOR_HPP_
+#ifndef RACING_SIMULATOR__RACING_SIMULATOR_NODE_HPP_
+#define RACING_SIMULATOR__RACING_SIMULATOR_NODE_HPP_
 
 #include <memory>
 
@@ -38,7 +38,11 @@ namespace simulation
 {
 namespace racing_simulator
 {
-class RacingSimulatorNode: public rclcpp::Node
+using geometry_msgs::msg::PolygonStamped;
+using geometry_msgs::msg::TransformStamped;
+using geometry_msgs::msg::Polygon;
+using nav_msgs::msg::Odometry;
+class RacingSimulatorNode : public rclcpp::Node
 {
 public:
   explicit RacingSimulatorNode(const rclcpp::NodeOptions & options);
@@ -54,14 +58,21 @@ protected:
 
   utils::TransformHelper tf_helper_;
 
+  PolygonStamped::SharedPtr vehicle_polygon_msg_ {};
+  PolygonStamped::SharedPtr left_boundary_polygon_msg_ {};
+  PolygonStamped::SharedPtr right_boundary_polygon_msg_ {};
+  PolygonStamped::SharedPtr abscissa_polygon_msg_ {};
+  mpclab_msgs::msg::VehicleStateMsg::SharedPtr vehicle_state_msg_ {};
+  TransformStamped::SharedPtr map_to_baselink_msg_ {};
+
   // publishers (to controller)
   rclcpp::Publisher<mpclab_msgs::msg::VehicleStateMsg>::SharedPtr vehicle_state_pub_;
 
   // publishers (to visualization)
-  rclcpp::Publisher<geometry_msgs::msg::PolygonStamped>::SharedPtr vehicle_polygon_pub_;
-  rclcpp::Publisher<geometry_msgs::msg::PolygonStamped>::SharedPtr left_boundary_polygon_pub_;
-  rclcpp::Publisher<geometry_msgs::msg::PolygonStamped>::SharedPtr right_boundary_polygon_pub_;
-  rclcpp::Publisher<geometry_msgs::msg::PolygonStamped>::SharedPtr abscissa_polygon_pub_;
+  rclcpp::Publisher<PolygonStamped>::SharedPtr vehicle_polygon_pub_;
+  rclcpp::Publisher<PolygonStamped>::SharedPtr left_boundary_polygon_pub_;
+  rclcpp::Publisher<PolygonStamped>::SharedPtr right_boundary_polygon_pub_;
+  rclcpp::Publisher<PolygonStamped>::SharedPtr abscissa_polygon_pub_;
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr vehicle_odom_pub_;
 
   // subscribers (from controller)
@@ -71,8 +82,10 @@ protected:
   rclcpp::Subscription<mpclab_msgs::msg::VehicleStateMsg>::SharedPtr reset_state_sub_;
 
   // timers
-  rclcpp::TimerBase::SharedPtr static_vis_timer_; // a slow rate timer for visualizing track boundaries and abscissa
-  rclcpp::TimerBase::SharedPtr state_repub_timer_; // republish vehicle state (TODO(haoru): to be replaced by a service)
+  // a slow rate timer to visualize track boundaries and abscissa
+  rclcpp::TimerBase::SharedPtr static_vis_timer_;
+  // republish vehicle state (TODO(haoru): to be replaced by a service)
+  rclcpp::TimerBase::SharedPtr state_repub_timer_;
 
   // callbacks
   void on_actuation(const mpclab_msgs::msg::VehicleActuationMsg::SharedPtr msg);
@@ -80,8 +93,10 @@ protected:
   void on_static_vis_timer();
   void on_state_repub_timer();
 
+  // helper functions
+  Polygon build_polygon(const casadi::DM & pts);
 };
 }  // namespace racing_simulator
 }  // namespace simulation
 }  // namespace lmpc
-#endif  // RACING_SIMULATOR_NODE__RACING_SIMULATOR_HPP_
+#endif  // RACING_SIMULATOR__RACING_SIMULATOR_NODE_HPP_

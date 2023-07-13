@@ -31,12 +31,14 @@ ament_auto_find_build_dependencies(REQUIRED
 set(${PROJECT_NAME}_SRC
   src/racing_simulator.cpp
   src/ros_param_loader.cpp
+  src/racing_simulator_node.cpp
 )
 
 set(${PROJECT_NAME}_HEADER
   include/racing_simulator/racing_simulator.hpp
   include/racing_simulator/racing_simulator_config.hpp
   include/racing_simulator/ros_param_loader.hpp
+  include/racing_simulator/racing_simulator_node.hpp
 )
 
 ament_auto_add_library(${PROJECT_NAME} SHARED
@@ -55,13 +57,13 @@ if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   ament_lint_auto_find_test_dependencies()
   set(TEST_SOURCES test/test_racing_simulator.cpp)
-  set(TEST_MPC_EXE test_racing_simulator)
-  ament_add_gtest(${TEST_MPC_EXE} ${TEST_SOURCES})
-  target_link_libraries(${TEST_MPC_EXE} ${PROJECT_NAME})
+  set(TEST_SIMULATOR_EXE test_racing_simulator)
+  ament_add_gtest(${TEST_SIMULATOR_EXE} ${TEST_SOURCES})
+  target_link_libraries(${TEST_SIMULATOR_EXE} ${PROJECT_NAME})
 endif()
 
 # Create & install ament package.
 ament_auto_package(INSTALL_TO_SHARE
   param
-  test_data
+  launch
 )

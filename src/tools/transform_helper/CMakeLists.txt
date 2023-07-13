@@ -25,6 +25,7 @@ find_package(ament_cmake_auto REQUIRED)
 find_package(eigen3_cmake_module REQUIRED)
 find_package(Eigen3 REQUIRED)
 include_directories(SYSTEM ${EIGEN3_INCLUDE_DIRS})
+find_package(casadi REQUIRED)
 ament_auto_find_build_dependencies(REQUIRED
   ${${PROJECT_NAME}_BUILD_DEPENDS}
   ${${PROJECT_NAME}_BUILDTOOL_DEPENDS}
@@ -42,6 +43,8 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
   ${${PROJECT_NAME}_SRC}
   ${${PROJECT_NAME}_HEADER}
 )
+
+target_link_libraries(${PROJECT_NAME} casadi)
 
 # if(BUILD_TESTING)
 #   find_package(ament_lint_auto REQUIRED)

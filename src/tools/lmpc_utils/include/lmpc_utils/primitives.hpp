@@ -21,6 +21,7 @@
 #include <string>
 #include <vector>
 #include <iostream>
+#include <casadi/casadi.hpp>
 
 namespace lmpc
 {
@@ -61,42 +62,12 @@ struct FrenetPose2D
   double yaw = 0.0;
 };
 
-std::ostream & operator<<(std::ostream & os, const Position2D & pos)
-{
-  os << "Position2D(" << pos.x << ", " << pos.y << ")";
-  return os;
-}
-
-std::ostream & operator<<(std::ostream & os, const Position3D & pos)
-{
-  os << "Position3D(" << pos.x << ", " << pos.y << ", " << pos.z << ")";
-  return os;
-}
-
-std::ostream & operator<<(std::ostream & os, const Velocity2D & vel)
-{
-  os << "Velocity2D(" << vel.x << ", " << vel.y << ")";
-  return os;
-}
-
-std::ostream & operator<<(std::ostream & os, const Pose2D & pose)
-{
-  os << "Pose2D(" << pose.position.x << ", " << pose.position.y << ", " << pose.yaw << ")";
-  return os;
-}
-
-std::ostream & operator<<(std::ostream & os, const FrenetPosition2D & position)
-{
-  os << "FrenetPosition2D(" << position.s << ", " << position.t << ")";
-  return os;
-}
-
-
-std::ostream & operator<<(std::ostream & os, const FrenetPose2D & pose)
-{
-  os << "FrenetPose2D(" << pose.position.s << ", " << pose.position.t << ", " << pose.yaw << ")";
-  return os;
-}
+std::ostream & operator<<(std::ostream & os, const Position2D & pos);
+std::ostream & operator<<(std::ostream & os, const Position3D & pos);
+std::ostream & operator<<(std::ostream & os, const Velocity2D & vel);
+std::ostream & operator<<(std::ostream & os, const Pose2D & pose);
+std::ostream & operator<<(std::ostream & os, const FrenetPosition2D & position);
+std::ostream & operator<<(std::ostream & os, const FrenetPose2D & pose);
 
 
 /**
@@ -106,13 +77,7 @@ std::ostream & operator<<(std::ostream & os, const FrenetPose2D & pose)
      * @param p0 the reference pose
      * @return double 1.0 if the position is on the left, -1.0 if the position is on the right
      */
-double lateral_sign(const Position2D & position, const Pose2D & p0)
-{
-  return std::copysign(
-    1.0,
-    std::cos(p0.yaw) * (position.y - p0.position.y) - std::sin(p0.yaw) *
-    (position.x - p0.position.x));
-}
+double lateral_sign(const Position2D & position, const Pose2D & p0);
 
 template<typename T>
 T lateral_sign(const T & position, const T & p0)
@@ -124,14 +89,7 @@ T lateral_sign(const T & position, const T & p0)
   );
 }
 
-double distance(const Position2D & p0, const Position2D & p1)
-{
-  return std::hypot(p1.x - p0.x, p1.y - p0.y);
-}
-
-double distance(const Position3D & p0, const Position3D & p1)
-{
-  return std::hypot(p1.x - p0.x, p1.y - p0.y, p1.z - p0.z);
-}
+double distance(const Position2D & p0, const Position2D & p1);
+double distance(const Position3D & p0, const Position3D & p1);
 }  // namespace lmpc
 #endif  // LMPC_UTILS__PRIMITIVES_HPP_
