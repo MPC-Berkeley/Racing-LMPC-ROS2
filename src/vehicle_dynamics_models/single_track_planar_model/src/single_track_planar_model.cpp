@@ -117,7 +117,7 @@ void SingleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casa
 
   // static actuator cconstraint
   opti.subject_to(v * fd <= P_max);
-  opti.subject_to(v >= 0.0);
+  // opti.subject_to(v >= 0.0);
   opti.subject_to(opti.bounded(0.0, fd, Fd_max));
   opti.subject_to(opti.bounded(Fb_max, fb, 0.0));
   opti.subject_to(pow(fd * fb, 2) <= 1.0);

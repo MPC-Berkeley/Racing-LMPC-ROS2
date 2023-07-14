@@ -45,7 +45,8 @@ struct RacingMPCConfig
 
   // MPC settings
   casadi::DM q_contour;  // contour (lateral error) cost-to-go
-  casadi::DM q_progress;  // progress cost-to-go
+  casadi::DM q_heading;  // heading cost-to-go
+  casadi::DM q_vel;  // velocity cost-to-go
   casadi::DM R;  // control cost-to-go
   casadi::DM x_max;  // primal upper bound
   casadi::DM x_min;  // primal lower bound

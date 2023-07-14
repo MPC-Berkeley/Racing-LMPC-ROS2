@@ -26,7 +26,7 @@ namespace simulation
 namespace racing_simulator
 {
 RacingSimulatorNode::RacingSimulatorNode(const rclcpp::NodeOptions & options)
-: rclcpp::Node("basestation_race_control", options),
+: rclcpp::Node("racing_simulator_node", options),
   config_(lmpc::simulation::racing_simulator::load_parameters(this)),
   track_(std::make_shared<RacingTrajectory>(config_->race_track_file_path)),
   model_(std::make_shared<SingleTrackPlanarModel>(
@@ -172,6 +172,9 @@ void RacingSimulatorNode::on_actuation(const mpclab_msgs::msg::VehicleActuationM
 
   // get the updated state
   const auto x = simulator_->x().get_elements();
+  // std::cout << "x: " << last_x << std::endl;
+  // std::cout << "u: " << u << std::endl;
+  // std::cout << "xip1: " << x << std::endl << std::endl;
 
   // increment lap count if necessary
   if (last_x[XIndex::PX] - x[XIndex::PX] > 0.5 * track_->total_length()) {

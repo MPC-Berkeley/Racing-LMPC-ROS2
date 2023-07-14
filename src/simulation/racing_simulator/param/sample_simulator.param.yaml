@@ -2,9 +2,9 @@
   ros__parameters:
     racing_simulator:
       dt: 0.1
-      repeat_state_dt: 1.0
+      repeat_state_dt: 5.0
       publish_tf: true
       visualize_boundary: true
       visualize_abscissa: true
       visualize_vehicle: true
-      x0: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+      x0: [400.0, 0.0, 0.0, 0.0, 0.0, 8.0]

@@ -10,8 +10,9 @@
       average_track_width: 11.0
       verbose: false
 
-      q_contour: 0.1
-      q_progress: 0.02
+      q_contour: 1.0
+      q_heading: 1.0
+      q_vel: 0.1
       r: [
         1.0, 0.0, 0.0,
         0.0, 1.0, 0.0,

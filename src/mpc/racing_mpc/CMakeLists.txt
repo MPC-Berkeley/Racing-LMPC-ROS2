@@ -31,12 +31,14 @@ ament_auto_find_build_dependencies(REQUIRED
 set(${PROJECT_NAME}_SRC
   src/racing_mpc.cpp
   src/ros_param_loader.cpp
+  src/racing_mpc_node.cpp
 )
 
 set(${PROJECT_NAME}_HEADER
   include/racing_mpc/racing_mpc.hpp
   include/racing_mpc/racing_mpc_config.hpp
   include/racing_mpc/ros_param_loader.hpp
+  include/racing_mpc/racing_mpc_node.hpp
 )
 
 ament_auto_add_library(${PROJECT_NAME} SHARED
@@ -45,6 +47,11 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
 )
 
 target_link_libraries(${PROJECT_NAME} casadi)
+
+rclcpp_components_register_node(${PROJECT_NAME}
+  PLUGIN "lmpc::mpc::racing_mpc::RacingMPCNode"
+  EXECUTABLE ${PROJECT_NAME}_node_exe
+)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -58,5 +65,6 @@ endif()
 # Create & install ament package.
 ament_auto_package(INSTALL_TO_SHARE
   param
+  launch
   test_data
 )
