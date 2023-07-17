@@ -115,8 +115,8 @@ void DoubleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casa
   const auto & Fb_max = get_config().Fb_max;
   const auto & Td = get_config().Td;
   const auto & Tb = get_config().Tb;
-  const auto & Tdelta = get_base_config().steer_config->max_steer /
-    get_base_config().steer_config->max_steer_rate;
+  const auto & Tdelta = get_base_config().steer_config->max_steer * 2.0 /
+    get_base_config().steer_config->max_steer_rate;  // times 2 for full left to full right
 
   // dynamics constraint
   auto xip1_temp = casadi::MX(xip1);
@@ -208,7 +208,7 @@ void DoubleTrackPlanarModel::compile_dynamics()
 
   const auto & py = x(XIndex::PY);
   const auto & phi = x(XIndex::YAW);  // yaw
-  const auto & omega = x(XIndex::V_YAW);  // yaw rate
+  const auto & omega = x(XIndex::VYAW);  // yaw rate
   const auto & beta = x(XIndex::SLIP);  // slip angle
   const auto & v = x(XIndex::V);  // velocity magnitude
   const auto & fd = u(UIndex::FD);  // drive force

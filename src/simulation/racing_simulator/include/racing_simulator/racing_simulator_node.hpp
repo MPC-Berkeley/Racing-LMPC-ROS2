@@ -17,6 +17,7 @@
 #define RACING_SIMULATOR__RACING_SIMULATOR_NODE_HPP_
 
 #include <memory>
+#include <vector>
 
 #include <casadi/casadi.hpp>
 
@@ -63,6 +64,7 @@ protected:
   PolygonStamped::SharedPtr right_boundary_polygon_msg_ {};
   PolygonStamped::SharedPtr abscissa_polygon_msg_ {};
   mpclab_msgs::msg::VehicleStateMsg::SharedPtr vehicle_state_msg_ {};
+  mpclab_msgs::msg::VehicleActuationMsg::SharedPtr vehicle_actuation_msg_ {};
   TransformStamped::SharedPtr map_to_baselink_msg_ {};
 
   // publishers (to controller)
@@ -95,6 +97,7 @@ protected:
 
   // helper functions
   Polygon build_polygon(const casadi::DM & pts);
+  void update_vehicle_state_msg(const std::vector<double> & x);
 };
 }  // namespace racing_simulator
 }  // namespace simulation

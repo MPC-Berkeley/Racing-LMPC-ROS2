@@ -49,19 +49,60 @@ public:
     RacingTrajectory::SharedPtr track,
     SingleTrackPlanarModel::SharedPtr model);
 
+  /**
+   * @brief Get the vehicle model
+   *
+   * @return SingleTrackPlanarModel& model
+   */
   SingleTrackPlanarModel & get_model();
+
+  /**
+   * @brief Get the race track
+   *
+   * @return RacingTrajectory& race track
+   */
   RacingTrajectory & get_track();
 
+  /**
+   * @brief return the current state of the simulator
+   *
+   * @return const casadi::DM& state
+   */
   const casadi::DM & x() const;
+
+  /**
+   * @brief return the current control input of the simulator
+   *
+   * @return const casadi::DM& control input
+   */
   const casadi::DM & u() const;
 
+  /**
+   * @brief return the `x_dot` cached from the last call to `step()`
+   *
+   * @return const casadi::DM& `x_dot`
+   */
+  const casadi::DM & last_x_dot() const;
+
+  /**
+   * @brief reset the state of the simulator
+   *
+   * @param x new state
+   */
   void set_state(const casadi::DM & x);
+
+  /**
+   * @brief step the simulator forward by one time step
+   *
+   * @param u control input
+   */
   void step(const casadi::DM & u);
 
 protected:
   casadi::DM dt_;
   casadi::DM x_;
   casadi::DM u_;
+  casadi::DM last_x_dot_;
 
   RacingTrajectory::SharedPtr track_ {};
   SingleTrackPlanarModel::SharedPtr model_ {};

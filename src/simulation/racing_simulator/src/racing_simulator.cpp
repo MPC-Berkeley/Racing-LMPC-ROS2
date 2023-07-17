@@ -57,7 +57,7 @@ RacingSimulator::RacingSimulator(
   const auto out4 = model_->dynamics()({{"x", x_sym + dt_ * k3}, {"u", u_sym}, {"k", k}});
   const auto k4 = out4.at("x_dot");
   const auto out = x_sym + dt_ / 6 * (k1 + 2 * k2 + 2 * k3 + k4);
-  discrete_dynamics_ = casadi::Function("discrete_dynamics", {x_sym, u_sym}, {out});
+  discrete_dynamics_ = casadi::Function("discrete_dynamics", {x_sym, u_sym}, {out, k1});
 }
 
 SingleTrackPlanarModel & RacingSimulator::get_model()
@@ -88,14 +88,16 @@ void RacingSimulator::set_state(const casadi::DM & x)
 void RacingSimulator::step(const casadi::DM & u)
 {
   // velocity cannot be exactly zero for single track planar model
-  const auto v_val = static_cast<double>(x_(XIndex::V));
+  const auto v_val = static_cast<double>(x_(XIndex::VX));
   if (abs(v_val) < 1e-6) {
-    x_(XIndex::V) = std::copysign(1e-6, v_val);
+    x_(XIndex::VX) = std::copysign(1e-6, v_val);
   }
 
   // update state
   u_ = u;
-  x_ = discrete_dynamics_(casadi::DMVector{x_, u_})[0];
+  const auto out = discrete_dynamics_(casadi::DMVector{x_, u_});
+  x_ = out.at(0);
+  last_x_dot_ = out.at(1);
 }
 }  // namespace racing_simulator
 }  // namespace simulation

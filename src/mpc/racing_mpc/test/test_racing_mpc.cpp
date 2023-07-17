@@ -85,15 +85,15 @@ void test_mpc(const lmpc::Pose2D & p0, const double & v0, const casadi_int & num
 
   const auto x_ic = DM{
     x0_frenet.position.s, x0_frenet.position.t, x0_frenet.yaw,
-    0.0, 0.0, v0
+    v0, 0.0, 0.0
   };
 
   X_optm_ref(XIndex::PX, 0) = x0_frenet.position.s;
-  X_optm_ref(XIndex::V, 0) = v0;
+  X_optm_ref(XIndex::VX, 0) = v0;
 
   for (int i = 1; i < N; i++) {
     X_optm_ref(XIndex::PX, i) = X_optm_ref(XIndex::PX, i - 1) + 0.1 * v0;
-    X_optm_ref(XIndex::V, i) = v0;
+    X_optm_ref(XIndex::VX, i) = v0;
   }
 
   const auto total_length = traj.total_length();
@@ -118,9 +118,11 @@ void test_mpc(const lmpc::Pose2D & p0, const double & v0, const casadi_int & num
       traj.right_boundary_interpolation_function()(X_optm_ref(XIndex::PX, Slice()))[0];
     const auto curvature_ref =
       traj.curvature_interpolation_function()(X_optm_ref(XIndex::PX, Slice()))[0];
+    const auto vel_ref = traj.velocity_interpolation_function()(X_optm_ref(XIndex::PX, Slice()))[0];
     sol_in["bound_left"] = left_ref;
     sol_in["bound_right"] = right_ref;
     sol_in["curvatures"] = curvature_ref;
+    sol_in["vel_ref"] = vel_ref;
 
 
     auto sol_out = casadi::DMDict{};

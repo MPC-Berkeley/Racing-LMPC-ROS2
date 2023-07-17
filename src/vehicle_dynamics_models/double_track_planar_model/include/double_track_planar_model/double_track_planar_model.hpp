@@ -47,7 +47,7 @@ enum XIndex : size_t
   PX = 0,
   PY = 1,
   YAW = 2,
-  V_YAW = 3,
+  VYAW = 3,
   SLIP = 4,
   V = 5
 };

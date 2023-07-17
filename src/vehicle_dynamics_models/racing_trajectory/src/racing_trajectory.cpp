@@ -106,7 +106,7 @@ RacingTrajectory::RacingTrajectory(const casadi::DM & traj)
     const auto dy_func = Function("dy", {s_mod_sym}, {dy});
     const auto yaw = MX::atan2(dy_func(s_mod)[0], dx_func(s_mod)[0]);
     const auto curvature =
-      (dx_func(s_mod)[0] * d2y_func(s_mod)[0] - dy_func(s_mod)[0] * d2x_func(s_mod)[0]) /
+      abs(dx_func(s_mod)[0] * d2y_func(s_mod)[0] - dy_func(s_mod)[0] * d2x_func(s_mod)[0]) /
       MX::sqrt(MX::pow(MX::pow(dx_func(s_mod)[0], 2) + MX::pow(dy_func(s_mod)[0], 2), 3));
 
     yaw_intp_ = Function("yaw_intp", {s}, {yaw});

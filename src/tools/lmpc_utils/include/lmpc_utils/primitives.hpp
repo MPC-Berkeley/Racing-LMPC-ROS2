@@ -38,7 +38,13 @@ struct Position3D
   double z = 0.0;
 };
 
-struct Velocity2D
+struct BodyVelocity2D
+{
+  double x = 0.0;
+  double y = 0.0;
+};
+
+struct SpatialVelocity2D
 {
   double x = 0.0;
   double y = 0.0;
@@ -64,7 +70,8 @@ struct FrenetPose2D
 
 std::ostream & operator<<(std::ostream & os, const Position2D & pos);
 std::ostream & operator<<(std::ostream & os, const Position3D & pos);
-std::ostream & operator<<(std::ostream & os, const Velocity2D & vel);
+std::ostream & operator<<(std::ostream & os, const BodyVelocity2D & vel);
+std::ostream & operator<<(std::ostream & os, const SpatialVelocity2D & vel);
 std::ostream & operator<<(std::ostream & os, const Pose2D & pose);
 std::ostream & operator<<(std::ostream & os, const FrenetPosition2D & position);
 std::ostream & operator<<(std::ostream & os, const FrenetPose2D & pose);
@@ -91,5 +98,9 @@ T lateral_sign(const T & position, const T & p0)
 
 double distance(const Position2D & p0, const Position2D & p1);
 double distance(const Position3D & p0, const Position3D & p1);
+
+SpatialVelocity2D transform_velocity(const BodyVelocity2D & vb, const double & yaw);
+BodyVelocity2D transform_velocity(const SpatialVelocity2D & vs, const double & yaw);
+
 }  // namespace lmpc
 #endif  // LMPC_UTILS__PRIMITIVES_HPP_

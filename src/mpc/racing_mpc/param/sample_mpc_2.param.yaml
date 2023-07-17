@@ -2,16 +2,16 @@
   ros__parameters:
     racing_mpc:
       max_cpu_time: 0.09
-      max_iter: 40
+      max_iter: 50
       tol: 0.1
       constr_viol_tol: 0.1
-      n: 30
+      n: 40
       margin: -1.0
       average_track_width: 4.0
       verbose: false
 
       q_contour: 1.0
-      q_heading: 1.0
+      q_heading: 0.5
       q_vel: 0.1
       r: [
         0.0, 0.0, 0.0,
@@ -19,7 +19,7 @@
         0.0, 0.0, 0.0
       ]
 
-      x_max: [.inf, .inf, .inf, 1.5, 0.3, 25.0]
-      x_min: [-.inf, -.inf, -.inf, -1.5, -0.3, -0.1]
-      u_max: [1000.0, 10.0, 0.314159]
-      u_min: [-10.0, -2000.0, -0.314159]
+      x_max: [.inf, .inf, 1.5708, 30.0, 15.0, 2.0]
+      x_min: [-.inf, -.inf, -1.5708, 0.1, -15.0, -2.0]
+      u_max: [2000.0, 10.0, 0.314159]
+      u_min: [-10.0, -4000.0, -0.314159]

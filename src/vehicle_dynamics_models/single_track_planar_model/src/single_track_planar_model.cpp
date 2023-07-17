@@ -71,7 +71,7 @@ void SingleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casa
   const auto k =
     base_config_->modeling_config->use_frenet ? in.at("k") : casadi::MX::sym("k", 1, 1);
 
-  const auto & v = x(XIndex::V);
+  const auto v = casadi::MX::hypot(x(XIndex::VX), x(XIndex::VY));
   const auto & fd = u(UIndex::FD);
   const auto & fb = u(UIndex::FB);
   const auto & delta = u(UIndex::STEER);
@@ -111,7 +111,7 @@ void SingleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casa
   const auto Fx_ij = out1.at("Fx_ij");
   const auto Fy_ij = out1.at("Fy_ij");
   const auto Fz_ij = out1.at("Fz_ij");
-  for (int i = 0; i < 4; i++) {
+  for (int i = 0; i < 2; i++) {
     opti.subject_to(pow(Fx_ij(i) / (mu * Fz_ij(i)), 2) + pow(Fy_ij(i) / (mu * Fz_ij(i)), 2) <= 1);
   }
 
@@ -169,13 +169,15 @@ void SingleTrackPlanarModel::compile_dynamics()
 
   const auto & py = x(XIndex::PY);
   const auto & phi = x(XIndex::YAW);  // yaw
-  const auto & omega = x(XIndex::V_YAW);  // yaw rate
-  const auto & beta = x(XIndex::SLIP);  // slip angle
-  const auto & v = x(XIndex::V);  // velocity magnitude
+  const auto & omega = x(XIndex::VYAW);  // yaw rate
+  const auto & vx = x(XIndex::VX);  // body frame longitudinal velocity
+  const auto & vy = x(XIndex::VY);  // body frame lateral velocity
+  // const auto beta = atan2(vy, vx);  // slip angle
+  // const auto v = casadi::SX::hypot(vx, vy);  // velocity magnitude
   const auto & fd = u(UIndex::FD);  // drive force
   const auto & fb = u(UIndex::FB);  // brake forcce
   const auto & delta = u(UIndex::STEER);  // front wheel angle
-  const auto & v_sq = v * v;
+  const auto v_sq = vx * vx + vy * vy;
 
   const auto & kd_f = get_base_config().powertrain_config->kd;
   const auto & kb_f = get_base_config().front_brake_config->bias;  // front brake force bias
@@ -184,8 +186,8 @@ void SingleTrackPlanarModel::compile_dynamics()
   const auto & l = get_base_config().chassis_config->wheel_base;  // wheelbase
   const auto & lr = get_base_config().chassis_config->cg_ratio * l;  // cg to front axle
   const auto lf = l - lr;  // cg to rear axle
-  const auto & twf = get_base_config().chassis_config->tw_f;  // front track width
-  const auto & twr = get_base_config().chassis_config->tw_r;  // rear track width
+  // const auto & twf = get_base_config().chassis_config->tw_f;  // front track width
+  // const auto & twr = get_base_config().chassis_config->tw_r;  // rear track width
   const auto & fr = get_base_config().chassis_config->fr;  // rolling resistance coefficient
   const auto & hcog = get_base_config().chassis_config->cg_height;  // center of gravity height
   const auto & cl_f = get_base_config().aero_config->cl_f;  // downforce coefficient at front
@@ -213,11 +215,11 @@ void SingleTrackPlanarModel::compile_dynamics()
   // TODO(haoru): consider differential
   const auto Fx_f = 0.5 * kd_f * fd + 0.5 * kb_f * fb - 0.5 * fr * m * GRAVITY * lr / l;
   const auto Fx_fl = Fx_f;
-  const auto Fx_fr = Fx_f;
+  // const auto Fx_fr = Fx_f;
   const auto Fx_r = 0.5 * (1 - kd_f) * fd + 0.5 * (1.0 - kb_f) * fb - 0.5 * fr * m * GRAVITY * lf /
     l;
   const auto Fx_rl = Fx_r;
-  const auto Fx_rr = Fx_r;
+  // const auto Fx_rr = Fx_r;
 
   // longitudinal acceleration (eq. 9)
   const auto ax = (fd + fb - 0.5 * cd * A * v_sq - fr * m * GRAVITY) / m;
@@ -226,56 +228,63 @@ void SingleTrackPlanarModel::compile_dynamics()
   const auto Fz_f = 0.5 * m * GRAVITY * lr / (lf + lr) - 0.5 * hcog / (lf + lr) * m * ax + 0.25 *
     cl_f * rho * A * v_sq;
   const auto Fz_fl = Fz_f;
-  const auto Fz_fr = Fz_f;
+  // const auto Fz_fr = Fz_f;
   const auto Fz_r = 0.5 * m * GRAVITY * lr / (lf + lr) + 0.5 * hcog / (lf + lr) * m * ax + 0.25 *
     cl_r * rho * A * v_sq;
   const auto Fz_rl = Fz_r;
-  const auto Fz_rr = Fz_r;
+  // const auto Fz_rr = Fz_r;
 
   // tyre sideslip angles alpha (eq. 6a, 6b)
   const auto a_fl = delta -
-    atan((lf * omega + v * sin(beta)) / (v * cos(beta) - 0.5 * twf * omega));
-  const auto a_fr = delta -
-    atan((lf * omega + v * sin(beta)) / (v * cos(beta) + 0.5 * twf * omega));
-  const auto a_rl = atan((lr * omega - v * sin(beta)) / (v * cos(beta) - 0.5 * twr * omega));
-  const auto a_rr = atan((lr * omega - v * sin(beta)) / (v * cos(beta) + 0.5 * twr * omega));
+    atan((lf * omega + vy) / vx);
+  // const auto a_fr = a_fl;
+  const auto a_rl = atan((lr * omega - vy) / vx);
+  // const auto a_rr = a_rl;
 
   // lateral tyre force Fy (eq. 5)
   const auto Fy_fl = mu * Fz_fl * (1.0 + eps_f * Fz_fl / Fz0_f) *
     sin(Cf * atan(Bf * a_fl - Ef * (Bf * a_fl - atan(Bf * a_fl))));
-  const auto Fy_fr = mu * Fz_fr * (1.0 + eps_f * Fz_fr / Fz0_f) *
-    sin(Cf * atan(Bf * a_fr - Ef * (Bf * a_fr - atan(Bf * a_fr))));
+  // const auto Fy_fr = mu * Fz_fr * (1.0 + eps_f * Fz_fr / Fz0_f) *
+  //   sin(Cf * atan(Bf * a_fr - Ef * (Bf * a_fr - atan(Bf * a_fr))));
   const auto Fy_rl = mu * Fz_rl * (1.0 + eps_r * Fz_rl / Fz0_r) *
     sin(Cr * atan(Br * a_rl - Er * (Br * a_rl - atan(Br * a_rl))));
-  const auto Fy_rr = mu * Fz_rr * (1.0 + eps_r * Fz_rr / Fz0_r) *
-    sin(Cr * atan(Br * a_rr - Er * (Br * a_rr - atan(Br * a_rr))));
+  // const auto Fy_rr = mu * Fz_rr * (1.0 + eps_r * Fz_rr / Fz0_r) *
+  //   sin(Cr * atan(Br * a_rr - Er * (Br * a_rr - atan(Br * a_rr))));
 
   // dynamics (eq. 3a, 3b, 3c)
-  const auto v_dot = 1.0 / m *
-    ((Fx_rl + Fx_rr) * cos(beta) + (Fx_fl + Fx_fr) * cos(delta - beta) + (Fy_rl + Fy_rr) *
-    sin(beta) - (Fy_fl + Fy_fr) * sin(delta - beta) - 0.5 * cd * rho * A * v_sq * cos(beta));
-  const auto beta_dot = -omega + 1.0 / (m * v) *
-    (-(Fx_rl + Fx_rr) * sin(beta) + (Fx_fl + Fx_fr) * sin(delta - beta) + (Fy_rl + Fy_rr) * cos(
-      beta) + (Fy_fl + Fy_fr) * cos(delta - beta) + 0.5 * cd * rho * A * v_sq * sin(beta));
+  // const auto v_dot = 1.0 / m *
+  //   ((Fx_rl + Fx_rr) * cos(beta) + (Fx_fl + Fx_fr) * cos(delta - beta) + (Fy_rl + Fy_rr) *
+  //   sin(beta) - (Fy_fl + Fy_fr) * sin(delta - beta) - 0.5 * cd * rho * A * v_sq * cos(beta));
+  // const auto beta_dot = -omega + 1.0 / (m * v) *
+  //   (-(Fx_rl + Fx_rr) * sin(beta) + (Fx_fl + Fx_fr) * sin(delta - beta) + (Fy_rl + Fy_rr) * cos(
+  //     beta) + (Fy_fl + Fy_fr) * cos(delta - beta) + 0.5 * cd * rho * A * v_sq * sin(beta));
   const auto omega_dot = 1.0 / Jzz *
-    ((Fx_rr - Fx_rl) * twr / 2 - (Fy_rl + Fy_rr) * lr +
-    ((Fx_fr - Fx_fl) * cos(delta) + (Fy_fl - Fy_fr) * sin(delta)) * twf / 2.0 +
-    ((Fy_fl + Fy_fr) * cos(delta) + (Fx_fl + Fx_fr) * sin(delta)) * lf);
+    (-(2 * Fy_rl) * lr + ((2 * Fy_fl) * cos(delta) + (2 * Fx_fl) * sin(delta)) * lf);
 
-  // cg position
-  auto vx = v * cos(phi + beta);
-  auto vy = v * sin(phi + beta);
+  // dynamics (modified)
+  // body frame acceleration vx_dot, vy_dot
+  const auto vx_dot = 1.0 / m *
+    ((2 * Fx_rl) + (2 * Fx_fl) * cos(delta) - (2 * Fy_fl) * sin(delta) -
+    0.5 * cd * rho * A * v_sq) + omega * vy;
+  const auto vy_dot = 1.0 / m *
+    ((2 * Fy_rl) + (2 * Fy_fl) * cos(delta) + (2 * Fx_fl) * sin(delta)) -
+    omega * vx;
+
+  // global frame acceleration px_dot, py_dot
+  auto px_dot = vx * cos(phi) - vy * sin(phi);
+  auto py_dot = vx * sin(phi) + vy * cos(phi);
   auto phi_dot = omega;
+
   if (base_config_->modeling_config->use_frenet) {
     // convert to frenet frame
-    vx /= (1 - py * k);
-    phi_dot -= k * vx;
+    px_dot /= (1 - py * k);
+    phi_dot -= k * px_dot;
   }
 
-  const auto x_dot = vertcat(vx, vy, phi_dot, omega_dot, beta_dot, v_dot);
-  const auto Fx_ij = vertcat(Fx_fl, Fx_fr, Fx_rl, Fx_rr);
-  const auto Fy_ij = vertcat(Fy_fl, Fy_fr, Fy_rl, Fy_rr);
-  const auto Fz_ij = vertcat(Fz_fl, Fz_fr, Fz_rl, Fz_rr);
+  const auto x_dot = vertcat(px_dot, py_dot, phi_dot, vx_dot, vy_dot, omega_dot);
+  const auto Fx_ij = vertcat(Fx_fl, Fx_rl);
+  const auto Fy_ij = vertcat(Fy_fl, Fy_rl);
+  const auto Fz_ij = vertcat(Fz_fl, Fz_rl);
 
   dynamics_ = casadi::Function(
     "single_track_planar_model",

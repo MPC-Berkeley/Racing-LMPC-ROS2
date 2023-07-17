@@ -75,17 +75,25 @@ RacingMPC::RacingMPC(
   const auto P0 = X_ref_(XIndex::PX, Slice());
   const auto X0 = MX::vertcat({P0, MX::zeros(model_->nx() - 1, config_->N)});
 
-  // --- MPCC cost function ---
+  // --- MPC cost function ---
   auto cost = MX::zeros(1);
   const auto x0 = X_(Slice(), 0) * scale_x_ + X0(Slice(), 0);
   for (size_t i = 0; i < config_->N - 1; i++) {
     // xi start with 1 since x0 must equal to x_ic and there is nothing we can do about it
     if (i >= 1) {
       const auto xi = X_(Slice(), i) * scale_x_ + X0(Slice(), i);
-      // const auto xim1 = X_(Slice(), i - 1) * scale_x_ + X0(Slice(), i - 1);
       const auto d_px =
         utils::align_abscissa<MX>(xi(XIndex::PX), x0(XIndex::PX), total_length_) - x0(XIndex::PX);
-      const auto dv = xi(XIndex::V) - vel_ref_(i);
+      const auto dv = hypot(xi(XIndex::VX), xi(XIndex::VY)) - vel_ref_(i);
+      /*
+      const auto px_dot = (xi(XIndex::VX) * cos(xi(XIndex::YAW)) - xi(XIndex::VY) * sin(xi(XIndex::YAW))) /
+        (1 - xi(XIndex::PY) * curvatures_(i));
+      const auto px_dot = xi(XIndex::VX) * cos(xi(XIndex::YAW)) - xi(XIndex::VY) * sin(xi(XIndex::YAW)) /
+        (1 - xi(XIndex::PY) * curvatures_(i));
+      const auto py_dot = xi(XIndex::VX) * sin(xi(XIndex::YAW)) + xi(XIndex::VY) * cos(xi(XIndex::YAW));
+      const auto heading_diveation = atan2(py_dot, px_dot);
+      const auto beta_phi = atan2(py_dot, px_dot);
+      */
       cost += config_->q_contour * xi(XIndex::PY) * xi(XIndex::PY) +
         config_->q_heading * xi(XIndex::YAW) * xi(XIndex::YAW) +
         config_->q_vel * dv * dv;
@@ -97,7 +105,13 @@ RacingMPC::RacingMPC(
     }
   }
   const auto xN = X_(Slice(), config_->N - 1) * scale_x_ + X0(Slice(), config_->N - 1);
-  const auto dv = xN(XIndex::V) - vel_ref_(config_->N - 1);
+  const auto dv = hypot(xN(XIndex::VX), xN(XIndex::VY)) - vel_ref_(config_->N - 1);
+  /*
+  const auto px_dot = xN(XIndex::VX) * cos(xN(XIndex::YAW)) - xN(XIndex::VY) * sin(xN(XIndex::YAW)) /
+    (1 - xN(XIndex::PY) * curvatures_(config_->N - 1));
+  const auto py_dot = xN(XIndex::VX) * sin(xN(XIndex::YAW)) + xN(XIndex::VY) * cos(xN(XIndex::YAW));
+  const auto heading_diveation = atan2(py_dot, px_dot);
+  */
   cost += config_->q_contour * xN(XIndex::PY) * xN(XIndex::PY) * 10.0 +
     config_->q_heading * xN(XIndex::YAW) * xN(XIndex::YAW) * 10.0 +
     config_->q_vel * dv * dv * 10.0;
@@ -254,13 +268,13 @@ void RacingMPC::create_warm_start(const casadi::DMDict & in, casadi::DMDict & ou
 
   X_ref(Slice(0, 2), Slice()) = P0;
   X_ref(XIndex::YAW, Slice()) = Yaws;
-  X_ref(XIndex::V, Slice()) = DM::linspace(current_vel, target_vel, config_->N);
-  X_ref(XIndex::V_YAW, Slice()) = X_ref(XIndex::V, Slice()) / Radii;
+  X_ref(XIndex::VX, Slice()) = DM::linspace(current_vel, target_vel, config_->N);
+  X_ref(XIndex::VYAW, Slice()) = X_ref(XIndex::VX, Slice()) / Radii;
 
   for (size_t i = 0; i < config_->N - 1; i++) {
     // fill control force with 2nd Newton's law
-    const auto v0 = X_ref(XIndex::V, i);
-    const auto v1 = X_ref(XIndex::V, i + 1);
+    const auto v0 = X_ref(XIndex::VX, i);
+    const auto v1 = X_ref(XIndex::VX, i + 1);
     const auto d = DM::norm_2(P0(Slice(), i) - P0(Slice(), i + 1));
     const auto a = static_cast<double>((pow(v1, 2) - pow(v0, 2)) / (2 * d));
     const auto f = model_->get_base_config().chassis_config->total_mass * a;

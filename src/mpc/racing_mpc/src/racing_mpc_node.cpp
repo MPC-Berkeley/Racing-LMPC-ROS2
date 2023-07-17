@@ -99,8 +99,9 @@ void RacingMPCNode::on_step_timer()
   // prepare the mpc inputs
   const auto & p = vehicle_state_msg_->p;
   const auto & pt = vehicle_state_msg_->pt;
+  const auto & v = vehicle_state_msg_->v;
   const auto x_ic = DM{
-    p.s, p.x_tran, p.e_psi, pt.de_psi, atan2(pt.dx_tran, pt.ds), std::hypot(pt.dx_tran, pt.ds)
+    p.s, p.x_tran, p.e_psi, v.v_long, v.v_tran, pt.de_psi
   };
   sol_in_["x_ic"] = x_ic;
   // std::cout << "x_ic: " << x_ic << std::endl;
@@ -110,11 +111,11 @@ void RacingMPCNode::on_step_timer()
     last_x_ = DM::zeros(mpc_->get_model().nx(), N);
     last_u_ = DM::zeros(mpc_->get_model().nu(), N - 1);
     last_x_(XIndex::PX, 0) = x_ic(XIndex::PX);
-    const auto v0 = x_ic(XIndex::V);
-    last_x_(XIndex::V, 0) = v0;
+    const auto v0 = x_ic(XIndex::VX);
+    last_x_(XIndex::VX, 0) = v0;
     for (int i = 1; i < N; i++) {
       last_x_(XIndex::PX, i) = last_x_(XIndex::PX, i - 1) + dt_ * v0;
-      last_x_(XIndex::V, i) = v0;
+      last_x_(XIndex::VX, i) = v0;
     }
     sol_in_["X_optm_ref"] = last_x_;
     sol_in_["U_optm_ref"] = last_u_;

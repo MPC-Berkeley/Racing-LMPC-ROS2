@@ -65,7 +65,7 @@ TEST(SingleTrackPlanarModelTest, TestSingleTrackDynamics) {
     base_config,
     config);
 
-  const auto x = casadi::DM{0.0, 0.0, 0.0, 0.1, 0.02, 40.0};
+  const auto x = casadi::DM{0.0, 0.0, 0.0, 40.0, 1.0, 0.1};
   const auto u = casadi::DM{500.0, 0.0, 0.1};
   const auto in = casadi::DMDict{
     {"x", x},

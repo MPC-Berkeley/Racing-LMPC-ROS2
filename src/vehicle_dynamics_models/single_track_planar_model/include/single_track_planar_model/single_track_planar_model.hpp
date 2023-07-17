@@ -43,12 +43,12 @@ struct SingleTrackPlanarModelConfig
 
 enum XIndex : casadi_int
 {
-  PX = 0,
-  PY = 1,
-  YAW = 2,
-  V_YAW = 3,
-  SLIP = 4,
-  V = 5
+  PX = 0,  // global or frenet x position
+  PY = 1,  // global or frenet y position
+  YAW = 2,  // global or frenet yaw
+  VX = 3,  // body longitudinal velocity
+  VY = 4,  // body lateral velocity
+  VYAW = 5  // global or frenet yaw rate
 };
 
 enum UIndex : casadi_int
