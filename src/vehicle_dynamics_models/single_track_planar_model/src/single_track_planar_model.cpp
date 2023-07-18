@@ -88,13 +88,14 @@ void SingleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casa
 
   // dynamics constraint
   auto xip1_temp = casadi::MX(xip1);
-  xip1_temp(XIndex::YAW) =
-    lmpc::utils::align_yaw<casadi::MX>(xip1_temp(XIndex::YAW), x(XIndex::YAW));
   if (base_config_->modeling_config->use_frenet) {
     xip1_temp(XIndex::PX) =
       lmpc::utils::align_abscissa<casadi::MX>(
       xip1_temp(XIndex::PX), x(XIndex::PX),
       in.at("track_length"));
+  } else {
+    xip1_temp(XIndex::YAW) =
+      lmpc::utils::align_yaw<casadi::MX>(xip1_temp(XIndex::YAW), x(XIndex::YAW));
   }
 
   const auto out1 = dynamics_({{"x", x}, {"u", u}, {"k", k}});

@@ -31,6 +31,7 @@ set(${PROJECT_NAME}_SRC
   src/lookup.cpp
   src/logging.cpp
   src/primitives.cpp
+  src/utils.cpp
 )
 
 set(${PROJECT_NAME}_HEADER

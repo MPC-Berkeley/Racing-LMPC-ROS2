@@ -267,6 +267,9 @@ void RacingSimulatorNode::on_static_vis_timer()
 
 void RacingSimulatorNode::on_state_repub_timer()
 {
+  RCLCPP_INFO(
+    this->get_logger(), "No actuation message received for %f seconds, republishing the state.",
+    config_->repeat_state_dt);
   const auto now = this->now();
   vehicle_state_msg_->header.stamp = now;
   vehicle_state_pub_->publish(*vehicle_state_msg_);

@@ -56,7 +56,10 @@ RacingSimulator::RacingSimulator(
   const auto k3 = out3.at("x_dot");
   const auto out4 = model_->dynamics()({{"x", x_sym + dt_ * k3}, {"u", u_sym}, {"k", k}});
   const auto k4 = out4.at("x_dot");
-  const auto out = x_sym + dt_ / 6 * (k1 + 2 * k2 + 2 * k3 + k4);
+  auto out = x_sym + dt_ / 6 * (k1 + 2 * k2 + 2 * k3 + k4);
+  out(XIndex::PX) = utils::align_abscissa<casadi::MX>(
+    out(XIndex::PX),
+    track_->total_length() / 2.0, track_->total_length());
   discrete_dynamics_ = casadi::Function("discrete_dynamics", {x_sym, u_sym}, {out, k1});
 }
 

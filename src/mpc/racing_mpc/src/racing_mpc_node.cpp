@@ -14,6 +14,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <lmpc_utils/ros_param_helper.hpp>
+#include <lmpc_utils/utils.hpp>
 #include <base_vehicle_model/ros_param_loader.hpp>
 #include <single_track_planar_model/ros_param_loader.hpp>
 
@@ -122,6 +123,11 @@ void RacingMPCNode::on_step_timer()
     sol_in_["T_optm_ref"] = sol_in_.at("T_ref");
     sol_in_["X_ref"] = last_x_;
     sol_in_["U_ref"] = last_u_;
+  } else {
+    sol_in_["X_ref"] = last_x_;
+    sol_in_["U_ref"] = last_u_;
+    sol_in_["X_optm_ref"] = last_x_;
+    sol_in_["U_optm_ref"] = last_u_;
   }
 
   // prepare the reference trajectory
@@ -195,10 +201,6 @@ void RacingMPCNode::on_step_timer()
   last_u_ = DM::horzcat({last_u_(Slice(), Slice(1, N - 1)), last_u_(Slice(), Slice(N - 2))});
   last_x_(Slice(), -1) =
     discrete_dynamics_(casadi::DMVector{last_x_(Slice(), -2), last_u_(Slice(), -1)})[0];
-  sol_in_["X_ref"] = last_x_;
-  sol_in_["U_ref"] = last_u_;
-  sol_in_["X_optm_ref"] = last_x_;
-  sol_in_["U_optm_ref"] = last_u_;
 }
 }  // namespace racing_mpc
 }  // namespace mpc

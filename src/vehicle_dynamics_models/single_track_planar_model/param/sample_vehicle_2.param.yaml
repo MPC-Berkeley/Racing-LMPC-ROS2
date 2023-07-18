@@ -6,5 +6,5 @@
       td: 0.1 # time constant for throttle
       tb: 0.5 # time constant for brake
       v_max: 25.0 # max velocity constraint
-      p_max: 7000.0 # max engine power
+      p_max: 6000.0 # max engine power
       mu: 1.5 # track - tyre friction coefficient
