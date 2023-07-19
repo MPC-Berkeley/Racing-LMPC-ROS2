@@ -45,6 +45,16 @@ RacingSimulatorConfig::SharedPtr load_parameters(rclcpp::Node * node)
       return lmpc::utils::declare_parameter<bool>(node, name);
     };
 
+  const auto step_mode_str = declare_string("racing_simulator.step_mode");
+  RacingSimulatorStepMode step_mode;
+  if (step_mode_str == "step") {
+    step_mode = RacingSimulatorStepMode::STEP;
+  } else if (step_mode_str == "continuous") {
+    step_mode = RacingSimulatorStepMode::CONTINUOUS;
+  } else {
+    throw std::invalid_argument("Invalid step mode: " + step_mode_str);
+  }
+
   return std::make_shared<RacingSimulatorConfig>(
     RacingSimulatorConfig{
           declare_double("racing_simulator.dt"),
@@ -55,6 +65,7 @@ RacingSimulatorConfig::SharedPtr load_parameters(rclcpp::Node * node)
           declare_bool("racing_simulator.visualize_vehicle"),
           declare_bool("racing_simulator.use_frenet"),
           declare_string("racing_simulator.race_track_file_path"),
+          step_mode,
           casadi::DM(declare_vec("racing_simulator.x0"))
         }
   );

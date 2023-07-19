@@ -27,6 +27,12 @@ namespace simulation
 {
 namespace racing_simulator
 {
+enum RacingSimulatorStepMode
+{
+  STEP,
+  CONTINUOUS
+};
+
 struct RacingSimulatorConfig
 {
   typedef std::shared_ptr<RacingSimulatorConfig> SharedPtr;
@@ -38,6 +44,7 @@ struct RacingSimulatorConfig
   bool visualize_vehicle = true;
   bool use_frenet = false;
   std::string race_track_file_path = "";
+  RacingSimulatorStepMode step_mode = RacingSimulatorStepMode::STEP;
   casadi::DM x0;
 };
 }  // namespace racing_simulator

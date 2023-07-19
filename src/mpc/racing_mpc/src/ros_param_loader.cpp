@@ -32,6 +32,9 @@ RacingMPCConfig::SharedPtr load_parameters(rclcpp::Node * node)
   auto declare_double = [&](const char * name) {
       return lmpc::utils::declare_parameter<double>(node, name);
     };
+  auto declare_string = [&](const char * name) {
+      return lmpc::utils::declare_parameter<std::string>(node, name);
+    };
   auto declare_vec = [&](const char * name) {
       return lmpc::utils::declare_parameter<std::vector<double>>(node, name);
     };
@@ -42,6 +45,16 @@ RacingMPCConfig::SharedPtr load_parameters(rclcpp::Node * node)
       return lmpc::utils::declare_parameter<bool>(node, name);
     };
 
+  const auto step_mode_str = declare_string("racing_mpc.step_mode");
+  RacingMPCStepMode step_mode;
+  if (step_mode_str == "step") {
+    step_mode = RacingMPCStepMode::STEP;
+  } else if (step_mode_str == "continuous") {
+    step_mode = RacingMPCStepMode::CONTINUOUS;
+  } else {
+    throw std::invalid_argument("Invalid step mode: " + step_mode_str);
+  }
+
   return std::make_shared<RacingMPCConfig>(
     RacingMPCConfig{
           declare_double("racing_mpc.max_cpu_time"),
@@ -51,6 +64,7 @@ RacingMPCConfig::SharedPtr load_parameters(rclcpp::Node * node)
           declare_double("racing_mpc.margin"),
           declare_double("racing_mpc.average_track_width"),
           declare_bool("racing_mpc.verbose"),
+          step_mode,
           casadi::DM(declare_double("racing_mpc.q_contour")),
           casadi::DM(declare_double("racing_mpc.q_heading")),
           casadi::DM(declare_double("racing_mpc.q_vel")),

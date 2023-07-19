@@ -70,6 +70,9 @@ protected:
   // republish vehicle state (TODO(haoru): to be replaced by a service)
   rclcpp::TimerBase::SharedPtr step_timer_;
 
+  // callback groups
+  rclcpp::CallbackGroup::SharedPtr state_callback_group_;
+
   // callbacks
   void on_new_state(const mpclab_msgs::msg::VehicleStateMsg::SharedPtr msg);
   void on_step_timer();

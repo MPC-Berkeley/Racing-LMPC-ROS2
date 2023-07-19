@@ -27,6 +27,12 @@ namespace mpc
 {
 namespace racing_mpc
 {
+enum RacingMPCStepMode
+{
+  STEP,
+  CONTINUOUS
+};
+
 struct RacingMPCConfig
 {
   typedef std::shared_ptr<RacingMPCConfig> SharedPtr;
@@ -41,6 +47,7 @@ struct RacingMPCConfig
   double margin;  // safety margin to obstacle (m)
   double average_track_width;  // averange track width for scaling the variables
   bool verbose;  // print debug
+  RacingMPCStepMode step_mode = RacingMPCStepMode::STEP;
 
   // MPC settings
   casadi::DM q_contour;  // contour (lateral error) cost-to-go

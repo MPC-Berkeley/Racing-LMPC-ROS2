@@ -15,7 +15,6 @@
 
   <depend>rclcpp</depend>
   <depend>backward_ros</depend>
-  <depend>rclcpp_components</depend>
   <depend>nav_msgs</depend>
 
   <depend>lmpc_utils</depend>

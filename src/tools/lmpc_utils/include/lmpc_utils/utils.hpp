@@ -79,7 +79,7 @@ casadi::Function c2d_function(const casadi_int & nx, const casadi_int & nu, cons
  * @param nx size of state
  * @param nu size of control
  * @param dt time step
- * @param dynamics continuious dynamics function
+ * @param dynamics continuous dynamics function
  * @return casadi::Function with inputs `x`, `u` and outputs next state `xip1`.
  */
 casadi::Function rk4_function(
@@ -91,7 +91,7 @@ casadi::Function rk4_function(
  *
  * @param nx size of state
  * @param nu size of control
- * @param dynamics continuious dynamics function
+ * @param dynamics continuous dynamics function
  * @return casadi::Function with inputs `x`, `u` and `dt` and outputs next state `xip1`.
  */
 casadi::Function rk4_function(

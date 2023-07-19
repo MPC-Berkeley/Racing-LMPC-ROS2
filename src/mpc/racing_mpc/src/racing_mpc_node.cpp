@@ -72,18 +72,31 @@ RacingMPCNode::RacingMPCNode(const rclcpp::NodeOptions & options)
   ref_vis_pub_ = this->create_publisher<nav_msgs::msg::Path>("ref_visualization", 1);
 
   // initialize the subscribers
+  // state subscription is on a separate callback group
+  // Together with the multi-threaded executor (defined in main()), this allows the state
+  // subscription to be processed in parallel with the mpc computation in continuous mode
+  state_callback_group_ = this->create_callback_group(
+    rclcpp::CallbackGroupType::MutuallyExclusive);
+  rclcpp::SubscriptionOptions sub_options;
+  sub_options.callback_group = state_callback_group_;
   vehicle_state_sub_ = this->create_subscription<mpclab_msgs::msg::VehicleStateMsg>(
-    "vehicle_state", 1, std::bind(&RacingMPCNode::on_new_state, this, std::placeholders::_1));
+    "vehicle_state", 1, std::bind(
+      &RacingMPCNode::on_new_state, this,
+      std::placeholders::_1), sub_options);
 
-  // initialize the timers
-  // step_timer_ = this->create_wall_timer(
-  //   std::chrono::duration<double>(dt_), std::bind(&RacingMPCNode::on_step_timer, this));
+  if (config_->step_mode == RacingMPCStepMode::CONTINUOUS) {
+    // initialize the timers
+    step_timer_ = this->create_wall_timer(
+      std::chrono::duration<double>(dt_), std::bind(&RacingMPCNode::on_step_timer, this));
+  }
 }
 
 void RacingMPCNode::on_new_state(const mpclab_msgs::msg::VehicleStateMsg::SharedPtr msg)
 {
   vehicle_state_msg_ = msg;
-  on_step_timer();
+  if (config_->step_mode == RacingMPCStepMode::STEP) {
+    on_step_timer();
+  }
 }
 
 void RacingMPCNode::on_step_timer()
@@ -92,6 +105,7 @@ void RacingMPCNode::on_step_timer()
   if (!vehicle_state_msg_) {
     return;
   }
+  const auto start = this->now();
 
   using casadi::DM;
   using casadi::Slice;
@@ -104,7 +118,6 @@ void RacingMPCNode::on_step_timer()
   const auto x_ic = DM{
     p.s, p.x_tran, p.e_psi, v.v_long, v.v_tran, w.w_psi
   };
-  sol_in_["x_ic"] = x_ic;
   // std::cout << "x_ic: " << x_ic << std::endl;
 
   // if the mpc is not solved, pass the initial guess
@@ -123,7 +136,20 @@ void RacingMPCNode::on_step_timer()
     sol_in_["T_optm_ref"] = sol_in_.at("T_ref");
     sol_in_["X_ref"] = last_x_;
     sol_in_["U_ref"] = last_u_;
+    sol_in_["x_ic"] = x_ic;
   } else {
+    // prepare the next reference
+    if (config_->step_mode == RacingMPCStepMode::CONTINUOUS) {
+      sol_in_["x_ic"] = discrete_dynamics_(casadi::DMVector{x_ic, last_u_(Slice(), 0)})[0];
+    } else if (config_->step_mode == RacingMPCStepMode::STEP) {
+      sol_in_["x_ic"] = x_ic;
+    } else {
+      throw std::runtime_error("Unknown RacingMPCStepMode");
+    }
+    last_x_ = DM::horzcat({last_x_(Slice(), Slice(1, N)), DM::zeros(model_->nx(), 1)});
+    last_u_ = DM::horzcat({last_u_(Slice(), Slice(1, N - 1)), last_u_(Slice(), Slice(N - 2))});
+    last_x_(Slice(), -1) =
+      discrete_dynamics_(casadi::DMVector{last_x_(Slice(), -2), last_u_(Slice(), -1)})[0];
     sol_in_["X_ref"] = last_x_;
     sol_in_["U_ref"] = last_u_;
     sol_in_["X_optm_ref"] = last_x_;
@@ -143,11 +169,12 @@ void RacingMPCNode::on_step_timer()
 
   // solve the mpc
   auto sol_out = casadi::DMDict{};
-  const auto start = std::chrono::high_resolution_clock::now();
+  const auto mpc_start = std::chrono::high_resolution_clock::now();
   mpc_->solve(sol_in_, sol_out);
-  const auto stop = std::chrono::high_resolution_clock::now();
-  const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
-  std::cout << "MPC Execution Time: " << duration.count() << "ms" << std::endl;
+  const auto mpc_stop = std::chrono::high_resolution_clock::now();
+  const auto mpc_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+    mpc_stop - mpc_start);
+  std::cout << "MPC Execution Time: " << mpc_duration.count() << "ms" << std::endl;
   // if (mpc_->solved()) {
   //   sol_in_.erase("X_optm_ref");
   //   sol_in_.erase("U_optm_ref");
@@ -159,6 +186,18 @@ void RacingMPCNode::on_step_timer()
   auto last_x_global = last_x_;
   last_x_global(Slice(XIndex::PX, XIndex::YAW + 1), Slice()) =
     f2g_(last_x_(Slice(XIndex::PX, XIndex::YAW + 1), Slice()))[0];
+
+  // sleep if the execution time is less than dt
+  if (config_->step_mode == RacingMPCStepMode::CONTINUOUS) {
+    const auto end = this->now();
+    const auto duration = (end - start).seconds();
+    if (duration < dt_) {
+      rclcpp::sleep_for(
+        std::chrono::duration_cast<std::chrono::nanoseconds>(
+          std::chrono::duration<double>(
+            dt_ - duration)));
+    }
+  }
 
   // publish the actuation message
   const auto now = this->now();
@@ -195,16 +234,19 @@ void RacingMPCNode::on_step_timer()
   }
   mpc_vis_pub_->publish(mpc_vis_msg);
   // std::cout << last_x_ << std::endl;
-
-  // prepare the next reference
-  last_x_ = DM::horzcat({last_x_(Slice(), Slice(1, N)), DM::zeros(model_->nx(), 1)});
-  last_u_ = DM::horzcat({last_u_(Slice(), Slice(1, N - 1)), last_u_(Slice(), Slice(N - 2))});
-  last_x_(Slice(), -1) =
-    discrete_dynamics_(casadi::DMVector{last_x_(Slice(), -2), last_u_(Slice(), -1)})[0];
 }
 }  // namespace racing_mpc
 }  // namespace mpc
 }  // namespace lmpc
 
-#include "rclcpp_components/register_node_macro.hpp"
-RCLCPP_COMPONENTS_REGISTER_NODE(lmpc::mpc::racing_mpc::RacingMPCNode)
+int main(int argc, char * argv[])
+{
+  rclcpp::init(argc, argv);
+  rclcpp::executors::MultiThreadedExecutor executor;
+  rclcpp::NodeOptions options{};
+  auto node = std::make_shared<lmpc::mpc::racing_mpc::RacingMPCNode>(options);
+  executor.add_node(node);
+  executor.spin();
+  rclcpp::shutdown();
+  return 0;
+}

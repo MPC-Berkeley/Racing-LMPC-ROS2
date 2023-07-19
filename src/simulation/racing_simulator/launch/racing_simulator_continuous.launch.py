@@ -39,7 +39,7 @@ def get_sim_time_launch_arg():
 def generate_launch_description():
     declare_use_sim_time_cmd, use_sim_time = get_sim_time_launch_arg()
     sim_config = get_share_file(
-        "racing_simulator", "param", "sample_simulator.param.yaml")
+        "racing_simulator", "param", "continuous_simulator.param.yaml")
     dt_model_config = (
         get_share_file("single_track_planar_model"),
         "/param/",
@@ -59,7 +59,7 @@ def generate_launch_description():
             Node(
                 package="racing_simulator",
                 executable="racing_simulator_node_exe",
-                name="racing_simulator_node",
+                name="continuous_racing_simulator_node",
                 output="screen",
                 parameters=[
                     sim_config,

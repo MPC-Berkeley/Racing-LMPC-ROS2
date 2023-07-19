@@ -86,14 +86,17 @@ protected:
   // timers
   // a slow rate timer to visualize track boundaries and abscissa
   rclcpp::TimerBase::SharedPtr static_vis_timer_;
-  // republish vehicle state (TODO(haoru): to be replaced by a service)
+  // step mode: republish vehicle state (TODO(haoru): to be replaced by a service)
   rclcpp::TimerBase::SharedPtr state_repub_timer_;
+  // continuous mode: stream vehicle state
+  rclcpp::TimerBase::SharedPtr sim_step_timer_;
 
   // callbacks
   void on_actuation(const mpclab_msgs::msg::VehicleActuationMsg::SharedPtr msg);
   void on_reset_state(const mpclab_msgs::msg::VehicleStateMsg::SharedPtr msg);
   void on_static_vis_timer();
   void on_state_repub_timer();
+  void on_state_update();
 
   // helper functions
   Polygon build_polygon(const casadi::DM & pts);

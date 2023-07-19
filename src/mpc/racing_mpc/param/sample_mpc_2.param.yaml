@@ -1,16 +1,16 @@
 /**:
   ros__parameters:
     racing_mpc:
-      max_cpu_time: 0.085
+      max_cpu_time: 0.08
       max_iter: 100
-      tol: 1.0
+      tol: 1e-3
       n: 10
       margin: 0.0
       average_track_width: 4.0
       verbose: false
 
       q_contour: 1.0
-      q_heading: 1.0
+      q_heading: 0.5
       q_boundary: 50.0 # track boundary slack cost. 0 to disable (hard constraint)
       q_vel: 0.1
       r: [
@@ -23,3 +23,5 @@
       x_min: [-.inf, -.inf, -1.5708, 0.1, -15.0, -2.0]
       u_max: [1000.0, 10.0, 0.314159]
       u_min: [-10.0, -2500.0, -0.314159]
+
+      step_mode: "continuous"

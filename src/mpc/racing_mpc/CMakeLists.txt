@@ -48,9 +48,8 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
 
 target_link_libraries(${PROJECT_NAME} casadi)
 
-rclcpp_components_register_node(${PROJECT_NAME}
-  PLUGIN "lmpc::mpc::racing_mpc::RacingMPCNode"
-  EXECUTABLE ${PROJECT_NAME}_node_exe
+ament_auto_add_executable(${PROJECT_NAME}_node_exe
+  ${${PROJECT_NAME}_SRC}
 )
 
 if(BUILD_TESTING)

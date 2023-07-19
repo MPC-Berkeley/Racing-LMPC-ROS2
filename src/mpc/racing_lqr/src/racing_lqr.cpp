@@ -57,14 +57,14 @@ void RacingLQR::solve(const casadi::DMDict & in, casadi::DMDict & out)
   auto As = casadi::DMVector(config_->N - 1, DM::zeros(model_->nx(), model_->nx()));
   auto Bs = casadi::DMVector(config_->N - 1, DM::zeros(model_->nx(), model_->nu()));
   for (int k = config_->N - 2; k >= 0; k--) {
-    // obtain linearlized continuious dynamics
+    // obtain linearlized continuous dynamics
     casadi::DMDict dyn_jac;
     model_->dynamics_jacobian(
       {{"x", X_ref(Slice(), k)}, {"u", U_ref(Slice(), k)}}, dyn_jac);
     const auto & Ac = dyn_jac.at("A");
     const auto & Bc = dyn_jac.at("B");
 
-    // convert continuious dynamics to discrete
+    // convert continuous dynamics to discrete
     const auto dyn_d = c2d_(casadi::DMDict{{"Ac", Ac}, {"Bc", Bc}});
     As[k] = dyn_d.at("A");
     Bs[k] = dyn_d.at("B");
