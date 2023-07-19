@@ -64,7 +64,6 @@ RacingMPC::RacingMPC(
   const auto s_opts = casadi::Dict{
     {"max_cpu_time", config_->max_cpu_time},
     {"tol", config_->tol},
-    {"constr_viol_tol", config_->constr_viol_tol},
     {"print_level", config_->verbose ? 5 : 0},
     {"max_iter", static_cast<casadi_int>(config_->max_iter)}
   };
@@ -87,8 +86,6 @@ RacingMPC::RacingMPC(
       const auto dv = hypot(xi(XIndex::VX), xi(XIndex::VY)) - vel_ref_(i);
       /*
       const auto px_dot = (xi(XIndex::VX) * cos(xi(XIndex::YAW)) - xi(XIndex::VY) * sin(xi(XIndex::YAW))) /
-        (1 - xi(XIndex::PY) * curvatures_(i));
-      const auto px_dot = xi(XIndex::VX) * cos(xi(XIndex::YAW)) - xi(XIndex::VY) * sin(xi(XIndex::YAW)) /
         (1 - xi(XIndex::PY) * curvatures_(i));
       const auto py_dot = xi(XIndex::VX) * sin(xi(XIndex::YAW)) + xi(XIndex::VY) * cos(xi(XIndex::YAW));
       const auto heading_diveation = atan2(py_dot, px_dot);

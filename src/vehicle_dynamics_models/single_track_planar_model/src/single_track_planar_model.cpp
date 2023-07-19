@@ -77,7 +77,7 @@ void SingleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casa
   const auto & delta = u(UIndex::STEER);
 
   const auto & delta_max = get_base_config().steer_config->max_steer;
-  const auto & mu = get_config().mu;
+  // const auto & mu = get_config().mu;
   const auto & P_max = get_config().P_max;
   const auto & Fd_max = get_config().Fd_max;
   const auto & Fb_max = get_config().Fb_max;
@@ -113,7 +113,8 @@ void SingleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casa
   // const auto Fy_ij = out1.at("Fy_ij");
   // const auto Fz_ij = out1.at("Fz_ij");
   // for (int i = 0; i < 2; i++) {
-  //   opti.subject_to(pow(Fx_ij(i) / (mu * Fz_ij(i)), 2) + pow(Fy_ij(i) / (mu * Fz_ij(i)), 2) <= 1);
+  //   opti.subject_to(pow(Fx_ij(i) / (mu * Fz_ij(i)), 2) +
+  //   pow(Fy_ij(i) / (mu * Fz_ij(i)), 2) <= 1);
   // }
 
   // static actuator cconstraint

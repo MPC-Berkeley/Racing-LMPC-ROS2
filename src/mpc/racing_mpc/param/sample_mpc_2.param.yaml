@@ -2,10 +2,9 @@
   ros__parameters:
     racing_mpc:
       max_cpu_time: 0.085
-      max_iter: 50
-      tol: 0.01
-      constr_viol_tol: 0.01
-      n: 15
+      max_iter: 100
+      tol: 1.0
+      n: 10
       margin: -1.0
       average_track_width: 4.0
       verbose: false
