@@ -46,7 +46,10 @@ RacingSimulator::RacingSimulator(
   // build discrete dynamics
   const auto x_sym = casadi::MX::sym("x", model_->nx());
   const auto u_sym = casadi::MX::sym("u", model_->nu());
-  const auto k = track_->curvature_interpolation_function()(x_sym(XIndex::PX))[0];
+  casadi::MX k = 0.0;
+  if (model_->get_base_config().modeling_config->use_frenet) {
+    k = track_->curvature_interpolation_function()(x_sym(XIndex::PX))[0];
+  }
 
   const auto out1 = model_->dynamics()(casadi::MXDict{{"x", x_sym}, {"u", u_sym}, {"k", k}});
   const auto k1 = out1.at("x_dot");
@@ -57,9 +60,15 @@ RacingSimulator::RacingSimulator(
   const auto out4 = model_->dynamics()({{"x", x_sym + dt_ * k3}, {"u", u_sym}, {"k", k}});
   const auto k4 = out4.at("x_dot");
   auto out = x_sym + dt_ / 6 * (k1 + 2 * k2 + 2 * k3 + k4);
-  out(XIndex::PX) = utils::align_abscissa<casadi::MX>(
-    out(XIndex::PX),
-    track_->total_length() / 2.0, track_->total_length());
+
+  if (model_->get_base_config().modeling_config->use_frenet) {
+    out(XIndex::PX) = utils::align_abscissa<casadi::MX>(
+      out(XIndex::PX),
+      track_->total_length() / 2.0, track_->total_length());
+  } else {
+    out(XIndex::YAW) = utils::align_yaw<casadi::MX>(
+      out(XIndex::YAW), 0.0);
+  }
   discrete_dynamics_ = casadi::Function("discrete_dynamics", {x_sym, u_sym}, {out, k1});
 }
 

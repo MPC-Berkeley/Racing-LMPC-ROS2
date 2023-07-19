@@ -29,15 +29,19 @@ RacingSimulatorNode::RacingSimulatorNode(const rclcpp::NodeOptions & options)
 : rclcpp::Node("racing_simulator_node", options),
   config_(lmpc::simulation::racing_simulator::load_parameters(this)),
   track_(std::make_shared<RacingTrajectory>(config_->race_track_file_path)),
-  model_(std::make_shared<SingleTrackPlanarModel>(
-      lmpc::vehicle_model::base_vehicle_model::
-      load_parameters(this), lmpc::vehicle_model::single_track_planar_model::load_parameters(
-        this))),
-  simulator_(std::make_shared<RacingSimulator>(config_->dt, config_->x0, track_, model_)),
   sim_step_(0),
   lap_count_(0),
   tf_helper_(*this)
 {
+  // initialize simulator
+  auto base_model_config =
+    lmpc::vehicle_model::base_vehicle_model::load_parameters(this);
+  auto single_track_model_config =
+    lmpc::vehicle_model::single_track_planar_model::load_parameters(this);
+  base_model_config->modeling_config->use_frenet = config_->use_frenet;
+  model_ = std::make_shared<SingleTrackPlanarModel>(base_model_config, single_track_model_config);
+  simulator_ = std::make_shared<RacingSimulator>(config_->dt, config_->x0, track_, model_);
+
   // build the cg to base_link transform
   const auto & chassis_config = *(model_->get_base_config().chassis_config);
   const auto & lr = chassis_config.wheel_base * chassis_config.cg_ratio;
@@ -47,18 +51,28 @@ RacingSimulatorNode::RacingSimulatorNode(const rclcpp::NodeOptions & options)
 
   // initialize vehicle state message
   vehicle_state_msg_ = std::make_shared<mpclab_msgs::msg::VehicleStateMsg>();
-  update_vehicle_state_msg(config_->x0.get_elements());
+  const auto x0_vec = config_->x0.get_elements();
+  FrenetPose2D frenet_pose;
+  Pose2D global_pose;
+  if (config_->use_frenet) {
+    frenet_pose.position.s = x0_vec[XIndex::PX];
+    frenet_pose.position.t = x0_vec[XIndex::PY];
+    frenet_pose.yaw = x0_vec[XIndex::YAW];
+    track_->frenet_to_global(frenet_pose, global_pose);
+  } else {
+    global_pose.position.x = x0_vec[XIndex::PX];
+    global_pose.position.y = x0_vec[XIndex::PY];
+    global_pose.yaw = x0_vec[XIndex::YAW];
+    track_->global_to_frenet(global_pose, frenet_pose);
+  }
+  update_vehicle_state_msg(x0_vec, frenet_pose, global_pose);
 
   // initialize the map to base_link message
   if (config_->publish_tf) {
     map_to_baselink_msg_ = std::make_shared<TransformStamped>();
     map_to_baselink_msg_->header.frame_id = "map";
     map_to_baselink_msg_->child_frame_id = "base_link";
-    const auto x0_vec = config_->x0.get_elements();
-    Pose2D global_pose;
-    track_->frenet_to_global(
-      {x0_vec[XIndex::PX], x0_vec[XIndex::PY], x0_vec[XIndex::YAW]},
-      global_pose);
+
     tf2::Transform map_to_cg;
     map_to_cg.setOrigin(tf2::Vector3(global_pose.position.x, global_pose.position.y, 0.0));
     map_to_cg.setRotation(utils::TransformHelper::quaternion_from_heading(global_pose.yaw));
@@ -177,22 +191,33 @@ void RacingSimulatorNode::on_actuation(const mpclab_msgs::msg::VehicleActuationM
   // std::cout << "u: " << u << std::endl;
   // std::cout << "xip1: " << x << std::endl << std::endl;
 
-  // increment lap count if necessary
-  if (last_x[XIndex::PX] - x[XIndex::PX] > 0.5 * track_->total_length()) {
-    lap_count_++;
-  }
-
   // increment simulation step
   sim_step_++;
 
   // calculate the global pose
+  FrenetPose2D frenet_pose;
   Pose2D global_pose;
-  track_->frenet_to_global({x[XIndex::PX], x[XIndex::PY], x[XIndex::YAW]}, global_pose);
+  if (config_->use_frenet) {
+    frenet_pose.position.s = x[XIndex::PX];
+    frenet_pose.position.t = x[XIndex::PY];
+    frenet_pose.yaw = x[XIndex::YAW];
+    track_->frenet_to_global(frenet_pose, global_pose);
+  } else {
+    global_pose.position.x = x[XIndex::PX];
+    global_pose.position.y = x[XIndex::PY];
+    global_pose.yaw = x[XIndex::YAW];
+    track_->global_to_frenet(global_pose, frenet_pose);
+  }
+
+  // increment lap count if necessary
+  if (vehicle_state_msg_->p.s - frenet_pose.position.s > 0.5 * track_->total_length()) {
+    lap_count_++;
+  }
 
   // update the vehicle state message
   const auto now = this->now();
   vehicle_state_msg_->header.stamp = now;
-  update_vehicle_state_msg(x);
+  update_vehicle_state_msg(x, frenet_pose, global_pose);
 
   // publish tf
   if (config_->publish_tf) {
@@ -216,9 +241,9 @@ void RacingSimulatorNode::on_actuation(const mpclab_msgs::msg::VehicleActuationM
   odom.pose.pose.position.y = global_pose.position.y;
   odom.pose.pose.orientation =
     tf2::toMsg(utils::TransformHelper::quaternion_from_heading(global_pose.yaw));
-  odom.twist.twist.linear.x = x[XIndex::VX];
-  odom.twist.twist.linear.y = x[XIndex::VY];
-  odom.twist.twist.angular.z = x[XIndex::VYAW];
+  odom.twist.twist.linear.x = vehicle_state_msg_->v.v_long;
+  odom.twist.twist.linear.y = vehicle_state_msg_->v.v_tran;
+  odom.twist.twist.angular.z = vehicle_state_msg_->w.w_psi;
   vehicle_odom_pub_->publish(odom);
 
   // skip the repub timer
@@ -237,14 +262,26 @@ void RacingSimulatorNode::on_actuation(const mpclab_msgs::msg::VehicleActuationM
 void RacingSimulatorNode::on_reset_state(const mpclab_msgs::msg::VehicleStateMsg::SharedPtr msg)
 {
   // reset the simulator
-  const auto x = casadi::DM{
-    msg->p.s,
-    msg->p.x_tran,
-    msg->p.e_psi,
-    msg->v.v_long,
-    msg->v.v_tran,
-    msg->pt.de_psi
-  };
+  casadi::DM x;
+  if (config_->use_frenet) {
+    x = casadi::DM{
+      msg->p.s,
+      msg->p.x_tran,
+      msg->p.e_psi,
+      msg->v.v_long,
+      msg->v.v_tran,
+      msg->w.w_psi
+    };
+  } else {
+    x = casadi::DM{
+      msg->x.x,
+      msg->x.y,
+      msg->e.psi,
+      msg->v.v_long,
+      msg->v.v_tran,
+      msg->w.w_psi
+    };
+  }
   simulator_->set_state(x);
   // sim_step_ = 0;
   // lap_count_ = msg->lap_num;
@@ -296,41 +333,41 @@ Polygon RacingSimulatorNode::build_polygon(const casadi::DM & pts)
   return polygon;
 }
 
-void RacingSimulatorNode::update_vehicle_state_msg(const std::vector<double> & x)
+void RacingSimulatorNode::update_vehicle_state_msg(
+  const std::vector<double> & x,
+  const FrenetPose2D & frenet_pose,
+  const Pose2D & global_pose)
 {
-  // calculate the global pose
-  Pose2D global_pose;
-  track_->frenet_to_global({x[XIndex::PX], x[XIndex::PY], x[XIndex::YAW]}, global_pose);
-
   // calculate the frenet frame velocity
   const auto k = static_cast<double>(
-    track_->curvature_interpolation_function()(casadi::DM(x[XIndex::PX]))[0]);
+    track_->curvature_interpolation_function()(casadi::DM(frenet_pose.position.s))[0]);
   const auto vb = BodyVelocity2D{x[XIndex::VX], x[XIndex::VY]};
-  auto vs = transform_velocity(vb, x[XIndex::YAW]);
-  vs.x /= (1.0 - k * x[XIndex::PY]);
+  auto vs = transform_velocity(vb, frenet_pose.yaw);
+  vs.x /= (1.0 - k * frenet_pose.position.t);
 
   // build the updated state message
   vehicle_state_msg_->t = sim_step_ * config_->dt;
   vehicle_state_msg_->x.x = global_pose.position.x;
   vehicle_state_msg_->x.y = global_pose.position.y;
-  vehicle_state_msg_->e.phi = global_pose.yaw;
+  vehicle_state_msg_->e.psi = global_pose.yaw;
   // TODO(haoru): populate body accel
   vehicle_state_msg_->v.v_long = x[XIndex::VX];
   vehicle_state_msg_->v.v_tran = x[XIndex::VY];
-  vehicle_state_msg_->w.w_psi = x[XIndex::VYAW] + vs.x * k;
-  vehicle_state_msg_->p.s = x[XIndex::PX];
-  vehicle_state_msg_->p.x_tran = x[XIndex::PY];
-  vehicle_state_msg_->p.e_psi = x[XIndex::YAW];
+  vehicle_state_msg_->p.s = frenet_pose.position.s;
+  vehicle_state_msg_->p.x_tran = frenet_pose.position.t;
+  vehicle_state_msg_->p.e_psi = frenet_pose.yaw;
   vehicle_state_msg_->pt.ds = vs.x;
   vehicle_state_msg_->pt.dx_tran = vs.y;
-  vehicle_state_msg_->pt.de_psi = x[XIndex::VYAW];
+  vehicle_state_msg_->w.w_psi = x[XIndex::VYAW];
+  vehicle_state_msg_->pt.de_psi = x[XIndex::VYAW] - vs.x * k;
+
   if (vehicle_actuation_msg_) {
     vehicle_state_msg_->u = *vehicle_actuation_msg_;
   } else {
     vehicle_state_msg_->u.u_a = 0.0;
     vehicle_state_msg_->u.u_steer = 0.0;
   }
-  vehicle_state_msg_->lap_num = lap_count_ + x[XIndex::PX] / track_->total_length();
+  vehicle_state_msg_->lap_num = lap_count_ + frenet_pose.position.s / track_->total_length();
 }
 }  // namespace racing_simulator
 }  // namespace simulation

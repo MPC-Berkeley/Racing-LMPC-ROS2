@@ -99,10 +99,10 @@ void RacingMPCNode::on_step_timer()
 
   // prepare the mpc inputs
   const auto & p = vehicle_state_msg_->p;
-  const auto & pt = vehicle_state_msg_->pt;
   const auto & v = vehicle_state_msg_->v;
+  const auto & w = vehicle_state_msg_->w;
   const auto x_ic = DM{
-    p.s, p.x_tran, p.e_psi, v.v_long, v.v_tran, pt.de_psi
+    p.s, p.x_tran, p.e_psi, v.v_long, v.v_tran, w.w_psi
   };
   sol_in_["x_ic"] = x_ic;
   // std::cout << "x_ic: " << x_ic << std::endl;

@@ -109,12 +109,12 @@ void SingleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casa
   opti.subject_to(x + t / 6 * (k1 + 2 * k2 + 2 * k3 + k4) - xip1_temp == 0);
 
   // tyre constraints
-  const auto Fx_ij = out1.at("Fx_ij");
-  const auto Fy_ij = out1.at("Fy_ij");
-  const auto Fz_ij = out1.at("Fz_ij");
-  for (int i = 0; i < 2; i++) {
-    opti.subject_to(pow(Fx_ij(i) / (mu * Fz_ij(i)), 2) + pow(Fy_ij(i) / (mu * Fz_ij(i)), 2) <= 1);
-  }
+  // const auto Fx_ij = out1.at("Fx_ij");
+  // const auto Fy_ij = out1.at("Fy_ij");
+  // const auto Fz_ij = out1.at("Fz_ij");
+  // for (int i = 0; i < 2; i++) {
+  //   opti.subject_to(pow(Fx_ij(i) / (mu * Fz_ij(i)), 2) + pow(Fy_ij(i) / (mu * Fz_ij(i)), 2) <= 1);
+  // }
 
   // static actuator cconstraint
   opti.subject_to(v * fd <= P_max);

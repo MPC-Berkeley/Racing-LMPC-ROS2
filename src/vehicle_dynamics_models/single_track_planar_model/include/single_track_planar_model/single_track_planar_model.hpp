@@ -48,7 +48,7 @@ enum XIndex : casadi_int
   YAW = 2,  // global or frenet yaw
   VX = 3,  // body longitudinal velocity
   VY = 4,  // body lateral velocity
-  VYAW = 5  // global or frenet yaw rate
+  VYAW = 5  // body yaw rate
 };
 
 enum UIndex : casadi_int

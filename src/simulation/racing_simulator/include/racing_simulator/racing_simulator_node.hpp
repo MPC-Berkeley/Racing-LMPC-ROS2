@@ -97,7 +97,9 @@ protected:
 
   // helper functions
   Polygon build_polygon(const casadi::DM & pts);
-  void update_vehicle_state_msg(const std::vector<double> & x);
+  void update_vehicle_state_msg(
+    const std::vector<double> & x, const FrenetPose2D & frenet_pose,
+    const Pose2D & global_pose);
 };
 }  // namespace racing_simulator
 }  // namespace simulation
