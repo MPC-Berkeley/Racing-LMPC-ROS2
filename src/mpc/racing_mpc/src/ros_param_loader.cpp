@@ -54,6 +54,7 @@ RacingMPCConfig::SharedPtr load_parameters(rclcpp::Node * node)
           casadi::DM(declare_double("racing_mpc.q_contour")),
           casadi::DM(declare_double("racing_mpc.q_heading")),
           casadi::DM(declare_double("racing_mpc.q_vel")),
+          casadi::DM(declare_double("racing_mpc.q_boundary")),
           casadi::DM::reshape(casadi::DM(declare_vec("racing_mpc.r")), 3, 3),
           casadi::DM(declare_vec("racing_mpc.x_max")),
           casadi::DM(declare_vec("racing_mpc.x_min")),

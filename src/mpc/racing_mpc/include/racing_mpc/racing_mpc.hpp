@@ -69,6 +69,7 @@ protected:
   // optimization variables
   casadi::MX X_;
   casadi::MX U_;
+  casadi::MX boundary_slack_;
 
   // optimization parameters
   casadi::MX X_ref_;

@@ -68,14 +68,29 @@ RacingMPC::RacingMPC(
     {"max_iter", static_cast<casadi_int>(config_->max_iter)}
   };
   opti_.solver("ipopt", p_opts, s_opts);
+  auto cost = MX::zeros(1);
 
   // set up abscissa offsets
-  // this way abscissa is normalized to start from 0 in the NLP
   const auto P0 = X_ref_(XIndex::PX, Slice());
   // const auto X0 = MX::vertcat({P0, MX::zeros(model_->nx() - 1, config_->N)});
 
-  // --- MPC cost function ---
-  auto cost = MX::zeros(1);
+  // set up track boundary constraint
+  bool enable_boundary_slack = static_cast<double>(config_->q_boundary) > 0.0;
+  const auto PY = X_(XIndex::PY, Slice()) * scale_x_(XIndex::PY);
+  const auto margin = config_->margin + model_->get_base_config().chassis_config->b / 2.0;
+  if (enable_boundary_slack) {
+    boundary_slack_ = opti_.variable(1, config_->N);
+    opti_.subject_to(
+      opti_.bounded(
+        bound_right_ + margin - boundary_slack_, PY,
+        bound_left_ - margin + boundary_slack_));
+    opti_.subject_to(boundary_slack_ >= 0.0);
+    cost += MX::mtimes({boundary_slack_, config_->q_boundary, boundary_slack_.T()});
+  } else {
+    opti_.subject_to(opti_.bounded(bound_right_ + margin, PY, bound_left_ - margin));
+  }
+
+  // --- MPC stage cost ---
   const auto x0 = X_(Slice(), 0) * scale_x_;
   for (size_t i = 0; i < config_->N - 1; i++) {
     // xi start with 1 since x0 must equal to x_ic and there is nothing we can do about it
@@ -114,12 +129,6 @@ RacingMPC::RacingMPC(
     config_->q_vel * dv * dv * 10.0;
 
   opti_.minimize(cost);
-
-  // --- boundary constraints in frenet frame ---
-  // TODO(haoru): to ensure solvability, relax this constraint into the cost function
-  const auto PY = X_(XIndex::PY, Slice()) * scale_x_(XIndex::PY);
-  const auto margin = config_->margin + model_->get_base_config().chassis_config->b / 2.0;
-  opti_.subject_to(opti_.bounded(bound_right_ + margin, PY, bound_left_ - margin));
 
   // --- model constraints ---
   for (size_t i = 0; i < config_->N - 1; i++) {
