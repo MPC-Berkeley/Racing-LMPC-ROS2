@@ -45,6 +45,7 @@ RacingMPC::RacingMPC(
   U_ref_(opti_.parameter(model_->nu(), config_->N - 1)),
   T_ref_(opti_.parameter(1, config_->N - 1)),
   x_ic_(opti_.parameter(model_->nx(), 1)),
+  u_ic_(opti_.parameter(model_->nu(), 1)),
   bound_left_(opti_.parameter(1, config_->N)),
   bound_right_(opti_.parameter(1, config_->N)),
   total_length_(opti_.parameter(1, 1)),
@@ -152,6 +153,16 @@ RacingMPC::RacingMPC(
     }
     model_->add_nlp_constraints(opti_, constraint_in);
 
+    // regulate against last control input
+    if (i == 0) {
+      casadi::MXDict constraint_in_0 = {
+        {"u", u_ic_},
+        {"uip1", ui},
+        {"t", ti}
+      };
+      model_->add_nlp_constraints(opti_, constraint_in_0);
+    }
+
     // primal bounds
     opti_.subject_to(opti_.bounded(config_->x_min, xi, config_->x_max));
     opti_.subject_to(opti_.bounded(config_->u_min, ui, config_->u_max));
@@ -174,6 +185,7 @@ void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out)
 
   const auto & total_length = in.at("total_length");
   const auto & x_ic = in.at("x_ic");
+  const auto & u_ic = in.at("u_ic");
   auto X_ref = in.at("X_ref");
   X_ref(XIndex::PX, Slice()) = align_abscissa_(
     casadi::DMDict{{"abscissa_1", X_ref(XIndex::PX, Slice())},
@@ -227,6 +239,7 @@ void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out)
 
   // starting state must match
   opti_.set_value(x_ic_, x_ic);
+  opti_.set_value(u_ic_, u_ic);
 
   // initialize other parameters
   opti_.set_value(X_ref_, X_ref);

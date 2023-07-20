@@ -76,6 +76,7 @@ protected:
   casadi::MX U_ref_;
   casadi::MX T_ref_;
   casadi::MX x_ic_;
+  casadi::MX u_ic_;
   casadi::MX bound_left_;
   casadi::MX bound_right_;
   casadi::MX total_length_;

@@ -64,66 +64,67 @@ void SingleTrackPlanarModel::dynamics_jacobian(const casadi::DMDict & in, casadi
 
 void SingleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casadi::MXDict & in)
 {
-  const auto & x = in.at("x");
   const auto & u = in.at("u");
-  const auto & xip1 = in.at("xip1");
-  const auto & t = in.at("t");
-  const auto k =
-    base_config_->modeling_config->use_frenet ? in.at("k") : casadi::MX::sym("k", 1, 1);
-
-  const auto v = casadi::MX::hypot(x(XIndex::VX), x(XIndex::VY));
   const auto & fd = u(UIndex::FD);
   const auto & fb = u(UIndex::FB);
   const auto & delta = u(UIndex::STEER);
-
-  const auto & delta_max = get_base_config().steer_config->max_steer;
-  // const auto & mu = get_config().mu;
-  const auto & P_max = get_config().P_max;
+  const auto & t = in.at("t");
   const auto & Fd_max = get_config().Fd_max;
   const auto & Fb_max = get_config().Fb_max;
+  const auto & delta_max = get_base_config().steer_config->max_steer;
   const auto & Td = get_config().Td;
   const auto & Tb = get_config().Tb;
   const auto & Tdelta = get_base_config().steer_config->max_steer /
     get_base_config().steer_config->max_steer_rate;
 
-  // dynamics constraint
-  auto xip1_temp = casadi::MX(xip1);
-  if (base_config_->modeling_config->use_frenet) {
-    xip1_temp(XIndex::PX) =
-      lmpc::utils::align_abscissa<casadi::MX>(
-      xip1_temp(XIndex::PX), x(XIndex::PX),
-      in.at("track_length"));
-  } else {
-    xip1_temp(XIndex::YAW) =
-      lmpc::utils::align_yaw<casadi::MX>(xip1_temp(XIndex::YAW), x(XIndex::YAW));
+  if (in.count("x")) {
+    const auto & x = in.at("x");
+    const auto & xip1 = in.at("xip1");
+    const auto k =
+      base_config_->modeling_config->use_frenet ? in.at("k") : casadi::MX::sym("k", 1, 1);
+    const auto v = casadi::MX::hypot(x(XIndex::VX), x(XIndex::VY));
+    // const auto & mu = get_config().mu;
+    const auto & P_max = get_config().P_max;
+
+    // dynamics constraint
+    auto xip1_temp = casadi::MX(xip1);
+    if (base_config_->modeling_config->use_frenet) {
+      xip1_temp(XIndex::PX) =
+        lmpc::utils::align_abscissa<casadi::MX>(
+        xip1_temp(XIndex::PX), x(XIndex::PX),
+        in.at("track_length"));
+    } else {
+      xip1_temp(XIndex::YAW) =
+        lmpc::utils::align_yaw<casadi::MX>(xip1_temp(XIndex::YAW), x(XIndex::YAW));
+    }
+
+    const auto out1 = dynamics_({{"x", x}, {"u", u}, {"k", k}});
+    const auto k1 = out1.at("x_dot");
+    const auto out2 = dynamics_({{"x", x + t / 2.0 * k1}, {"u", u}, {"k", k}});
+    const auto k2 = out2.at("x_dot");
+    const auto out3 = dynamics_({{"x", x + t / 2.0 * k2}, {"u", u}, {"k", k}});
+    const auto k3 = out3.at("x_dot");
+    const auto out4 = dynamics_({{"x", x + t * k3}, {"u", u}, {"k", k}});
+    const auto k4 = out4.at("x_dot");
+    opti.subject_to(x + t / 6 * (k1 + 2 * k2 + 2 * k3 + k4) - xip1_temp == 0);
+
+    // tyre constraints
+    // const auto Fx_ij = out1.at("Fx_ij");
+    // const auto Fy_ij = out1.at("Fy_ij");
+    // const auto Fz_ij = out1.at("Fz_ij");
+    // for (int i = 0; i < 2; i++) {
+    //   opti.subject_to(pow(Fx_ij(i) / (mu * Fz_ij(i)), 2) +
+    //   pow(Fy_ij(i) / (mu * Fz_ij(i)), 2) <= 1);
+    // }
+
+    // static actuator cconstraint
+    opti.subject_to(v * fd <= P_max);
+    // opti.subject_to(v >= 0.0);
+    opti.subject_to(opti.bounded(0.0, fd, Fd_max));
+    opti.subject_to(opti.bounded(Fb_max, fb, 0.0));
+    opti.subject_to(pow(fd * fb, 2) <= 1.0);
+    opti.subject_to(opti.bounded(-1.0 * delta_max, delta, delta_max));
   }
-
-  const auto out1 = dynamics_({{"x", x}, {"u", u}, {"k", k}});
-  const auto k1 = out1.at("x_dot");
-  const auto out2 = dynamics_({{"x", x + t / 2.0 * k1}, {"u", u}, {"k", k}});
-  const auto k2 = out2.at("x_dot");
-  const auto out3 = dynamics_({{"x", x + t / 2.0 * k2}, {"u", u}, {"k", k}});
-  const auto k3 = out3.at("x_dot");
-  const auto out4 = dynamics_({{"x", x + t * k3}, {"u", u}, {"k", k}});
-  const auto k4 = out4.at("x_dot");
-  opti.subject_to(x + t / 6 * (k1 + 2 * k2 + 2 * k3 + k4) - xip1_temp == 0);
-
-  // tyre constraints
-  // const auto Fx_ij = out1.at("Fx_ij");
-  // const auto Fy_ij = out1.at("Fy_ij");
-  // const auto Fz_ij = out1.at("Fz_ij");
-  // for (int i = 0; i < 2; i++) {
-  //   opti.subject_to(pow(Fx_ij(i) / (mu * Fz_ij(i)), 2) +
-  //   pow(Fy_ij(i) / (mu * Fz_ij(i)), 2) <= 1);
-  // }
-
-  // static actuator cconstraint
-  opti.subject_to(v * fd <= P_max);
-  // opti.subject_to(v >= 0.0);
-  opti.subject_to(opti.bounded(0.0, fd, Fd_max));
-  opti.subject_to(opti.bounded(Fb_max, fb, 0.0));
-  opti.subject_to(pow(fd * fb, 2) <= 1.0);
-  opti.subject_to(opti.bounded(-1.0 * delta_max, delta, delta_max));
 
   // dynamic actuator constraint
   if (in.count("uip1")) {

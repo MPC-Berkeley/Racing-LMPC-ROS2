@@ -118,6 +118,14 @@ void RacingMPCNode::on_step_timer()
   const auto x_ic = DM{
     p.s, p.x_tran, p.e_psi, v.v_long, v.v_tran, w.w_psi
   };
+  const auto u_ic = casadi::DM {
+    vehicle_actuation_msg_->u_a > 0.0 ? vehicle_actuation_msg_->u_a : 0.0,
+    vehicle_actuation_msg_->u_a < 0.0 ? vehicle_actuation_msg_->u_a : 0.0,
+    vehicle_actuation_msg_->u_steer
+  };
+  // current input
+  sol_in_["u_ic"] = u_ic;
+
   // std::cout << "x_ic: " << x_ic << std::endl;
 
   // if the mpc is not solved, pass the initial guess
