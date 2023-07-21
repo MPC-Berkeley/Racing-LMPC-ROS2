@@ -21,7 +21,7 @@
   <depend>single_track_planar_model</depend>
   <depend>racing_trajectory</depend>
   <depend>mpclab_msgs</depend>
-  <depend>transform_helper</depend>
+  <depend>lmpc_transform_helper</depend>
 
   <export>
     <build_type>ament_cmake</build_type>

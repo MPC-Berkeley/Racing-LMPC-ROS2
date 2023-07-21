@@ -20,7 +20,7 @@
   <depend>std_msgs</depend>
   <depend>nav_msgs</depend>
   <depend>geometry_msgs</depend>
-  <depend>transform_helper</depend>
+  <depend>lmpc_transform_helper</depend>
 
   <depend>lmpc_utils</depend>
   <depend>single_track_planar_model</depend>

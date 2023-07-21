@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(transform_helper)
+project(lmpc_transform_helper)
 
 # Default to C++17.
 if(NOT CMAKE_CXX_STANDARD)
@@ -32,11 +32,11 @@ ament_auto_find_build_dependencies(REQUIRED
 )
 
 set(${PROJECT_NAME}_SRC
-  src/transform_helper.cpp
+  src/lmpc_transform_helper.cpp
 )
 
 set(${PROJECT_NAME}_HEADER
-  include/transform_helper/transform_helper.hpp
+  include/lmpc_transform_helper/lmpc_transform_helper.hpp
 )
 
 ament_auto_add_library(${PROJECT_NAME} SHARED

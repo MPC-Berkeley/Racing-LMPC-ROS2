@@ -24,7 +24,7 @@
 #include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
 #endif
 #include "geometry_msgs/msg/quaternion.hpp"
-#include "transform_helper/transform_helper.hpp"
+#include "lmpc_transform_helper/lmpc_transform_helper.hpp"
 
 namespace lmpc
 {

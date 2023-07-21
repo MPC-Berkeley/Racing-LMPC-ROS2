@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>transform_helper</name>
+  <name>lmpc_transform_helper</name>
   <version>3.0.0</version>
   <description>transform helper</description>
   <maintainer email="haorux@andrew.cmu.edu">Haoru Xue</maintainer>
