@@ -32,13 +32,13 @@ std::ostream & operator<<(std::ostream & os, const Position3D & pos)
 
 std::ostream & operator<<(std::ostream & os, const BodyVelocity2D & vel)
 {
-  os << "BodyVelocity2D(" << vel.x << ", " << vel.y << ")";
+  os << "BodyVelocity2D(" << vel.x << ", " << vel.y << ", " << vel.v_yaw <<")";
   return os;
 }
 
 std::ostream & operator<<(std::ostream & os, const SpatialVelocity2D & vel)
 {
-  os << "SpatialVelocity2D(" << vel.x << ", " << vel.y << ")";
+  os << "SpatialVelocity2D(" << vel.x << ", " << vel.y << ", " << vel.v_yaw << ")";
   return os;
 }
 
@@ -82,13 +82,17 @@ SpatialVelocity2D transform_velocity(const BodyVelocity2D & vb, const double & y
 {
   return SpatialVelocity2D{
     vb.x * std::cos(yaw) - vb.y * std::sin(yaw),
-    vb.x * std::sin(yaw) + vb.y * std::cos(yaw)};
+    vb.x * std::sin(yaw) + vb.y * std::cos(yaw),
+    vb.v_yaw
+  };
 }
 
 BodyVelocity2D transform_velocity(const SpatialVelocity2D & vs, const double & yaw)
 {
   return BodyVelocity2D{
     vs.x * std::cos(yaw) + vs.y * std::sin(yaw),
-    -vs.x * std::sin(yaw) + vs.y * std::cos(yaw)};
+    -vs.x * std::sin(yaw) + vs.y * std::cos(yaw),
+    vs.v_yaw
+  };
 }
 }  // namespace lmpc

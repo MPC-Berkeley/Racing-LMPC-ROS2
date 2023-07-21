@@ -42,12 +42,14 @@ struct BodyVelocity2D
 {
   double x = 0.0;
   double y = 0.0;
+  double v_yaw = 0.0;
 };
 
 struct SpatialVelocity2D
 {
   double x = 0.0;
   double y = 0.0;
+  double v_yaw = 0.0;
 };
 
 struct Pose2D
