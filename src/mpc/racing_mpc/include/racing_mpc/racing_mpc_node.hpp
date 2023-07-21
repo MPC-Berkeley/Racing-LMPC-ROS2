@@ -22,11 +22,13 @@
 
 #include <rclcpp/rclcpp.hpp>
 #include <nav_msgs/msg/path.hpp>
+#include <diagnostic_msgs/msg/diagnostic_array.hpp>
 
 #include <mpclab_msgs/msg/vehicle_state_msg.hpp>
 #include <mpclab_msgs/msg/vehicle_actuation_msg.hpp>
 #include <transform_helper/transform_helper.hpp>
 #include <racing_trajectory/racing_trajectory.hpp>
+#include <lmpc_utils/cycle_profiler.hpp>
 
 #include "racing_mpc/racing_mpc_config.hpp"
 #include "racing_mpc/racing_mpc.hpp"
@@ -49,6 +51,8 @@ protected:
   RacingTrajectory::SharedPtr track_ {};
   SingleTrackPlanarModel::SharedPtr model_ {};
   RacingMPC::SharedPtr mpc_ {};
+  lmpc::utils::CycleProfiler<>::SharedPtr profiler_ {};
+
   casadi::DM last_x_;
   casadi::DM last_u_;
   casadi::DMDict sol_in_;
@@ -62,6 +66,9 @@ protected:
   rclcpp::Publisher<mpclab_msgs::msg::VehicleActuationMsg>::SharedPtr vehicle_actuation_pub_ {};
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr mpc_vis_pub_ {};
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr ref_vis_pub_ {};
+
+  // publishers (to diagnostics)
+  rclcpp::Publisher<diagnostic_msgs::msg::DiagnosticArray>::SharedPtr diagnostics_pub_ {};
 
   // subscribers (from world/simulator)
   rclcpp::Subscription<mpclab_msgs::msg::VehicleStateMsg>::SharedPtr vehicle_state_sub_ {};

@@ -40,6 +40,7 @@ set(${PROJECT_NAME}_HEADER
   include/lmpc_utils/utils.hpp
   include/lmpc_utils/logging.hpp
   include/lmpc_utils/primitives.hpp
+  include/lmpc_utils/cycle_profiler.hpp
 )
 
 ament_auto_add_library(${PROJECT_NAME} SHARED
