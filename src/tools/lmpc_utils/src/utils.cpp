@@ -71,17 +71,18 @@ casadi::Function rk4_function(
   using casadi::SX;
   const auto x = SX::sym("x", nx, 1);
   const auto u = SX::sym("u", nu, 1);
+  const auto k = SX::sym("k", 1, 1);
 
-  const auto out1 = dynamics(casadi::SXDict{{"x", x}, {"u", u}});
+  const auto out1 = dynamics(casadi::SXDict{{"x", x}, {"u", u}, {"k", k}});
   const auto k1 = out1.at("x_dot");
-  const auto out2 = dynamics(casadi::SXDict{{"x", x + dt / 2.0 * k1}, {"u", u}});
+  const auto out2 = dynamics(casadi::SXDict{{"x", x + dt / 2.0 * k1}, {"u", u}, {"k", k}});
   const auto k2 = out2.at("x_dot");
-  const auto out3 = dynamics(casadi::SXDict{{"x", x + dt / 2.0 * k2}, {"u", u}});
+  const auto out3 = dynamics(casadi::SXDict{{"x", x + dt / 2.0 * k2}, {"u", u}, {"k", k}});
   const auto k3 = out3.at("x_dot");
-  const auto out4 = dynamics(casadi::SXDict{{"x", x + dt * k3}, {"u", u}});
+  const auto out4 = dynamics(casadi::SXDict{{"x", x + dt * k3}, {"u", u}, {"k", k}});
   const auto k4 = out4.at("x_dot");
   const auto out = x + dt / 6 * (k1 + 2 * k2 + 2 * k3 + k4);
-  return casadi::Function("rk4", {x, u}, {out}, {"x", "u"}, {"xip1"});
+  return casadi::Function("rk4", {x, u, k}, {out}, {"x", "u", "k"}, {"xip1"});
 }
 
 casadi::Function rk4_function(
@@ -92,17 +93,18 @@ casadi::Function rk4_function(
   const auto x = SX::sym("x", nx, 1);
   const auto u = SX::sym("u", nu, 1);
   const auto dt = SX::sym("dt", 1, 1);
+  const auto k = SX::sym("k", 1, 1);
 
-  const auto out1 = dynamics(casadi::SXDict{{"x", x}, {"u", u}});
+  const auto out1 = dynamics(casadi::SXDict{{"x", x}, {"u", u}, {"k", k}});
   const auto k1 = out1.at("x_dot");
-  const auto out2 = dynamics(casadi::SXDict{{"x", x + dt / 2.0 * k1}, {"u", u}});
+  const auto out2 = dynamics(casadi::SXDict{{"x", x + dt / 2.0 * k1}, {"u", u}, {"k", k}});
   const auto k2 = out2.at("x_dot");
-  const auto out3 = dynamics(casadi::SXDict{{"x", x + dt / 2.0 * k2}, {"u", u}});
+  const auto out3 = dynamics(casadi::SXDict{{"x", x + dt / 2.0 * k2}, {"u", u}, {"k", k}});
   const auto k3 = out3.at("x_dot");
-  const auto out4 = dynamics(casadi::SXDict{{"x", x + dt * k3}, {"u", u}});
+  const auto out4 = dynamics(casadi::SXDict{{"x", x + dt * k3}, {"u", u}, {"k", k}});
   const auto k4 = out4.at("x_dot");
   const auto out = x + dt / 6 * (k1 + 2 * k2 + 2 * k3 + k4);
-  return casadi::Function("rk4", {x, u, dt}, {out}, {"x", "u", "dt"}, {"xip1"});
+  return casadi::Function("rk4", {x, u, k, dt}, {out}, {"x", "u", "k", "dt"}, {"xip1"});
 }
 }  // namespace utils
 }  // namespace lmpc

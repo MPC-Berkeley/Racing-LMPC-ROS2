@@ -26,6 +26,7 @@
 
 #include <lmpc_utils/logging.hpp>
 #include <single_track_planar_model/single_track_planar_model.hpp>
+
 #include "ekf_state_estimator/ekf_state_estimator_config.hpp"
 
 namespace lmpc
@@ -131,9 +132,9 @@ public:
 
   /**
    * @brief Call this after all observations are registered and before calling any filter updates.
-   * No further changes to the observations is allowed afterwards.
+   * No further changes to the observations are allowed afterwards.
    * Re-initialization is also allowed through this function, which will reset state estimate and
-   * covariance estimate to initial value in config.
+   * covariance estimate to the initial value in config.
    *
    * @param timestamp nanosecond of time at initialization.
    *
@@ -235,7 +236,7 @@ protected:
   bool check_nan_inf(const casadi::DM & m, const std::string & name);
 
   /**
-   * @brief sanity check the covariance matrix.
+   * @brief sanity checks the covariance matrix.
    * all elements must be non-negative. diagnals must be positive.
    * negative elements are zeroed out.
    * non-positive diagnal elements are set to 1e-6.

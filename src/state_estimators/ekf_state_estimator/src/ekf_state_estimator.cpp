@@ -18,6 +18,7 @@
 #include <vector>
 #include <iostream>
 #include <chrono>
+#include <sstream>
 
 #include "ekf_state_estimator/ekf_state_estimator.hpp"
 #include "lmpc_utils/utils.hpp"
@@ -43,7 +44,7 @@ EKFStateEstimator::EKFStateEstimator(
   const auto x = casadi::SX::sym("x", model_->nx(), 1);
   const auto u = casadi::SX::sym("u", model_->nu(), 1);
   const auto dt = casadi::SX::sym("dt", 1, 1);
-  const auto xip1 = rk4_(casadi::SXDict{{"x", x}, {"u", u}, {"dt", dt}}).at("xip1");
+  const auto xip1 = rk4_(casadi::SXDict{{"x", x}, {"u", u}, {"dt", dt}, {"k", 0.0}}).at("xip1");
   const auto F = casadi::SX::jacobian(xip1, x);
   F_ = casadi::Function("discrete_dynamics_jacobian", {x, u, dt}, {F}, {"x", "u", "dt"}, {"F"});
 }
@@ -115,6 +116,8 @@ void EKFStateEstimator::update_observation(
   using casadi::DM;
   using casadi::Slice;
 
+  std::stringstream debug_ss;
+
   if (!is_initialized()) {
     throw EKFUninitializedException();
   }
@@ -132,21 +135,21 @@ void EKFStateEstimator::update_observation(
   }
 
   // EKF prediction
-  std::cout << "*********** EKF Cycle Begins ***********" << std::endl;
+  debug_ss << "*********** EKF Cycle Begins ***********" << std::endl;
   if (name.has_value()) {
-    std::cout << "source name: " << name.value() << std::endl;
+    debug_ss << "source name: " << name.value() << std::endl;
   }
-  const auto in_dict = casadi::DMDict{{"x", x_}, {"u", u_}, {"dt", dt_ns * 1e-9}};
-  std::cout << "dt " << dt_ns * 1e-6 << "ms" << std::endl;
+  const auto in_dict = casadi::DMDict{{"x", x_}, {"u", u_}, {"k", 0.0}, {"dt", dt_ns * 1e-9}};
+  debug_ss << "dt " << dt_ns * 1e-6 << "ms" << std::endl;
   const auto x_p = rk4_(in_dict).at("xip1");
   const auto F = F_(in_dict).at("F");
   const auto P_p = DM::mtimes({F, P_, F.T()}) + config_->Q;
 
-  std::cout << "*********** EKF Prediction ***********" << std::endl;
-  std::cout << "[state prediction x_p]\n" << x_p << std::endl;
-  std::cout << "[linearized state dynamics F]" << F << std::endl;
-  std::cout << "[covariance prediction P_p]" << P_p << std::endl;
-  std::cout << "*********** EKF Correction ***********" << std::endl;
+  debug_ss << "*********** EKF Prediction ***********" << std::endl;
+  debug_ss << "[state prediction x_p]\n" << x_p << std::endl;
+  debug_ss << "[linearized state dynamics F]" << F << std::endl;
+  debug_ss << "[covariance prediction P_p]" << P_p << std::endl;
+  debug_ss << "*********** EKF Correction ***********" << std::endl;
 
   // EKF update
   if (name.has_value()) {
@@ -169,23 +172,23 @@ void EKFStateEstimator::update_observation(
       auto H = h_jacs_.at(name.value())(casadi::DMVector{x_p, z})[0];
       // innovation
       const auto y = z - h(casadi::DMVector{x_p, z})[0];
-      std::cout << "[Observation z]\n" << z << std::endl;
-      std::cout << "[Observation prediction h]\n" << h(casadi::DMVector{x_p, z})[0] << std::endl;
-      std::cout << "[Innovation y]\n" << y << std::endl;
+      debug_ss << "[Observation z]\n" << z << std::endl;
+      debug_ss << "[Observation prediction h]\n" << h(casadi::DMVector{x_p, z})[0] << std::endl;
+      debug_ss << "[Innovation y]\n" << y << std::endl;
       // innovation covariance
       const auto S = DM::mtimes({H, P_p, H.T()}) + R;
-      std::cout << "[Observation jacobian H]" << H << std::endl;
-      std::cout << "[Observation covariance R]" << R << std::endl;
-      std::cout << "[Innovation covairance S]" << S << std::endl;
+      debug_ss << "[Observation jacobian H]" << H << std::endl;
+      debug_ss << "[Observation covariance R]" << R << std::endl;
+      debug_ss << "[Innovation covairance S]" << S << std::endl;
       // Kalman gain
       K_(Slice(), slice_z) = DM::mtimes({P_p, H.T(), DM::inv(S)});
-      std::cout << "[Kalman gain K]\n" << K_(Slice(), slice_z) << std::endl;
+      debug_ss << "[Kalman gain K]\n" << K_(Slice(), slice_z) << std::endl;
       // update estimates
       x_ = x_p + DM::mtimes(K_(Slice(), slice_z), y);
-      std::cout << "[Final estimate x_]\n" << x_ << std::endl;
+      debug_ss << "[Final estimate x_]\n" << x_ << std::endl;
       // update covariance
       P_ = DM::mtimes(DM::eye(model_->nx()) - DM::mtimes(K_(Slice(), slice_z), H), P_p);
-      std::cout << "[Final estimate covariance P_]" << P_ << std::endl;
+      debug_ss << "[Final estimate covariance P_]" << P_ << std::endl;
     }
   } else {
     // pure prediction update
@@ -194,7 +197,7 @@ void EKFStateEstimator::update_observation(
   }
 
   // clip state
-  for (casadi_int i = 0; i < model_->nx(); i++) {
+  for (casadi_int i = 0; i < static_cast<casadi_int>(model_->nx()); i++) {
     x_(i) = std::clamp<double>(DCAST(x_(i)), config_->x_min[i], config_->x_max[i]);
   }
 
@@ -203,7 +206,8 @@ void EKFStateEstimator::update_observation(
   out["P"] = P_;
   out["K"] = K_;
   out["Kz"] = K_(Slice(), slice_z);
-  std::cout << "*********** EKF Cycle Ends ***********" << std::endl;
+  debug_ss << "*********** EKF Cycle Ends ***********" << std::endl;
+  logger_.send_log(utils::LogLevel::DEBUG, debug_ss.str());
 
   // advance time
   nanosec_ = time_ns;
