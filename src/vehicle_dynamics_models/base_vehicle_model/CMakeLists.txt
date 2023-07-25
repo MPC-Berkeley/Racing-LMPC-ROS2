@@ -36,6 +36,7 @@ set(${PROJECT_NAME}_SRC
 set(${PROJECT_NAME}_HEADER
   include/base_vehicle_model/base_vehicle_model.hpp
   include/base_vehicle_model/base_vehicle_model_config.hpp
+  include/base_vehicle_model/base_vehicle_model_state.hpp
   include/base_vehicle_model/ros_param_loader.hpp
 )
 

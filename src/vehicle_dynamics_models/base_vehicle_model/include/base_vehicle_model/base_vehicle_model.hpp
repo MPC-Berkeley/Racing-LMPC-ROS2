@@ -21,6 +21,7 @@
 #include <casadi/casadi.hpp>
 
 #include "base_vehicle_model/base_vehicle_model_config.hpp"
+#include "base_vehicle_model/base_vehicle_model_state.hpp"
 
 namespace lmpc
 {
@@ -28,23 +29,6 @@ namespace vehicle_model
 {
 namespace base_vehicle_model
 {
-
-/**
- * @brief Anxillary state information commonly present in VD models.
- * They are also used in the throttle and brake calculation.
- *
- *
- */
-struct BaseVehicleModelState
-{
-  double wheel_speed_fl_rps = 0.0;
-  double wheel_speed_fr_rps = 0.0;
-  double wheel_speed_rl_rps = 0.0;
-  double wheel_speed_rr_rps = 0.0;
-  double engine_rpm = 0.0;
-  uint8_t gear = 1;
-};
-
 class BaseVehicleModel
 {
 public:
