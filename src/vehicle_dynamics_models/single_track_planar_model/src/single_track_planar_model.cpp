@@ -46,12 +46,6 @@ size_t SingleTrackPlanarModel::nu() const
   return 3;
 }
 
-void SingleTrackPlanarModel::dynamics_jacobian(const casadi::DMDict & in, casadi::DMDict & out)
-{
-  const auto jac = dynamics_jac_(in);
-  out.insert(jac.begin(), jac.end());
-}
-
 void SingleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casadi::MXDict & in)
 {
   const auto & u = in.at("u");

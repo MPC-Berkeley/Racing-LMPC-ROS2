@@ -67,11 +67,10 @@ public:
 
 /**
  * @brief Override to implement Jacobian of dynamics
- *
- * @param in optional. typically "x" (state) and "u" (control).
- * @param out Jacobian of "x_dot" with respect to x (A matrix) and u (B matrix) evaulated at their given point.
+ * In the function, the inputs typically include "x" (state) and "u" (control).
+ * The function outputs Jacobian of "x_dot" with respect to x (A matrix) and u (B matrix) evaulated at their given point.
  */
-  virtual void dynamics_jacobian(const casadi::DMDict & in, casadi::DMDict & out);
+  virtual const casadi::Function & dynamics_jacobian() const;
 
   /**
    * @brief Add constraints to the optimal control problem.

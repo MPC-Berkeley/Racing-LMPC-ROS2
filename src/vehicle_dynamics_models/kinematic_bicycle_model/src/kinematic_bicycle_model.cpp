@@ -45,11 +45,6 @@ size_t KinematicBicycleModel::nu() const
 {
   return 3;
 }
-void KinematicBicycleModel::dynamics_jacobian(const casadi::DMDict & in, casadi::DMDict & out)
-{
-  const auto jac = dynamics_jac_(in);
-  out.insert(jac.begin(), jac.end());
-}
 
 void KinematicBicycleModel::add_nlp_constraints(casadi::Opti & opti, const casadi::MXDict & in)
 {

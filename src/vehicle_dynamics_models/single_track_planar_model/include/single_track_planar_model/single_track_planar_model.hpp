@@ -73,7 +73,6 @@ public:
   size_t nx() const override;
   size_t nu() const override;
 
-  void dynamics_jacobian(const casadi::DMDict & in, casadi::DMDict & out) override;
   void add_nlp_constraints(casadi::Opti & opti, const casadi::MXDict & in) override;
   void calc_lon_control(
     const casadi::DMDict & in, double & throttle,

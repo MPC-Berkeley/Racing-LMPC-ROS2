@@ -61,10 +61,9 @@ const casadi::Function & BaseVehicleModel::dynamics() const
   return dynamics_;
 }
 
-void BaseVehicleModel::dynamics_jacobian(const casadi::DMDict & in, casadi::DMDict & out)
+const casadi::Function & BaseVehicleModel::dynamics_jacobian() const
 {
-  (void) in;
-  (void) out;
+  return dynamics_jacobian_;
 }
 
 void BaseVehicleModel::add_nlp_constraints(casadi::Opti & opti, const casadi::MXDict & in)
