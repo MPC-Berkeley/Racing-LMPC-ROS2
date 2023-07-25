@@ -83,7 +83,6 @@ private:
   void compile_dynamics();
 
   SingleTrackPlanarModelConfig::SharedPtr config_ {};
-  casadi::Function dynamics_jac_;
 };
 }  // namespace single_track_planar_model
 }  // namespace vehicle_model

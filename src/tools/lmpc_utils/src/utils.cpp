@@ -106,5 +106,20 @@ casadi::Function rk4_function(
   const auto out = x + dt / 6 * (k1 + 2 * k2 + 2 * k3 + k4);
   return casadi::Function("rk4", {x, u, k, dt}, {out}, {"x", "u", "k", "dt"}, {"xip1"});
 }
+
+casadi::Function euler_function(
+  const casadi_int & nx, const casadi_int & nu,
+  casadi::Function & dynamics)
+{
+  using casadi::SX;
+  const auto x = SX::sym("x", nx, 1);
+  const auto u = SX::sym("u", nu, 1);
+  const auto dt = SX::sym("dt", 1, 1);
+  const auto k = SX::sym("k", 1, 1);
+
+  const auto x_dot = dynamics(casadi::SXDict{{"x", x}, {"u", u}, {"k", k}}).at("x_dot");
+  const auto out = x + dt * x_dot;
+  return casadi::Function("rk4", {x, u, k, dt}, {out}, {"x", "u", "k", "dt"}, {"xip1"});
+}
 }  // namespace utils
 }  // namespace lmpc

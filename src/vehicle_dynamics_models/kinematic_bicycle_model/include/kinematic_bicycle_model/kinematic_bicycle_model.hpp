@@ -81,7 +81,6 @@ private:
   void compile_dynamics();
 
   KinematicBicycleModelConfig::SharedPtr config_ {};
-  casadi::Function dynamics_jac_;
 };
 }  // namespace kinematic_bicycle_model
 }  // namespace vehicle_model

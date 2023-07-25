@@ -153,6 +153,7 @@ void KinematicBicycleModel::compile_dynamics()
   const auto x = SX::sym("x", nx());
   const auto u = SX::sym("u", nu());
   const auto k = SX::sym("k", 1);  // curvature for frenet frame
+  const auto dt = SX::sym("dt", 1);  // time step
 
   const auto & py = x(XIndex::PY);
   const auto & phi = x(XIndex::YAW);  // yaw
@@ -246,11 +247,46 @@ void KinematicBicycleModel::compile_dynamics()
   const auto Ac = SX::jacobian(x_dot, x);
   const auto Bc = SX::jacobian(x_dot, u);
 
-  dynamics_jac_ = casadi::Function(
+  dynamics_jacobian_ = casadi::Function(
     "kinematic_bicycle_model_jacobian",
     {x, u, k},
     {Ac, Bc},
     {"x", "u", "k"},
+    {"A", "B"}
+  );
+
+  // discretize dynamics
+  SX xip1;
+  const auto & integrator_type = get_base_config().modeling_config->integrator_type;
+  if (integrator_type == base_vehicle_model::IntegratorType::RK4)
+  {
+    xip1 = utils::rk4_function(nx(), nu(), dynamics_)(
+      casadi::SXDict{{"x", x}, {"u", u}, {"k", k}, {"dt", dt}}
+    ).at("xip1");
+  } else if (integrator_type == base_vehicle_model::IntegratorType::EULER)
+  {
+    xip1 = utils::euler_function(nx(), nu(), dynamics_)(
+      casadi::SXDict{{"x", x}, {"u", u}, {"k", k}, {"dt", dt}}
+    ).at("xip1");
+  } else {
+    throw std::runtime_error("unsupported integrator type");
+  }
+
+  discrete_dynamics_ = casadi::Function(
+    "single_track_planar_model_discrete_dynamics",
+    {x, u, k, dt},
+    {xip1, Fx_ij, Fz_ij},
+    {"x", "u", "k", "dt"},
+    {"xip1", "Fx_ij", "Fz_ij"});
+
+  const auto Ad = SX::jacobian(xip1, x);
+  const auto Bd = SX::jacobian(xip1, u);
+
+  discrete_dynamics_jacobian_ = casadi::Function(
+    "single_track_planar_model_discrete_dynamics_jacobian",
+    {x, u, k, dt},
+    {Ad, Bd},
+    {"x", "u", "k", "dt"},
     {"A", "B"}
   );
 }

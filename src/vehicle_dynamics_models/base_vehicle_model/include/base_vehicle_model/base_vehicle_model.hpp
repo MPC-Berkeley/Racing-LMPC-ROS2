@@ -60,17 +60,33 @@ public:
 
   /**
    * @brief Returns the continuious dynamics.
-   *  In the function, "x" (state) and "u" (control) are usually required. additional inputs are optional.
-   *  "x_dot" (time derivative of state) is usually required. additional outputs are optional.
+   *  In the input, "x" (state) and "u" (control) are usually required. additional inputs are optional.
+   *  In the output, "x_dot" (time derivative of state) is usually required. additional outputs are optional.
    */
   virtual const casadi::Function & dynamics() const;
 
-/**
- * @brief Override to implement Jacobian of dynamics
- * In the function, the inputs typically include "x" (state) and "u" (control).
- * The function outputs Jacobian of "x_dot" with respect to x (A matrix) and u (B matrix) evaulated at their given point.
- */
+  /**
+   * @brief Returns the jacobian of the continuious dynamics.
+   * In the function, the inputs typically include "x" (state) and "u" (control).
+   * The function outputs Jacobian of "x_dot" with respect to x (A matrix) and u (B matrix) evaulated at their given point.
+   */
   virtual const casadi::Function & dynamics_jacobian() const;
+
+  /**
+   * @brief Returns the discrete dynamics.
+   *  In the input, "x" (state) and "u" (control) are usually required. additional inputs are optional.
+   *  In the output, "xip1" (next state) is usually required. additional outputs are optional.
+   *  The discretization method specified should be as in the config.
+   * @return const casadi::Function& discrete dynamics function.
+   */
+  virtual const casadi::Function & discrete_dynamics() const;
+
+  /**
+   * @brief Returns the discrete dynamics Jacobian.
+   * In the function, the inputs typically include "x" (state) and "u" (control).
+   * The function outputs Jacobian of "xip1" with respect to x (A matrix) and u (B matrix) evaulated at their given point.
+   */
+  virtual const casadi::Function & discrete_dynamics_jacobian() const;
 
   /**
    * @brief Add constraints to the optimal control problem.

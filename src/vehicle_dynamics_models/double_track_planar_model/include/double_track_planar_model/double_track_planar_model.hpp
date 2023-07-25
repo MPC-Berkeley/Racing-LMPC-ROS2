@@ -85,7 +85,6 @@ private:
 
   DoubleTrackPlanarModelConfig::SharedPtr config_ {};
   casadi::Function dynamics_gamma_y_;
-  casadi::Function dynamics_jac_;
 };
 }  // namespace double_track_planar_model
 }  // namespace vehicle_model

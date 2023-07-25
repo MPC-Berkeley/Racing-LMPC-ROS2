@@ -87,7 +87,7 @@ casadi::Function rk4_function(
   casadi::Function & dynamics);
 
 /**
- * @brief Create a RK4 integrator whith dt as an input
+ * @brief Create a RK4 integrator
  *
  * @param nx size of state
  * @param nu size of control
@@ -95,6 +95,18 @@ casadi::Function rk4_function(
  * @return casadi::Function with inputs `x`, `u` and `dt` and outputs next state `xip1`.
  */
 casadi::Function rk4_function(
+  const casadi_int & nx, const casadi_int & nu,
+  casadi::Function & dynamics);
+
+/**
+ * @brief Create a Euler integrator
+ *
+ * @param nx size of state
+ * @param nu size of control
+ * @param dynamics continuous dynamics function
+ * @return casadi::Function with inputs `x`, `u` and `dt` and outputs next state `xip1`.
+ */
+casadi::Function euler_function(
   const casadi_int & nx, const casadi_int & nu,
   casadi::Function & dynamics);
 
