@@ -80,3 +80,4 @@
 
     modeling:
       use_frenet: true
+      integrator_type: "rk4"
