@@ -38,6 +38,10 @@ BaseVehicleModelConfig::SharedPtr load_parameters(rclcpp::Node * node)
   auto declare_bool = [&](const char * name) {
       return lmpc::utils::declare_parameter<bool>(node, name);
     };
+  auto declare_string = [&](const char * name) {
+      return lmpc::utils::declare_parameter<std::string>(node, name);
+    };
+
   auto front_tyre_config = std::make_shared<TyreConfig>(
     TyreConfig{
           declare_double("front_tyre.radius"),
@@ -135,10 +139,21 @@ BaseVehicleModelConfig::SharedPtr load_parameters(rclcpp::Node * node)
         }
   );
 
+  std::string integratory_name = declare_string("modeling.integrator_type");
+  IntegratorType integrator_type;
+  if (integratory_name == "rk4") {
+    integrator_type = IntegratorType::RK4;
+  } else if (integratory_name == "euler") {
+    integrator_type = IntegratorType::EULER;
+  } else {
+    throw std::runtime_error("Unknown integrator type: " + integratory_name);
+  }
+
   auto modeling_config = std::make_shared<ModelingConfig>(
     ModelingConfig{
           declare_bool("modeling.use_frenet")
-        }
+        },
+    integrator_type
   );
 
   return std::make_shared<BaseVehicleModelConfig>(

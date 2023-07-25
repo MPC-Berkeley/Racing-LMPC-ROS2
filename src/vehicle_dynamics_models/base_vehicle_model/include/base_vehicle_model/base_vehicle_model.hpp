@@ -29,6 +29,7 @@ namespace vehicle_model
 {
 namespace base_vehicle_model
 {
+// TODO(haoru): the base vehicle model should be an abstract class.
 class BaseVehicleModel
 {
 public:

@@ -112,6 +112,12 @@ struct PowerTrainConfig
   // TODO(haoru): add mechanical loss
 };
 
+enum IntegratorType: uint8_t
+{
+  RK4,
+  EULER
+};
+
 /**
  * @brief Additional configurations that doesn't really concern the vehicle parameters
  *
@@ -122,6 +128,7 @@ struct ModelingConfig
 
   // Express the dynamics in frenet frame?
   bool use_frenet;
+  IntegratorType integrator_type;
 };
 
 struct BaseVehicleModelConfig
