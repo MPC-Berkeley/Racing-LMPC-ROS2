@@ -59,12 +59,11 @@ public:
   virtual size_t nu() const;
 
   /**
-   * @brief Override to implement dynamics.
-   *
-   * @param in "x" (state) and "u" (control) are required. additional inputs are optional.
-   * @param out "x_dot" (time derivative of state) is required. additional outputs are optional.
+   * @brief Returns the continuious dynamics.
+   *  In the function, "x" (state) and "u" (control) are usually required. additional inputs are optional.
+   *  "x_dot" (time derivative of state) is usually required. additional outputs are optional.
    */
-  virtual void forward_dynamics(const casadi::DMDict & in, casadi::DMDict & out);
+  virtual const casadi::Function & dynamics() const;
 
 /**
  * @brief Override to implement Jacobian of dynamics
@@ -146,6 +145,11 @@ public:
 protected:
   BaseVehicleModelConfig::SharedPtr base_config_ {};
   BaseVehicleModelState base_state_;
+
+  casadi::Function dynamics_ {};
+  casadi::Function dynamics_jacobian_ {};
+  casadi::Function discrete_dynamics_ {};
+  casadi::Function discrete_dynamics_jacobian_ {};
 };
 }  // namespace base_vehicle_model
 }  // namespace vehicle_model

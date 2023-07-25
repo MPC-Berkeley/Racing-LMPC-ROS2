@@ -112,7 +112,7 @@ struct PowerTrainConfig
   // TODO(haoru): add mechanical loss
 };
 
-enum IntegratorType: uint8_t
+enum IntegratorType : uint8_t
 {
   RK4,
   EULER

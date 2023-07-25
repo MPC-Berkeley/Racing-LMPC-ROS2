@@ -45,17 +45,6 @@ size_t KinematicBicycleModel::nu() const
 {
   return 3;
 }
-
-void KinematicBicycleModel::forward_dynamics(const casadi::DMDict & in, casadi::DMDict & out)
-{
-  auto dyn_in = in;
-  if (base_config_->modeling_config->use_frenet) {
-    dyn_in["k"] = 0.0;
-  }
-  const auto dyn_out = dynamics_(in);
-  out.insert(dyn_out.begin(), dyn_out.end());
-}
-
 void KinematicBicycleModel::dynamics_jacobian(const casadi::DMDict & in, casadi::DMDict & out)
 {
   const auto jac = dynamics_jac_(in);
@@ -211,8 +200,8 @@ void KinematicBicycleModel::compile_dynamics()
 
   // compute kinematics
   const auto beta = atan(lr * tan(delta) / l);
-  const auto S = l / tan(delta); // rear axle turn radius
-  const auto R = S / cos(beta); // cg turn radius
+  const auto S = l / tan(delta);  // rear axle turn radius
+  const auto R = S / cos(beta);  // cg turn radius
   auto phi_dot = v / R;
   auto px_dot = v * cos(beta + phi);
   auto py_dot = v * sin(beta + phi);

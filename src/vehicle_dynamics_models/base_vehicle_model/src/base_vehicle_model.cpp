@@ -56,10 +56,9 @@ size_t BaseVehicleModel::nu() const
   return 1;
 }
 
-void BaseVehicleModel::forward_dynamics(const casadi::DMDict & in, casadi::DMDict & out)
+const casadi::Function & BaseVehicleModel::dynamics() const
 {
-  (void) in;
-  (void) out;
+  return dynamics_;
 }
 
 void BaseVehicleModel::dynamics_jacobian(const casadi::DMDict & in, casadi::DMDict & out)

@@ -46,42 +46,6 @@ size_t DoubleTrackPlanarModel::nu() const
   return 3;
 }
 
-void DoubleTrackPlanarModel::forward_dynamics(const casadi::DMDict & in, casadi::DMDict & out)
-{
-  using TI = lmpc::utils::TyreIndex;
-  const auto gamma_y = casadi::SX::sym("gamma_y", 1);
-  const auto & u = in.at("u");
-  const auto & delta = casadi::SX(u(2));
-
-  const auto & hcog = get_base_config().chassis_config->cg_height;
-  const auto & twf = get_base_config().chassis_config->tw_f;
-  const auto & twr = get_base_config().chassis_config->tw_r;
-
-  casadi::SXDict dyn_in =
-  {
-    {"x", in.at("x")},
-    {"u", in.at("u")},
-    {"k", base_config_->modeling_config->use_frenet ? in.at("k") : casadi::DM::zeros(1, 1)}
-  };
-  dyn_in["gamma_y"] = gamma_y;
-  const auto dyn_out = dynamics_(dyn_in);
-
-  const auto Fx_ij = dyn_out.at("Fx_ij");
-  const auto Fy_ij = dyn_out.at("Fy_ij");
-
-  const auto res = gamma_y - hcog / (0.5 * (twf + twr)) *
-    (Fy_ij(TI::RL) + Fy_ij(TI::RR) + (Fx_ij(TI::FL) + Fx_ij(TI::FR)) * sin(delta) +
-    (Fy_ij(TI::FL) + Fy_ij(TI::FR)) * cos(delta));
-  auto g = casadi::Function("g", {gamma_y}, {res});
-  auto lateral_load_transfer_ = casadi::rootfinder("G", "newton", g, {{"error_on_fail", false}});
-
-  const auto gamma_y_solve = casadi::DM(lateral_load_transfer_(casadi::DM{0.0}));
-  for (auto & var : dyn_out) {
-    out[var.first] = casadi::DM(casadi::SX::substitute(var.second, gamma_y, gamma_y_solve));
-  }
-  out["gamma_y"] = gamma_y_solve;
-}
-
 void DoubleTrackPlanarModel::dynamics_jacobian(const casadi::DMDict & in, casadi::DMDict & out)
 {
   const auto jac = dynamics_jac_(in);
@@ -128,13 +92,18 @@ void DoubleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casa
       xip1_temp(XIndex::PX), x(XIndex::PX),
       in.at("track_length"));
   }
-  const auto out1 = dynamics_({{"x", x}, {"u", u}, {"gamma_y", gamma_y}, {"k", k}});
+  const auto out1 = dynamics_gamma_y_({{"x", x}, {"u", u}, {"gamma_y", gamma_y}, {"k", k}});
   const auto k1 = out1.at("x_dot");
-  const auto out2 = dynamics_({{"x", x + t / 2.0 * k1}, {"u", u}, {"gamma_y", gamma_y}, {"k", k}});
+  const auto out2 = dynamics_gamma_y_(
+    {{"x", x + t / 2.0 * k1}, {"u", u}, {"gamma_y", gamma_y},
+      {"k", k}});
   const auto k2 = out2.at("x_dot");
-  const auto out3 = dynamics_({{"x", x + t / 2.0 * k2}, {"u", u}, {"gamma_y", gamma_y}, {"k", k}});
+  const auto out3 = dynamics_gamma_y_(
+    {{"x", x + t / 2.0 * k2}, {"u", u}, {"gamma_y", gamma_y},
+      {"k", k}});
   const auto k3 = out3.at("x_dot");
-  const auto out4 = dynamics_({{"x", x + t * k3}, {"u", u}, {"gamma_y", gamma_y}, {"k", k}});
+  const auto out4 =
+    dynamics_gamma_y_({{"x", x + t * k3}, {"u", u}, {"gamma_y", gamma_y}, {"k", k}});
   const auto k4 = out4.at("x_dot");
   opti.subject_to(x + t / 6 * (k1 + 2 * k2 + 2 * k3 + k4) - xip1_temp == 0);
 
@@ -317,7 +286,7 @@ void DoubleTrackPlanarModel::compile_dynamics()
   const auto Fy_ij = vertcat(Fy_fl, Fy_fr, Fy_rl, Fy_rr);
   const auto Fz_ij = vertcat(Fz_fl, Fz_fr, Fz_rl, Fz_rr);
 
-  dynamics_ = casadi::Function(
+  dynamics_gamma_y_ = casadi::Function(
     "double_track_planar_model",
     {x, u, gamma_y, k},
     {x_dot, Fx_ij, Fy_ij, Fz_ij},
@@ -335,6 +304,37 @@ void DoubleTrackPlanarModel::compile_dynamics()
     {"x", "u", "gamma_y", "k"},
     {"A", "B", "B2"}
   );
+
+  using TI = utils::TyreIndex;
+  const casadi::SXDict dyn_in =
+  {
+    {"x", x},
+    {"u", u},
+    {"k", k},
+    {"gamma_y", gamma_y}
+  };
+  auto dyn_out = dynamics_gamma_y_(dyn_in);
+
+  const auto & Fx_ij = dyn_out.at("Fx_ij");
+  const auto & Fy_ij = dyn_out.at("Fy_ij");
+
+  const auto res = gamma_y - hcog / (0.5 * (twf + twr)) *
+    (Fy_ij(TI::RL) + Fy_ij(TI::RR) + (Fx_ij(TI::FL) + Fx_ij(TI::FR)) * sin(delta) +
+    (Fy_ij(TI::FL) + Fy_ij(TI::FR)) * cos(delta));
+  auto g = casadi::Function("g", {gamma_y}, {res});
+  auto lateral_load_transfer_ = casadi::rootfinder("G", "newton", g, {{"error_on_fail", false}});
+
+  const auto gamma_y_solve = casadi::DM(lateral_load_transfer_(casadi::DM{0.0}));
+  for (auto & var : dyn_out) {
+    dyn_out[var.first] = casadi::DM(casadi::SX::substitute(var.second, gamma_y, gamma_y_solve));
+  }
+  dynamics_ = casadi::Function(
+    "double_track_planar_model_forward_dynamics",
+    {x, u, k},
+    {dyn_out.at("x_dot"), dyn_out.at("Fx_ij"), dyn_out.at("Fy_ij"), dyn_out.at(
+        "Fz_ij"), gamma_y_solve},
+    {"x", "u", "k"},
+    {"x_dot", "Fx_ij", "Fy_ij", "Fz_ij", "gamma_y"});
 }
 }  // namespace double_track_planar_model
 }  // namespace vehicle_model

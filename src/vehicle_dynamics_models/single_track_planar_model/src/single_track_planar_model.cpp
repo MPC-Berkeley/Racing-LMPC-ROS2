@@ -46,16 +46,6 @@ size_t SingleTrackPlanarModel::nu() const
   return 3;
 }
 
-void SingleTrackPlanarModel::forward_dynamics(const casadi::DMDict & in, casadi::DMDict & out)
-{
-  auto dyn_in = in;
-  if (base_config_->modeling_config->use_frenet) {
-    dyn_in["k"] = 0.0;
-  }
-  const auto dyn_out = dynamics_(in);
-  out.insert(dyn_out.begin(), dyn_out.end());
-}
-
 void SingleTrackPlanarModel::dynamics_jacobian(const casadi::DMDict & in, casadi::DMDict & out)
 {
   const auto jac = dynamics_jac_(in);

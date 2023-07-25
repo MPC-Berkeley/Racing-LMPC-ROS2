@@ -72,8 +72,7 @@ TEST(SingleTrackPlanarModelTest, TestSingleTrackDynamics) {
     {"u", u},
     {"k", 0.1}
   };
-  auto out = casadi::DMDict{};
-  model.forward_dynamics(in, out);
+  auto out = model.dynamics()(in);
   const auto x_dot = out["x_dot"];
   std::cout << x_dot << std::endl;
 

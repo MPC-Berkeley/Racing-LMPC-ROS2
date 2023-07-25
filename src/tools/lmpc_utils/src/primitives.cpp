@@ -32,7 +32,7 @@ std::ostream & operator<<(std::ostream & os, const Position3D & pos)
 
 std::ostream & operator<<(std::ostream & os, const BodyVelocity2D & vel)
 {
-  os << "BodyVelocity2D(" << vel.x << ", " << vel.y << ", " << vel.v_yaw <<")";
+  os << "BodyVelocity2D(" << vel.x << ", " << vel.y << ", " << vel.v_yaw << ")";
   return os;
 }
 

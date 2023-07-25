@@ -13,8 +13,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#ifndef TRANSFORM_HELPER__TRANSFORM_HELPER_HPP_
-#define TRANSFORM_HELPER__TRANSFORM_HELPER_HPP_
+#ifndef LMPC_TRANSFORM_HELPER__LMPC_TRANSFORM_HELPER_HPP_
+#define LMPC_TRANSFORM_HELPER__LMPC_TRANSFORM_HELPER_HPP_
 
 #include <memory>
 #include <string>
@@ -70,4 +70,4 @@ private:
 };
 }  // namespace utils
 }  // namespace lmpc
-#endif  // TRANSFORM_HELPER__TRANSFORM_HELPER_HPP_
+#endif  // LMPC_TRANSFORM_HELPER__LMPC_TRANSFORM_HELPER_HPP_
