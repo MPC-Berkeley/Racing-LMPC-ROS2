@@ -311,12 +311,12 @@ void DoubleTrackPlanarModel::compile_dynamics()
   };
   auto dyn_out = dynamics_gamma_y_(dyn_in);
 
-  const auto & Fx_ij = dyn_out.at("Fx_ij");
-  const auto & Fy_ij = dyn_out.at("Fy_ij");
+  const auto & Fx_ij_fwd = dyn_out.at("Fx_ij");
+  const auto & Fy_ij_fwd = dyn_out.at("Fy_ij");
 
   const auto res = gamma_y - hcog / (0.5 * (twf + twr)) *
-    (Fy_ij(TI::RL) + Fy_ij(TI::RR) + (Fx_ij(TI::FL) + Fx_ij(TI::FR)) * sin(delta) +
-    (Fy_ij(TI::FL) + Fy_ij(TI::FR)) * cos(delta));
+    (Fy_ij_fwd(TI::RL) + Fy_ij_fwd(TI::RR) + (Fx_ij_fwd(TI::FL) + Fx_ij_fwd(TI::FR)) * sin(delta) +
+    (Fy_ij_fwd(TI::FL) + Fy_ij_fwd(TI::FR)) * cos(delta));
   auto g = casadi::Function("g", {gamma_y}, {res});
   auto lateral_load_transfer_ = casadi::rootfinder("G", "newton", g, {{"error_on_fail", false}});
 

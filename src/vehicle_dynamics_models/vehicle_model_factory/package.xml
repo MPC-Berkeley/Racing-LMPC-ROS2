@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>racing_mpc</name>
+  <name>vehicle_model_factory</name>
   <version>1.0.0</version>
-  <description>a trajectory tracking MPC</description>
+  <description>factory for loading vehicle models</description>
   <maintainer email="haorux@andrew.cmu.edu">Haoru Xue</maintainer>
   <license>LGPLv3</license>
 
@@ -15,13 +15,11 @@
 
   <depend>rclcpp</depend>
   <depend>backward_ros</depend>
-  <depend>nav_msgs</depend>
 
-  <depend>lmpc_utils</depend>
-  <depend>vehicle_model_factory</depend>
-  <depend>racing_trajectory</depend>
-  <depend>mpclab_msgs</depend>
-  <depend>lmpc_transform_helper</depend>
+  <depend>base_vehicle_model</depend>
+  <depend>kinematic_bicycle_model</depend>
+  <depend>single_track_planar_model</depend>
+  <depend>double_track_planar_model</depend>
 
   <export>
     <build_type>ament_cmake</build_type>
