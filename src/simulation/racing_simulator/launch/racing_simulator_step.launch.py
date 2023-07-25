@@ -66,7 +66,10 @@ def generate_launch_description():
                     dt_model_config,
                     base_model_config,
                     use_sim_time,
-                    {"racing_simulator.race_track_file_path": track_file},
+                    {
+                        "racing_simulator.race_track_file_path": track_file,
+                        "modeling.use_frenet": False,
+                    },
                 ],
                 remappings=[
                 ],

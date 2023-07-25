@@ -38,7 +38,6 @@ RacingSimulatorNode::RacingSimulatorNode(const rclcpp::NodeOptions & options)
     lmpc::vehicle_model::base_vehicle_model::load_parameters(this);
   auto single_track_model_config =
     lmpc::vehicle_model::single_track_planar_model::load_parameters(this);
-  base_model_config->modeling_config->use_frenet = config_->use_frenet;
   model_ = std::make_shared<SingleTrackPlanarModel>(base_model_config, single_track_model_config);
   simulator_ = std::make_shared<RacingSimulator>(config_->dt, config_->x0, track_, model_);
 
@@ -54,7 +53,7 @@ RacingSimulatorNode::RacingSimulatorNode(const rclcpp::NodeOptions & options)
   const auto x0_vec = config_->x0.get_elements();
   FrenetPose2D frenet_pose;
   Pose2D global_pose;
-  if (config_->use_frenet) {
+  if (model_->get_base_config().modeling_config->use_frenet) {
     frenet_pose.position.s = x0_vec[XIndex::PX];
     frenet_pose.position.t = x0_vec[XIndex::PY];
     frenet_pose.yaw = x0_vec[XIndex::YAW];
@@ -196,7 +195,7 @@ void RacingSimulatorNode::on_reset_state(const mpclab_msgs::msg::VehicleStateMsg
 {
   // reset the simulator
   casadi::DM x;
-  if (config_->use_frenet) {
+  if (model_->get_base_config().modeling_config->use_frenet) {
     x = casadi::DM{
       msg->p.s,
       msg->p.x_tran,
@@ -332,7 +331,7 @@ void RacingSimulatorNode::on_state_update()
   // calculate the global pose
   FrenetPose2D frenet_pose;
   Pose2D global_pose;
-  if (config_->use_frenet) {
+  if (model_->get_base_config().modeling_config->use_frenet) {
     frenet_pose.position.s = x[XIndex::PX];
     frenet_pose.position.t = x[XIndex::PY];
     frenet_pose.yaw = x[XIndex::YAW];

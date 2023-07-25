@@ -7,7 +7,6 @@
       visualize_boundary: true
       visualize_abscissa: true
       visualize_vehicle: true
-      use_frenet: false
       x0: [-24.5, 39.4, -1.0, 5.0, 0.0, 0.0]
       # x0: [0.0, 1.0, 0.1, 10.0, 0.0, 0.0]
       step_mode: step # [continuous, step]

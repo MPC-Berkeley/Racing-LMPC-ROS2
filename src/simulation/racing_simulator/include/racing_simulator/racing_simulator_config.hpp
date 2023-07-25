@@ -42,7 +42,6 @@ struct RacingSimulatorConfig
   bool visualize_boundary = true;
   bool visualize_abscissa = true;
   bool visualize_vehicle = true;
-  bool use_frenet = false;
   std::string race_track_file_path = "";
   RacingSimulatorStepMode step_mode = RacingSimulatorStepMode::STEP;
   casadi::DM x0;

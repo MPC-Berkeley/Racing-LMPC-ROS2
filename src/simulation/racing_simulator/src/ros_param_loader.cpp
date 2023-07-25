@@ -63,7 +63,6 @@ RacingSimulatorConfig::SharedPtr load_parameters(rclcpp::Node * node)
           declare_bool("racing_simulator.visualize_boundary"),
           declare_bool("racing_simulator.visualize_abscissa"),
           declare_bool("racing_simulator.visualize_vehicle"),
-          declare_bool("racing_simulator.use_frenet"),
           declare_string("racing_simulator.race_track_file_path"),
           step_mode,
           casadi::DM(declare_vec("racing_simulator.x0"))
