@@ -66,7 +66,7 @@ casadi::Function c2d_function(const casadi_int & nx, const casadi_int & nu, cons
 
 casadi::Function rk4_function(
   const casadi_int & nx, const casadi_int & nu, const double & dt,
-  casadi::Function & dynamics)
+  const casadi::Function & dynamics)
 {
   using casadi::SX;
   const auto x = SX::sym("x", nx, 1);
@@ -87,7 +87,7 @@ casadi::Function rk4_function(
 
 casadi::Function rk4_function(
   const casadi_int & nx, const casadi_int & nu,
-  casadi::Function & dynamics)
+  const casadi::Function & dynamics)
 {
   using casadi::SX;
   const auto x = SX::sym("x", nx, 1);

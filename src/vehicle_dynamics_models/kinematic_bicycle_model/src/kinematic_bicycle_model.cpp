@@ -82,15 +82,9 @@ void KinematicBicycleModel::add_nlp_constraints(casadi::Opti & opti, const casad
         lmpc::utils::align_yaw<casadi::MX>(xip1_temp(XIndex::YAW), x(XIndex::YAW));
     }
 
-    const auto out1 = dynamics_({{"x", x}, {"u", u}, {"k", k}});
-    const auto k1 = out1.at("x_dot");
-    const auto out2 = dynamics_({{"x", x + t / 2.0 * k1}, {"u", u}, {"k", k}});
-    const auto k2 = out2.at("x_dot");
-    const auto out3 = dynamics_({{"x", x + t / 2.0 * k2}, {"u", u}, {"k", k}});
-    const auto k3 = out3.at("x_dot");
-    const auto out4 = dynamics_({{"x", x + t * k3}, {"u", u}, {"k", k}});
-    const auto k4 = out4.at("x_dot");
-    opti.subject_to(x + t / 6 * (k1 + 2 * k2 + 2 * k3 + k4) - xip1_temp == 0);
+    // const auto out1 = dynamics_({{"x", x}, {"u", u}, {"k", k}});
+    const auto xip1_pred = discrete_dynamics_({{"x", x}, {"u", u}, {"k", k}, {"dt", t}}).at("xip1");
+    opti.subject_to(xip1_pred - xip1_temp == 0);
 
     // tyre constraints
     // const auto Fx_ij = out1.at("Fx_ij");
@@ -258,13 +252,11 @@ void KinematicBicycleModel::compile_dynamics()
   // discretize dynamics
   SX xip1;
   const auto & integrator_type = get_base_config().modeling_config->integrator_type;
-  if (integrator_type == base_vehicle_model::IntegratorType::RK4)
-  {
+  if (integrator_type == base_vehicle_model::IntegratorType::RK4) {
     xip1 = utils::rk4_function(nx(), nu(), dynamics_)(
       casadi::SXDict{{"x", x}, {"u", u}, {"k", k}, {"dt", dt}}
     ).at("xip1");
-  } else if (integrator_type == base_vehicle_model::IntegratorType::EULER)
-  {
+  } else if (integrator_type == base_vehicle_model::IntegratorType::EULER) {
     xip1 = utils::euler_function(nx(), nu(), dynamics_)(
       casadi::SXDict{{"x", x}, {"u", u}, {"k", k}, {"dt", dt}}
     ).at("xip1");

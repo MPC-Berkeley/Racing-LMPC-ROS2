@@ -54,17 +54,10 @@ RacingMPCNode::RacingMPCNode(const rclcpp::NodeOptions & options)
   const auto x_sym = casadi::MX::sym("x", model_->nx());
   const auto u_sym = casadi::MX::sym("u", model_->nu());
   const auto k = track_->curvature_interpolation_function()(x_sym(XIndex::PX))[0];
-
-  const auto out1 = model_->dynamics()(casadi::MXDict{{"x", x_sym}, {"u", u_sym}, {"k", k}});
-  const auto k1 = out1.at("x_dot");
-  const auto out2 = model_->dynamics()({{"x", x_sym + dt_ / 2.0 * k1}, {"u", u_sym}, {"k", k}});
-  const auto k2 = out2.at("x_dot");
-  const auto out3 = model_->dynamics()({{"x", x_sym + dt_ / 2.0 * k2}, {"u", u_sym}, {"k", k}});
-  const auto k3 = out3.at("x_dot");
-  const auto out4 = model_->dynamics()({{"x", x_sym + dt_ * k3}, {"u", u_sym}, {"k", k}});
-  const auto k4 = out4.at("x_dot");
-  const auto out = x_sym + dt_ / 6 * (k1 + 2 * k2 + 2 * k3 + k4);
-  discrete_dynamics_ = casadi::Function("discrete_dynamics", {x_sym, u_sym}, {out});
+  const auto xip1 = model_->discrete_dynamics()(
+    casadi::MXDict{{"x", x_sym}, {"u", u_sym}, {"k", k}, {"dt", dt_}}
+  ).at("xip1");
+  discrete_dynamics_ = casadi::Function("discrete_dynamics", {x_sym, u_sym}, {xip1});
 
   // initialize the publishers
   vehicle_actuation_pub_ = this->create_publisher<mpclab_msgs::msg::VehicleActuationMsg>(

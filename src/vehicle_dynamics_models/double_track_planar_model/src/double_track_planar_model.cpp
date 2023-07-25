@@ -86,6 +86,7 @@ void DoubleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casa
       xip1_temp(XIndex::PX), x(XIndex::PX),
       in.at("track_length"));
   }
+  // TODO(haoru): choose different integrator based on config
   const auto out1 = dynamics_gamma_y_({{"x", x}, {"u", u}, {"gamma_y", gamma_y}, {"k", k}});
   const auto k1 = out1.at("x_dot");
   const auto out2 = dynamics_gamma_y_(
@@ -334,13 +335,11 @@ void DoubleTrackPlanarModel::compile_dynamics()
   // discretize dynamics
   SX xip1;
   const auto & integrator_type = get_base_config().modeling_config->integrator_type;
-  if (integrator_type == base_vehicle_model::IntegratorType::RK4)
-  {
+  if (integrator_type == base_vehicle_model::IntegratorType::RK4) {
     xip1 = utils::rk4_function(nx(), nu(), dynamics_)(
       casadi::SXDict{{"x", x}, {"u", u}, {"k", k}, {"dt", dt}}
     ).at("xip1");
-  } else if (integrator_type == base_vehicle_model::IntegratorType::EULER)
-  {
+  } else if (integrator_type == base_vehicle_model::IntegratorType::EULER) {
     xip1 = utils::euler_function(nx(), nu(), dynamics_)(
       casadi::SXDict{{"x", x}, {"u", u}, {"k", k}, {"dt", dt}}
     ).at("xip1");
