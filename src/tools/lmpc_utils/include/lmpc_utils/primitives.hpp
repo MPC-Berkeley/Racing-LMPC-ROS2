@@ -88,16 +88,6 @@ std::ostream & operator<<(std::ostream & os, const FrenetPose2D & pose);
      */
 double lateral_sign(const Position2D & position, const Pose2D & p0);
 
-template<typename T>
-T lateral_sign(const T & position, const T & p0)
-{
-  using casadi::Slice;
-  return sign(
-    cos(p0(2, Slice())) * (position(1, Slice()) - p0(1, Slice())) -
-    sin(p0(2, Slice())) * (position(0, Slice()) - p0(0, Slice()))
-  );
-}
-
 double distance(const Position2D & p0, const Position2D & p1);
 double distance(const Position3D & p0, const Position3D & p1);
 

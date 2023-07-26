@@ -172,7 +172,7 @@ RacingTrajectory::RacingTrajectory(const casadi::DM & traj)
     const auto x_out = x_intp_(s_out)[0];
     const auto y_out = y_intp_(s_out)[0];
     const auto yaw_out = yaw_intp_(s_out)[0];
-    const auto t_out = MX::hypot(x - x_out, y - y_out) * lateral_sign<MX>(
+    const auto t_out = MX::hypot(x - x_out, y - y_out) * utils::lateral_sign<MX>(
       MX::vertcat(
         {x,
           y}), MX::vertcat(

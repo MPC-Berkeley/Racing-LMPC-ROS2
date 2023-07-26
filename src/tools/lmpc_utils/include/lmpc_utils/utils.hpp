@@ -69,6 +69,16 @@ casadi::Function global_to_frenet_function(const casadi_int & n)
   return casadi::Function("global_to_frenet", {p, p0, yaw}, {out}).map(n);
 }
 
+template<typename T>
+T lateral_sign(const T & position, const T & p0)
+{
+  using casadi::Slice;
+  return sign(
+    cos(p0(2, Slice())) * (position(1, Slice()) - p0(1, Slice())) -
+    sin(p0(2, Slice())) * (position(0, Slice()) - p0(0, Slice()))
+  );
+}
+
 casadi::Function norm_2_function(const casadi_int & n);
 
 casadi::Function c2d_function(const casadi_int & nx, const casadi_int & nu, const double & dt);
