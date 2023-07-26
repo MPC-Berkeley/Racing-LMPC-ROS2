@@ -21,7 +21,7 @@
 #include <casadi/casadi.hpp>
 
 #include "racing_mpc/racing_mpc_config.hpp"
-#include "single_track_planar_model/single_track_planar_model.hpp"
+#include "vehicle_model_factory/vehicle_model_factory.hpp"
 
 namespace lmpc
 {
@@ -30,10 +30,9 @@ namespace mpc
 namespace racing_mpc
 {
 using lmpc::vehicle_model::base_vehicle_model::BaseVehicleModelConfig;
-using lmpc::vehicle_model::single_track_planar_model::SingleTrackPlanarModel;
-using lmpc::vehicle_model::single_track_planar_model::SingleTrackPlanarModelConfig;
-using lmpc::vehicle_model::single_track_planar_model::XIndex;
-using lmpc::vehicle_model::single_track_planar_model::UIndex;
+using lmpc::vehicle_model::base_vehicle_model::BaseVehicleModel;
+using lmpc::vehicle_model::base_vehicle_model::XIndex;
+using lmpc::vehicle_model::base_vehicle_model::UIndex;
 
 class RacingMPC
 {
@@ -43,20 +42,20 @@ public:
 
   explicit RacingMPC(
     RacingMPCConfig::SharedPtr mpc_config,
-    SingleTrackPlanarModel::SharedPtr model);
+    BaseVehicleModel::SharedPtr model);
   const RacingMPCConfig & get_config() const;
 
   void solve(const casadi::DMDict & in, casadi::DMDict & out);
 
   void create_warm_start(const casadi::DMDict & in, casadi::DMDict & out);
 
-  SingleTrackPlanarModel & get_model();
+  BaseVehicleModel & get_model();
 
   const bool & solved() const;
 
 protected:
   RacingMPCConfig::SharedPtr config_ {};
-  SingleTrackPlanarModel::SharedPtr model_ {};
+  BaseVehicleModel::SharedPtr model_ {};
 
   casadi::DM scale_x_;
   casadi::DM scale_u_;

@@ -29,6 +29,23 @@ namespace vehicle_model
 {
 namespace base_vehicle_model
 {
+enum XIndex : casadi_int
+{
+  PX = 0,  // global or frenet x position
+  PY = 1,  // global or frenet y position
+  YAW = 2,  // global or frenet yaw
+  VX = 3,  // body longitudinal velocity
+  VY = 4,  // body lateral velocity
+  VYAW = 5  // body yaw rate
+};
+
+enum UIndex : casadi_int
+{
+  FD = 0,
+  FB = 1,
+  STEER = 2
+};
+
 // TODO(haoru): the base vehicle model should be an abstract class.
 class BaseVehicleModel
 {
@@ -87,6 +104,26 @@ public:
    * The function outputs Jacobian of "xip1" with respect to x (A matrix) and u (B matrix) evaulated at their given point.
    */
   virtual const casadi::Function & discrete_dynamics_jacobian() const;
+
+  /**
+   * @brief If the subclassed VD model uses a different state representation,
+   *        this function should take "x" and "u",
+   *        and return a function that converts them to the base state.
+   *
+   * @return const casadi::Function& function that converts "x" and "u" to the base state variable.
+   */
+  virtual const casadi::Function & to_base_state() const;
+  virtual const casadi::Function & from_base_state() const;
+
+  /**
+   * @brief If the subclassed VD model uses a different control representation,
+   *        this function should take "x" and "u",
+   *        and return a function that converts them to the base control variable.
+   *
+   * @return const casadi::Function& function that converts "x" and "u" to the base control variable.
+   */
+  virtual const casadi::Function & to_base_control() const;
+  virtual const casadi::Function & from_base_control() const;
 
   /**
    * @brief Add constraints to the optimal control problem.
@@ -165,6 +202,10 @@ protected:
   casadi::Function dynamics_jacobian_ {};
   casadi::Function discrete_dynamics_ {};
   casadi::Function discrete_dynamics_jacobian_ {};
+  casadi::Function to_base_state_ {};
+  casadi::Function to_base_control_ {};
+  casadi::Function from_base_state_ {};
+  casadi::Function from_base_control_ {};
 };
 }  // namespace base_vehicle_model
 }  // namespace vehicle_model

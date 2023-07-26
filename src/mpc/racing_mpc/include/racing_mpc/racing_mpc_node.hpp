@@ -49,7 +49,7 @@ protected:
   double dt_;
   RacingMPCConfig::SharedPtr config_ {};
   RacingTrajectory::SharedPtr track_ {};
-  SingleTrackPlanarModel::SharedPtr model_ {};
+  BaseVehicleModel::SharedPtr model_ {};
   RacingMPC::SharedPtr mpc_ {};
   lmpc::utils::CycleProfiler<>::SharedPtr profiler_ {};
 

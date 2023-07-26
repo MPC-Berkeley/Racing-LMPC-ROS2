@@ -69,6 +69,7 @@ def generate_launch_description():
                     {
                         "racing_mpc_node.dt": 0.1,
                         "racing_mpc_node.race_track_file_path": track_file,
+                        "racing_mpc_node.vehicle_model_name": "single_track_planar_model",
                     },
                 ],
                 remappings=[

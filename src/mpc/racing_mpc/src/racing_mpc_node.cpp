@@ -34,10 +34,9 @@ RacingMPCNode::RacingMPCNode(const rclcpp::NodeOptions & options)
   track_(std::make_shared<RacingTrajectory>(
       utils::declare_parameter<std::string>(
         this, "racing_mpc_node.race_track_file_path"))),
-  model_(std::make_shared<SingleTrackPlanarModel>(
-      lmpc::vehicle_model::base_vehicle_model::
-      load_parameters(this), lmpc::vehicle_model::single_track_planar_model::load_parameters(
-        this))),
+  model_(vehicle_model::vehicle_model_factory::load_vehicle_model(
+      utils::declare_parameter<std::string>(
+        this, "racing_mpc_node.vehicle_model_name"), this)),
   mpc_(std::make_shared<RacingMPC>(config_, model_)),
   profiler_(std::make_shared<lmpc::utils::CycleProfiler<>>(10)),
   f2g_(track_->frenet_to_global_function().map(mpc_->get_config().N))
@@ -116,14 +115,20 @@ void RacingMPCNode::on_step_timer()
   const auto & p = vehicle_state_msg_->p;
   const auto & v = vehicle_state_msg_->v;
   const auto & w = vehicle_state_msg_->w;
-  const auto x_ic = DM{
+  const auto x_ic_base = DM{
     p.s, p.x_tran, p.e_psi, v.v_long, v.v_tran, w.w_psi
   };
-  const auto u_ic = casadi::DM {
+  const auto u_ic_base = casadi::DM {
     vehicle_actuation_msg_->u_a > 0.0 ? vehicle_actuation_msg_->u_a : 0.0,
     vehicle_actuation_msg_->u_a < 0.0 ? vehicle_actuation_msg_->u_a : 0.0,
     vehicle_actuation_msg_->u_steer
   };
+  const auto x_ic =
+    model_->from_base_state()(casadi::DMDict{{"x", x_ic_base}, {"u", u_ic_base}}).at("x_out");
+  const auto u_ic =
+    model_->from_base_control()(
+    casadi::DMDict{{"x", x_ic_base},
+      {"u", u_ic_base}}).at("u_out");
   // current input
   sol_in_["u_ic"] = u_ic;
 
@@ -132,13 +137,12 @@ void RacingMPCNode::on_step_timer()
   // if the mpc is not solved, pass the initial guess
   if (!mpc_->solved()) {
     last_x_ = DM::zeros(mpc_->get_model().nx(), N);
-    last_u_ = DM::zeros(mpc_->get_model().nu(), N - 1);
-    last_x_(XIndex::PX, 0) = x_ic(XIndex::PX);
-    const auto v0 = x_ic(XIndex::VX);
-    last_x_(XIndex::VX, 0) = v0;
+    last_u_ = DM::zeros(mpc_->get_model().nu(), N - 1) + 1e-9;
+    last_x_(Slice(), 0) = x_ic;
+    const auto v0 = x_ic_base(XIndex::VX);
     for (int i = 1; i < N; i++) {
+      last_x_(Slice(), i) = last_x_(Slice(), i - 1);
       last_x_(XIndex::PX, i) = last_x_(XIndex::PX, i - 1) + dt_ * v0;
-      last_x_(XIndex::VX, i) = v0;
     }
     sol_in_["X_optm_ref"] = last_x_;
     sol_in_["U_optm_ref"] = last_u_;

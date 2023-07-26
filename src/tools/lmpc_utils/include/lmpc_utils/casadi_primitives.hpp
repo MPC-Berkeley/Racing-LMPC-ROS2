@@ -55,7 +55,7 @@ struct CasadiSpatialVelocity2D
 template<typename T = casadi::DM>
 struct CasadiPose2D
 {
-  CasadiPosition2D position;
+  CasadiPosition2D<T> position;
   T yaw = 0.0;
 };
 
@@ -69,7 +69,7 @@ struct CasadiFrenetPosition2D
 template<typename T = casadi::DM>
 struct CasadiFrenetPose2D
 {
-  CasadiFrenetPosition2D position;
+  CasadiFrenetPosition2D<T> position;
   T yaw = 0.0;
 };
 

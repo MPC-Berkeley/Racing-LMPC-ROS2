@@ -24,6 +24,15 @@ namespace base_vehicle_model
 BaseVehicleModel::BaseVehicleModel(BaseVehicleModelConfig::SharedPtr config)
 : base_config_(config)
 {
+  // initialize to_base_state_ and to_base_control_
+  const auto x_sym = casadi::SX::sym("x", nx());
+  const auto u_sym = casadi::SX::sym("u", nu());
+  to_base_state_ = casadi::Function(
+    "to_base_state", {x_sym, u_sym}, {x_sym}, {"x", "u"}, {"x_out"});
+  to_base_control_ = casadi::Function(
+    "to_base_control", {x_sym, u_sym}, {u_sym}, {"x", "u"}, {"u_out"});
+  from_base_state_ = to_base_state_;
+  from_base_control_ = to_base_control_;
 }
 
 void BaseVehicleModel::set_base_config(BaseVehicleModelConfig::SharedPtr config)
@@ -48,12 +57,12 @@ const BaseVehicleModelState & BaseVehicleModel::get_const_state() const
 
 size_t BaseVehicleModel::nx() const
 {
-  return 1;
+  return 6;
 }
 
 size_t BaseVehicleModel::nu() const
 {
-  return 1;
+  return 3;
 }
 
 const casadi::Function & BaseVehicleModel::dynamics() const
@@ -74,6 +83,26 @@ const casadi::Function & BaseVehicleModel::discrete_dynamics() const
 const casadi::Function & BaseVehicleModel::discrete_dynamics_jacobian() const
 {
   return discrete_dynamics_jacobian_;
+}
+
+const casadi::Function & BaseVehicleModel::to_base_state() const
+{
+  return to_base_state_;
+}
+
+const casadi::Function & BaseVehicleModel::from_base_state() const
+{
+  return from_base_state_;
+}
+
+const casadi::Function & BaseVehicleModel::to_base_control() const
+{
+  return to_base_control_;
+}
+
+const casadi::Function & BaseVehicleModel::from_base_control() const
+{
+  return from_base_control_;
 }
 
 void BaseVehicleModel::add_nlp_constraints(casadi::Opti & opti, const casadi::MXDict & in)

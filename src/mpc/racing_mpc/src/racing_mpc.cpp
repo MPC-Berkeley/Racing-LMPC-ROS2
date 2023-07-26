@@ -30,7 +30,7 @@ namespace racing_mpc
 {
 RacingMPC::RacingMPC(
   RacingMPCConfig::SharedPtr mpc_config,
-  SingleTrackPlanarModel::SharedPtr model)
+  BaseVehicleModel::SharedPtr model)
 : config_(mpc_config), model_(model),
   scale_x_(casadi::DM::ones(model_->nx())),
   scale_u_(casadi::DM::ones(model_->nu())),
@@ -72,7 +72,7 @@ RacingMPC::RacingMPC(
   auto cost = MX::zeros(1);
 
   // set up abscissa offsets
-  const auto P0 = X_ref_(XIndex::PX, Slice());
+  // const auto P0 = X_ref_(XIndex::PX, Slice());
   // const auto X0 = MX::vertcat({P0, MX::zeros(model_->nx() - 1, config_->N)});
 
   // set up track boundary constraint
@@ -94,12 +94,14 @@ RacingMPC::RacingMPC(
   // --- MPC stage cost ---
   const auto x0 = X_(Slice(), 0) * scale_x_;
   for (size_t i = 0; i < config_->N - 1; i++) {
+    const auto xi = X_(Slice(), i) * scale_x_;
+    const auto ui = U_(Slice(), i - 1) * scale_u_;
     // xi start with 1 since x0 must equal to x_ic and there is nothing we can do about it
     if (i >= 1) {
-      const auto xi = X_(Slice(), i) * scale_x_;
       // const auto d_px =
       // utils::align_abscissa<MX>(xi(XIndex::PX), x0(XIndex::PX), total_length_) - x0(XIndex::PX);
-      const auto dv = hypot(xi(XIndex::VX), xi(XIndex::VY)) - vel_ref_(i);
+      const auto x_base = model_->to_base_state()(casadi::MXDict{{"x", xi}, {"u", ui}}).at("x_out");
+      const auto dv = hypot(x_base(XIndex::VX), x_base(XIndex::VY)) - vel_ref_(i);
       /*
       const auto px_dot = (xi(XIndex::VX) * cos(xi(XIndex::YAW)) - xi(XIndex::VY) * sin(xi(XIndex::YAW))) /
         (1 - xi(XIndex::PY) * curvatures_(i));
@@ -113,12 +115,13 @@ RacingMPC::RacingMPC(
     }
     // ui ends at N - 1
     if (i < config_->N - 1) {
-      const auto ui = U_(Slice(), i) * scale_u_;
       cost += MX::mtimes({ui.T(), config_->R, ui});
     }
   }
   const auto xN = X_(Slice(), config_->N - 1) * scale_x_;
-  const auto dv = hypot(xN(XIndex::VX), xN(XIndex::VY)) - vel_ref_(config_->N - 1);
+  const auto uN = U_(Slice(), config_->N - 2) * scale_u_;
+  const auto x_base_N = model_->to_base_state()(casadi::MXDict{{"x", xN}, {"u", uN}}).at("x_out");
+  const auto dv = hypot(x_base_N(XIndex::VX), x_base_N(XIndex::VY)) - vel_ref_(config_->N - 1);
   /*
   const auto px_dot = xN(XIndex::VX) * cos(xN(XIndex::YAW)) - xN(XIndex::VY) * sin(xN(XIndex::YAW)) /
     (1 - xN(XIndex::PY) * curvatures_(config_->N - 1));
@@ -323,7 +326,7 @@ void RacingMPC::create_warm_start(const casadi::DMDict & in, casadi::DMDict & ou
   out["U_ref"] = U_ref;
 }
 
-SingleTrackPlanarModel & RacingMPC::get_model()
+BaseVehicleModel & RacingMPC::get_model()
 {
   return *model_;
 }

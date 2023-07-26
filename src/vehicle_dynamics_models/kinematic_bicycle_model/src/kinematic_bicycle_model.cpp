@@ -149,11 +149,10 @@ void KinematicBicycleModel::compile_dynamics()
   const auto k = SX::sym("k", 1);  // curvature for frenet frame
   const auto dt = SX::sym("dt", 1);  // time step
 
+  const auto & px = x(XIndex::PX);
   const auto & py = x(XIndex::PY);
   const auto & phi = x(XIndex::YAW);  // yaw
   const auto & v = x(XIndex::V);  // body frame velocity magnitude
-  // const auto beta = atan2(vy, vx);  // slip angle
-  // const auto v = casadi::SX::hypot(vx, vy);  // velocity magnitude
   const auto & fd = u(UIndex::FD);  // drive force
   const auto & fb = u(UIndex::FB);  // brake forcce
   const auto & delta = u(UIndex::STEER);  // front wheel angle
@@ -193,6 +192,7 @@ void KinematicBicycleModel::compile_dynamics()
   const auto S = l / tan(delta);  // rear axle turn radius
   const auto R = S / cos(beta);  // cg turn radius
   auto phi_dot = v / R;
+  const auto global_yaw_rate = phi_dot;
   auto px_dot = v * cos(beta + phi);
   auto py_dot = v * sin(beta + phi);
 
@@ -281,6 +281,29 @@ void KinematicBicycleModel::compile_dynamics()
     {"x", "u", "k", "dt"},
     {"A", "B"}
   );
+
+  // state conversions
+  const auto base_x = SX{vertcat(
+      x(kinematic_bicycle_model::XIndex::PX),
+      x(kinematic_bicycle_model::XIndex::PY),
+      x(kinematic_bicycle_model::XIndex::YAW),
+      x(kinematic_bicycle_model::XIndex::V) * cos(beta),
+      x(kinematic_bicycle_model::XIndex::V) * sin(beta),
+      global_yaw_rate
+    )};
+  to_base_state_ = casadi::Function(
+    "to_base_state", {x, u}, {base_x}, {"x", "u"}, {"x_out"});
+
+  const auto base_x_sym = SX::sym("base_x", BaseVehicleModel::nx());
+  const auto base_u_sym = SX::sym("base_u", BaseVehicleModel::nu());
+  const auto derived_x = SX{vertcat(
+      base_x_sym(base_vehicle_model::XIndex::PX),
+      base_x_sym(base_vehicle_model::XIndex::PY),
+      base_x_sym(base_vehicle_model::XIndex::YAW),
+      hypot(base_x_sym(base_vehicle_model::XIndex::VX), base_x_sym(base_vehicle_model::XIndex::VY))
+    )};
+  from_base_state_ = casadi::Function(
+    "from_base_state", {base_x_sym, base_u_sym}, {derived_x}, {"x", "u"}, {"x_out"});
 }
 }  // namespace kinematic_bicycle_model
 }  // namespace vehicle_model
