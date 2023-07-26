@@ -24,7 +24,7 @@
 
 #include <boost/circular_buffer.hpp>
 
-#include <diagnostic_msgs/msg/diagnostic_array.hpp>
+#include <diagnostic_msgs/msg/diagnostic_status.hpp>
 
 namespace lmpc
 {
@@ -37,25 +37,23 @@ struct Profile
   T max;
   T min;
 
-  diagnostic_msgs::msg::DiagnosticArray to_diagnostic_status(
-    const std::string & name,
+  diagnostic_msgs::msg::DiagnosticStatus to_diagnostic_status(
+    const std::string & name, const std::string & message,
     const T & warn_threshold)
   {
-    using diagnostic_msgs::msg::DiagnosticArray;
     using diagnostic_msgs::msg::DiagnosticStatus;
     using diagnostic_msgs::msg::KeyValue;
 
-    DiagnosticArray diagnostics;
-    DiagnosticStatus & status = diagnostics.status.emplace_back();
+    auto status = DiagnosticStatus();
     KeyValue & max = status.values.emplace_back();
-    max.key = "max (ms)";
-    max.value = std::to_string(this->max.count());
+    max.key = "max";
+    max.value = std::to_string(this->max);
     KeyValue & mean = status.values.emplace_back();
-    mean.key = "mean (ms)";
-    mean.value = std::to_string(this->mean.count());
+    mean.key = "mean";
+    mean.value = std::to_string(this->mean);
     KeyValue & min = status.values.emplace_back();
-    min.key = "min (ms)";
-    min.value = std::to_string(this->min.count());
+    min.key = "min";
+    min.value = std::to_string(this->min);
 
     if (this->max > warn_threshold) {
       status.level = DiagnosticStatus::WARN;
@@ -63,8 +61,8 @@ struct Profile
       status.level = DiagnosticStatus::OK;
     }
     status.name = name;
-    status.message = "Cycle Profile";
-    return diagnostics;
+    status.message = message;
+    return status;
   }
 };
 
@@ -74,6 +72,7 @@ class CycleProfiler
 public:
   typedef T Duration;
   typedef std::shared_ptr<CycleProfiler> SharedPtr;
+  typedef std::unique_ptr<CycleProfiler> UniquePtr;
 
   CycleProfiler()
   {
@@ -90,16 +89,9 @@ public:
     durations_.resize(window);
   }
 
-  void start()
+  void add_cycle_stats(const Duration & duration)
   {
     std::lock_guard<std::mutex> lock(mutex_);
-    last_start_time_ = now();
-  }
-
-  void end()
-  {
-    std::lock_guard<std::mutex> lock(mutex_);
-    const Duration duration = std::chrono::duration_cast<Duration>(now() - last_start_time_);
     durations_.push_back(duration);
   }
 

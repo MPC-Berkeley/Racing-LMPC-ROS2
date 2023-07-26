@@ -51,7 +51,8 @@ protected:
   RacingTrajectory::SharedPtr track_ {};
   BaseVehicleModel::SharedPtr model_ {};
   RacingMPC::SharedPtr mpc_ {};
-  lmpc::utils::CycleProfiler<>::SharedPtr profiler_ {};
+  lmpc::utils::CycleProfiler<double>::UniquePtr profiler_ {};
+  lmpc::utils::CycleProfiler<double>::UniquePtr profiler_iter_count_ {};
 
   casadi::DM last_x_;
   casadi::DM last_u_;

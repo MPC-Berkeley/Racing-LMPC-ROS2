@@ -45,7 +45,7 @@ public:
     BaseVehicleModel::SharedPtr model);
   const RacingMPCConfig & get_config() const;
 
-  void solve(const casadi::DMDict & in, casadi::DMDict & out);
+  void solve(const casadi::DMDict & in, casadi::DMDict & out, casadi::Dict & stats);
 
   void create_warm_start(const casadi::DMDict & in, casadi::DMDict & out);
 
@@ -66,16 +66,16 @@ protected:
   casadi::Opti opti_;
 
   // optimization variables
-  casadi::MX X_;
-  casadi::MX U_;
+  casadi::MX X_;  // all the states, scaled
+  casadi::MX U_;  // all the inputs, scaled
   casadi::MX boundary_slack_;
 
   // optimization parameters
-  casadi::MX X_ref_;
-  casadi::MX U_ref_;
-  casadi::MX T_ref_;
-  casadi::MX x_ic_;
-  casadi::MX u_ic_;
+  casadi::MX X_ref_;  // reference states, unscaled
+  casadi::MX U_ref_;  // reference inputs, unscaled
+  casadi::MX T_ref_;  // reference time, unscaled
+  casadi::MX x_ic_;  // initial state, unscaled
+  casadi::MX u_ic_;  // initial input, unscaled
   casadi::MX bound_left_;
   casadi::MX bound_right_;
   casadi::MX total_length_;

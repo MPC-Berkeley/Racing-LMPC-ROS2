@@ -180,7 +180,7 @@ const RacingMPCConfig & RacingMPC::get_config() const
   return *config_.get();
 }
 
-void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out)
+void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out, casadi::Dict & stats)
 {
   using casadi::DM;
   using casadi::MX;
@@ -260,11 +260,13 @@ void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out)
     solved_ = true;
     out["X_optm"] = sol_->value(X_) * scale_x_;
     out["U_optm"] = sol_->value(U_) * scale_u_;
+    stats = sol_->stats();
   } catch (const std::exception & e) {
     std::cerr << e.what() << '\n';
     // throw e;
     out["X_optm"] = opti_.debug().value(X_) * scale_x_;
     out["U_optm"] = opti_.debug().value(U_) * scale_u_;
+    stats = opti_.stats();
   }
 }
 

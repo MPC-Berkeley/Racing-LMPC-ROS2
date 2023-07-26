@@ -126,8 +126,9 @@ void test_mpc(const lmpc::Pose2D & p0, const double & v0, const casadi_int & num
 
 
     auto sol_out = casadi::DMDict{};
+    auto stats = casadi::Dict{};
     const auto start = std::chrono::high_resolution_clock::now();
-    mpc->solve(sol_in, sol_out);
+    mpc->solve(sol_in, sol_out, stats);
     const auto stop = std::chrono::high_resolution_clock::now();
     const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
     std::cout << "MPC Execution Time: " << duration.count() << "ms" << std::endl;

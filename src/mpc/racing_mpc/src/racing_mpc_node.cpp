@@ -38,7 +38,8 @@ RacingMPCNode::RacingMPCNode(const rclcpp::NodeOptions & options)
       utils::declare_parameter<std::string>(
         this, "racing_mpc_node.vehicle_model_name"), this)),
   mpc_(std::make_shared<RacingMPC>(config_, model_)),
-  profiler_(std::make_shared<lmpc::utils::CycleProfiler<>>(10)),
+  profiler_(std::make_unique<lmpc::utils::CycleProfiler<double>>(10)),
+  profiler_iter_count_(std::make_unique<lmpc::utils::CycleProfiler<double>>(10)),
   f2g_(track_->frenet_to_global_function().map(mpc_->get_config().N))
 {
   // initialize the actuation message
@@ -103,9 +104,8 @@ void RacingMPCNode::on_step_timer()
       "Waiting for first vehicle state message.");
     return;
   }
-  const auto start = this->now();
+  const auto mpc_solve_start = std::chrono::system_clock::now();
   static size_t profile_step_count = 0;
-  profiler_->start();
 
   using casadi::DM;
   using casadi::Slice;
@@ -182,8 +182,9 @@ void RacingMPCNode::on_step_timer()
 
   // solve the mpc
   auto sol_out = casadi::DMDict{};
+  auto stats = casadi::Dict{};
   // const auto mpc_start = std::chrono::high_resolution_clock::now();
-  mpc_->solve(sol_in_, sol_out);
+  mpc_->solve(sol_in_, sol_out, stats);
   // const auto mpc_stop = std::chrono::high_resolution_clock::now();
   // const auto mpc_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
   //   mpc_stop - mpc_start);
@@ -200,19 +201,17 @@ void RacingMPCNode::on_step_timer()
   last_x_global(Slice(XIndex::PX, XIndex::YAW + 1), Slice()) =
     f2g_(last_x_(Slice(XIndex::PX, XIndex::YAW + 1), Slice()))[0];
 
-
-  profiler_->end();
+  const auto mpc_solve_duration = std::chrono::system_clock::now() - mpc_solve_start;
+  profiler_->add_cycle_stats(mpc_solve_duration.count() * 1e-6);
+  profiler_iter_count_->add_cycle_stats(static_cast<double>(stats.at("iter_count")));
   profile_step_count++;
 
   // sleep if the execution time is less than dt
   if (config_->step_mode == RacingMPCStepMode::CONTINUOUS) {
-    const auto end = this->now();
-    const auto duration = (end - start).seconds();
-    if (duration < dt_) {
+    if (mpc_solve_duration < std::chrono::duration<double>(dt_)) {
       rclcpp::sleep_for(
         std::chrono::duration_cast<std::chrono::nanoseconds>(
-          std::chrono::duration<double>(
-            dt_ - duration)));
+          std::chrono::duration<double>(dt_) - mpc_solve_duration));
     }
   }
 
@@ -220,8 +219,13 @@ void RacingMPCNode::on_step_timer()
   const auto now = this->now();
 
   if (profile_step_count % profiler_->capacity() == 0) {
-    auto diagnostics_msg = profiler_->profile().to_diagnostic_status(
-      "Racing MPC", std::chrono::duration<double>(dt_));
+    auto diagnostics_msg = diagnostic_msgs::msg::DiagnosticArray();
+    diagnostics_msg.status.push_back(
+      profiler_->profile().to_diagnostic_status(
+        "Racing MPC Solve Time", "(ms)", dt_ * 1e3));
+    diagnostics_msg.status.push_back(
+      profiler_iter_count_->profile().to_diagnostic_status(
+        "Racing MPC Iteration Count", "Number of IPOPT Iterations", 50));
     diagnostics_msg.header.stamp = now;
     diagnostics_pub_->publish(diagnostics_msg);
     profile_step_count = 0;
