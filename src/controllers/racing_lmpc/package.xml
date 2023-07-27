@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>racing_lmpc</name>
+  <version>1.0.0</version>
+  <description>a trajectory tracking MPC</description>
+  <maintainer email="haorux@andrew.cmu.edu">Haoru Xue</maintainer>
+  <license>LGPLv3</license>
+
+  <buildtool_depend>ament_cmake_auto</buildtool_depend>
+
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+  <test_depend>ament_cmake_gtest</test_depend>
+
+  <depend>rclcpp</depend>
+  <depend>backward_ros</depend>
+  <depend>nav_msgs</depend>
+
+  <depend>lmpc_utils</depend>
+  <depend>vehicle_model_factory</depend>
+  <depend>racing_trajectory</depend>
+  <depend>mpclab_msgs</depend>
+  <depend>lmpc_transform_helper</depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
