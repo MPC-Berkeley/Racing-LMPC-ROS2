@@ -1,0 +1,17 @@
+/**:
+  ros__parameters:
+    vanilla_controller:
+      lookahead_speed_ratio: 1.0
+      min_lookahead_distance: 3.0
+      max_lookahead_distance: 40.0
+
+      lon_kp: 1.0
+      lon_ki: 0.1
+      lon_kd: 0.1
+      lon_ki_max: 3.0
+      lon_ki_min: -3.0
+      lon_max_acc: 5.0
+      lon_min_acc: -5.0
+      dt: 0.1
+
+      step_mode: "continuous"

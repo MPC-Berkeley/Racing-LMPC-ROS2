@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(lmpc_utils)
+project(vanilla_controller)
 
 # Default to C++17.
 if(NOT CMAKE_CXX_STANDARD)
@@ -21,6 +21,7 @@ elseif(${ROS_DISTRO} STREQUAL "humble")
 endif()
 
 # Require that dependencies from package.xml be available.
+find_package(casadi REQUIRED)
 find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies(REQUIRED
   ${${PROJECT_NAME}_BUILD_DEPENDS}
@@ -28,22 +29,16 @@ ament_auto_find_build_dependencies(REQUIRED
 )
 
 set(${PROJECT_NAME}_SRC
-  src/lookup.cpp
-  src/logging.cpp
-  src/primitives.cpp
-  src/utils.cpp
-  src/pid_controller.cpp
+  src/vanilla_controller.cpp
+  src/ros_param_loader.cpp
+  src/vanilla_controller_node.cpp
 )
 
 set(${PROJECT_NAME}_HEADER
-  include/lmpc_utils/ros_param_helper.hpp
-  include/lmpc_utils/lookup.hpp
-  include/lmpc_utils/utils.hpp
-  include/lmpc_utils/logging.hpp
-  include/lmpc_utils/primitives.hpp
-  include/lmpc_utils/casadi_primitives.hpp
-  include/lmpc_utils/cycle_profiler.hpp
-  include/lmpc_utils/pid_controller.hpp
+  include/vanilla_controller/vanilla_controller.hpp
+  include/vanilla_controller/vanilla_controller_config.hpp
+  include/vanilla_controller/ros_param_loader.hpp
+  include/vanilla_controller/vanilla_controller_node.hpp
 )
 
 ament_auto_add_library(${PROJECT_NAME} SHARED
@@ -51,14 +46,23 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
   ${${PROJECT_NAME}_HEADER}
 )
 
+target_link_libraries(${PROJECT_NAME} casadi)
+
+ament_auto_add_executable(${PROJECT_NAME}_node_exe
+  ${${PROJECT_NAME}_SRC}
+)
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   ament_lint_auto_find_test_dependencies()
-  set(TEST_SOURCES test/test_lmpc_utils.cpp)
-  set(TEST_LMPC_UTILS_EXE test_lmpc_utils)
-  ament_add_gtest(${TEST_LMPC_UTILS_EXE} ${TEST_SOURCES})
-  target_link_libraries(${TEST_LMPC_UTILS_EXE} ${PROJECT_NAME})
+  set(TEST_SOURCES test/test_vanilla_controller.cpp)
+  set(TEST_VANILLA_EXE test_vanilla_controller)
+  ament_add_gtest(${TEST_VANILLA_EXE} ${TEST_SOURCES})
+  target_link_libraries(${TEST_VANILLA_EXE} ${PROJECT_NAME})
 endif()
 
 # Create & install ament package.
-ament_auto_package()
+ament_auto_package(INSTALL_TO_SHARE
+  param
+  launch
+)
