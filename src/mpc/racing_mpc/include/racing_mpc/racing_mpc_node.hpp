@@ -17,6 +17,7 @@
 #define RACING_MPC__RACING_MPC_NODE_HPP_
 
 #include <memory>
+#include <mutex>
 
 #include <casadi/casadi.hpp>
 
@@ -53,6 +54,7 @@ protected:
   RacingMPC::SharedPtr mpc_ {};
   lmpc::utils::CycleProfiler<double>::UniquePtr profiler_ {};
   lmpc::utils::CycleProfiler<double>::UniquePtr profiler_iter_count_ {};
+  std::mutex state_msg_mutex_;
 
   casadi::DM last_x_;
   casadi::DM last_u_;

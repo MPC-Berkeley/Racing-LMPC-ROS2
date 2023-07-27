@@ -89,7 +89,9 @@ RacingMPCNode::RacingMPCNode(const rclcpp::NodeOptions & options)
 
 void RacingMPCNode::on_new_state(const mpclab_msgs::msg::VehicleStateMsg::SharedPtr msg)
 {
+  state_msg_mutex_.lock();
   vehicle_state_msg_ = msg;
+  state_msg_mutex_.unlock();
   if (config_->step_mode == RacingMPCStepMode::STEP) {
     on_step_timer();
   }
@@ -97,27 +99,31 @@ void RacingMPCNode::on_new_state(const mpclab_msgs::msg::VehicleStateMsg::Shared
 
 void RacingMPCNode::on_step_timer()
 {
+  using casadi::DM;
+  using casadi::Slice;
+
   // return if no state message is received
+  state_msg_mutex_.lock();
   if (!vehicle_state_msg_) {
     RCLCPP_INFO_THROTTLE(
       this->get_logger(), *this->get_clock(), 1000,
       "Waiting for first vehicle state message.");
+    state_msg_mutex_.unlock();
     return;
   }
-  const auto mpc_solve_start = std::chrono::system_clock::now();
-  static size_t profile_step_count = 0;
-
-  using casadi::DM;
-  using casadi::Slice;
-  const auto N = static_cast<casadi_int>(mpc_->get_config().N);
-
-  // prepare the mpc inputs
   const auto & p = vehicle_state_msg_->p;
   const auto & v = vehicle_state_msg_->v;
   const auto & w = vehicle_state_msg_->w;
   const auto x_ic_base = DM{
     p.s, p.x_tran, p.e_psi, v.v_long, v.v_tran, w.w_psi
   };
+  state_msg_mutex_.unlock();
+
+  const auto mpc_solve_start = std::chrono::system_clock::now();
+  static size_t profile_step_count = 0;
+  const auto N = static_cast<casadi_int>(mpc_->get_config().N);
+
+  // prepare the mpc inputs
   const auto u_ic_base = casadi::DM {
     vehicle_actuation_msg_->u_a > 0.0 ? vehicle_actuation_msg_->u_a : 0.0,
     vehicle_actuation_msg_->u_a < 0.0 ? vehicle_actuation_msg_->u_a : 0.0,
