@@ -259,3 +259,5 @@ test_optm.py
 
 src/external/*
 !src/external/.gitkeep
+
+jit_tmp*.c

@@ -8,6 +8,7 @@
       margin: 0.3
       average_track_width: 11.0
       verbose: false
+      jit: false
 
       q_contour: 1.0
       q_heading: 1.0

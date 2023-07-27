@@ -64,6 +64,7 @@ RacingMPCConfig::SharedPtr load_parameters(rclcpp::Node * node)
           declare_double("racing_mpc.margin"),
           declare_double("racing_mpc.average_track_width"),
           declare_bool("racing_mpc.verbose"),
+          declare_bool("racing_mpc.jit"),
           step_mode,
           casadi::DM(declare_double("racing_mpc.q_contour")),
           casadi::DM(declare_double("racing_mpc.q_heading")),

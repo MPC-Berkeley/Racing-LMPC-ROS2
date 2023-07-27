@@ -101,6 +101,7 @@ void RacingMPCNode::on_step_timer()
 {
   using casadi::DM;
   using casadi::Slice;
+  static bool jitted = !config_->jit;  // if JIT is done
 
   // return if no state message is received
   state_msg_mutex_.lock();
@@ -190,6 +191,9 @@ void RacingMPCNode::on_step_timer()
   auto sol_out = casadi::DMDict{};
   auto stats = casadi::Dict{};
   // const auto mpc_start = std::chrono::high_resolution_clock::now();
+  if (!jitted) {
+    RCLCPP_INFO(this->get_logger(), "Using the first solve to execute just-in-time compilation.");
+  }
   mpc_->solve(sol_in_, sol_out, stats);
   // const auto mpc_stop = std::chrono::high_resolution_clock::now();
   // const auto mpc_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -203,6 +207,14 @@ void RacingMPCNode::on_step_timer()
 
   last_x_ = sol_out["X_optm"];
   last_u_ = sol_out["U_optm"];
+
+  if (!jitted) {
+    // on first solve, exit since JIT will take a long time
+    jitted = true;
+    RCLCPP_INFO(this->get_logger(), "JIT is done. Discarding the first solve...");
+    return;
+  }
+
   auto last_x_global = last_x_;
   last_x_global(Slice(XIndex::PX, XIndex::YAW + 1), Slice()) =
     f2g_(last_x_(Slice(XIndex::PX, XIndex::YAW + 1), Slice()))[0];

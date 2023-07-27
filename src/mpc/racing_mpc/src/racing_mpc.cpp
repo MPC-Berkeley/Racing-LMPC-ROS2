@@ -58,10 +58,14 @@ RacingMPC::RacingMPC(
   using casadi::Slice;
 
   // configure solver
-  const auto p_opts = casadi::Dict{
+  auto p_opts = casadi::Dict{
     {"expand", true},
-    {"print_time", config_->verbose ? true : false}
+    {"print_time", config_->verbose ? true : false},
   };
+  if (config_->jit) {
+    p_opts["jit"] = true;
+    p_opts["jit_options"] = casadi::Dict{{"flags", "-Ofast"}};
+  }
   const auto s_opts = casadi::Dict{
     {"max_cpu_time", config_->max_cpu_time},
     {"tol", config_->tol},
