@@ -37,11 +37,16 @@ RacingMPCNode::RacingMPCNode(const rclcpp::NodeOptions & options)
   model_(vehicle_model::vehicle_model_factory::load_vehicle_model(
       utils::declare_parameter<std::string>(
         this, "racing_mpc_node.vehicle_model_name"), this)),
-  mpc_(std::make_shared<RacingMPC>(config_, model_)),
+  mpc_(std::make_shared<RacingMPC>(config_, model_, true)),
   profiler_(std::make_unique<lmpc::utils::CycleProfiler<double>>(10)),
   profiler_iter_count_(std::make_unique<lmpc::utils::CycleProfiler<double>>(10)),
   f2g_(track_->frenet_to_global_function().map(mpc_->get_config().N))
 {
+  auto full_config = std::make_shared<RacingMPCConfig>(*config_);
+  full_config->max_cpu_time = 10.0;
+  full_config->max_iter = 1000;
+  mpc_full_ = std::make_shared<RacingMPC>(full_config, model_, true);
+
   // initialize the actuation message
   vehicle_actuation_msg_ = std::make_shared<mpclab_msgs::msg::VehicleActuationMsg>();
 
@@ -142,14 +147,18 @@ void RacingMPCNode::on_step_timer()
   // std::cout << "x_ic: " << x_ic << std::endl;
 
   // if the mpc is not solved, pass the initial guess
-  if (!mpc_->solved()) {
+  if (!mpc_full_->solved()) {
     last_x_ = DM::zeros(mpc_->get_model().nx(), N);
     last_u_ = DM::zeros(mpc_->get_model().nu(), N - 1) + 1e-9;
     last_x_(Slice(), 0) = x_ic;
     const auto v0 = x_ic_base(XIndex::VX);
     for (int i = 1; i < N; i++) {
-      last_x_(Slice(), i) = last_x_(Slice(), i - 1);
-      last_x_(XIndex::PX, i) = last_x_(XIndex::PX, i - 1) + dt_ * v0;
+      last_x_(
+        Slice(),
+        i) =
+        discrete_dynamics_(
+        casadi::DMVector{last_x_(Slice(), i - 1),
+          last_u_(Slice(), i - 1)})[0];
     }
     sol_in_["X_optm_ref"] = last_x_;
     sol_in_["U_optm_ref"] = last_u_;
@@ -190,6 +199,21 @@ void RacingMPCNode::on_step_timer()
   // solve the mpc
   auto sol_out = casadi::DMDict{};
   auto stats = casadi::Dict{};
+
+  // solve the first time with full dynamics
+  if (!mpc_full_->solved()) {
+    RCLCPP_INFO(this->get_logger(), "Get initial solution with full dynamics.");
+    mpc_full_->solve(sol_in_, sol_out, stats);
+    last_x_ = sol_out["X_optm"];
+    last_u_ = sol_out["U_optm"];
+    if (mpc_full_->solved()) {
+      RCLCPP_INFO(this->get_logger(), "Solved the first time with full dynamics.");
+    } else {
+      RCLCPP_FATAL(this->get_logger(), "Failed to solve the first time with full dynamics.");
+    }
+    return;
+  }
+
   // const auto mpc_start = std::chrono::high_resolution_clock::now();
   if (!jitted) {
     RCLCPP_INFO(this->get_logger(), "Using the first solve to execute just-in-time compilation.");
@@ -243,7 +267,7 @@ void RacingMPCNode::on_step_timer()
         "Racing MPC Solve Time", "(ms)", dt_ * 1e3));
     diagnostics_msg.status.push_back(
       profiler_iter_count_->profile().to_diagnostic_status(
-        "Racing MPC Iteration Count", "Number of IPOPT Iterations", 50));
+        "Racing MPC Iteration Count", "Number of Solver Iterations", 50));
     diagnostics_msg.header.stamp = now;
     diagnostics_pub_->publish(diagnostics_msg);
     profile_step_count = 0;

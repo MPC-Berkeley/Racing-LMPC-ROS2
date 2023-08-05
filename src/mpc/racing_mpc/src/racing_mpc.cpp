@@ -30,7 +30,8 @@ namespace racing_mpc
 {
 RacingMPC::RacingMPC(
   RacingMPCConfig::SharedPtr mpc_config,
-  BaseVehicleModel::SharedPtr model)
+  BaseVehicleModel::SharedPtr model,
+  const bool & full_dynamics)
 : config_(mpc_config), model_(model),
   scale_x_(casadi::DM::ones(model_->nx())),
   scale_u_(casadi::DM::ones(model_->nu())),
@@ -90,7 +91,9 @@ RacingMPC::RacingMPC(
         bound_right_ + margin - boundary_slack_, PY,
         bound_left_ - margin + boundary_slack_));
     opti_.subject_to(boundary_slack_ >= 0.0);
-    cost += MX::mtimes({boundary_slack_, config_->q_boundary, boundary_slack_.T()});
+    for (casadi_int i = 0; i < config_->N; i++) {
+      cost += MX::mtimes({boundary_slack_(i).T(), config_->q_boundary, boundary_slack_(i)});
+    }
   } else {
     opti_.subject_to(opti_.bounded(bound_right_ + margin, PY, bound_left_ - margin));
   }
@@ -101,40 +104,28 @@ RacingMPC::RacingMPC(
     const auto xi = X_(Slice(), i) * scale_x_;
     const auto ui = U_(Slice(), i - 1) * scale_u_;
     // xi start with 1 since x0 must equal to x_ic and there is nothing we can do about it
-    if (i >= 1) {
-      // const auto d_px =
-      // utils::align_abscissa<MX>(xi(XIndex::PX), x0(XIndex::PX), total_length_) - x0(XIndex::PX);
-      const auto x_base = model_->to_base_state()(casadi::MXDict{{"x", xi}, {"u", ui}}).at("x_out");
-      const auto dv = hypot(x_base(XIndex::VX), x_base(XIndex::VY)) - vel_ref_(i);
-      /*
-      const auto px_dot = (xi(XIndex::VX) * cos(xi(XIndex::YAW)) - xi(XIndex::VY) * sin(xi(XIndex::YAW))) /
-        (1 - xi(XIndex::PY) * curvatures_(i));
-      const auto py_dot = xi(XIndex::VX) * sin(xi(XIndex::YAW)) + xi(XIndex::VY) * cos(xi(XIndex::YAW));
-      const auto heading_diveation = atan2(py_dot, px_dot);
-      const auto beta_phi = atan2(py_dot, px_dot);
-      */
-      cost += config_->q_contour * xi(XIndex::PY) * xi(XIndex::PY) +
-        config_->q_heading * xi(XIndex::YAW) * xi(XIndex::YAW) +
-        config_->q_vel * dv * dv;
-    }
-    // ui ends at N - 1
-    if (i < config_->N - 1) {
-      cost += MX::mtimes({ui.T(), config_->R, ui});
-    }
+    // const auto d_px =
+    // utils::align_abscissa<MX>(xi(XIndex::PX), x0(XIndex::PX), total_length_) - x0(XIndex::PX);
+    const auto x_base = model_->to_base_state()(casadi::MXDict{{"x", xi}, {"u", ui}}).at("x_out");
+    const auto dv = x_base(XIndex::VX) - vel_ref_(i);
+    auto ref = MX::zeros(3);
+    ref(2) = vel_ref_(i);
+    const auto err = x_base(Slice(XIndex::PY, XIndex::VX + 1)) - ref;
+    const auto Q = MX::diag(MX::vertcat({config_->q_contour, config_->q_heading, config_->q_vel}));
+    cost += MX::mtimes({err.T(), Q, err});
+
+    cost += MX::mtimes({ui.T(), config_->R, ui});
   }
   const auto xN = X_(Slice(), config_->N - 1) * scale_x_;
   const auto uN = U_(Slice(), config_->N - 2) * scale_u_;
   const auto x_base_N = model_->to_base_state()(casadi::MXDict{{"x", xN}, {"u", uN}}).at("x_out");
-  const auto dv = hypot(x_base_N(XIndex::VX), x_base_N(XIndex::VY)) - vel_ref_(config_->N - 1);
-  /*
-  const auto px_dot = xN(XIndex::VX) * cos(xN(XIndex::YAW)) - xN(XIndex::VY) * sin(xN(XIndex::YAW)) /
-    (1 - xN(XIndex::PY) * curvatures_(config_->N - 1));
-  const auto py_dot = xN(XIndex::VX) * sin(xN(XIndex::YAW)) + xN(XIndex::VY) * cos(xN(XIndex::YAW));
-  const auto heading_diveation = atan2(py_dot, px_dot);
-  */
-  cost += config_->q_contour * xN(XIndex::PY) * xN(XIndex::PY) * 10.0 +
-    config_->q_heading * xN(XIndex::YAW) * xN(XIndex::YAW) * 10.0 +
-    config_->q_vel * dv * dv * 10.0;
+  const auto dv = x_base_N(XIndex::VX) - vel_ref_(config_->N - 1);
+  auto refN = MX::zeros(3);
+  refN(2) = vel_ref_(config_->N - 1);
+  const auto errN = x_base_N(Slice(XIndex::PY, XIndex::VX + 1)) - refN;
+  const auto Q = 10.0 *
+    MX::diag(MX::vertcat({config_->q_contour, config_->q_heading, config_->q_vel}));
+  cost += MX::mtimes({errN.T(), Q, errN});
 
   opti_.minimize(cost);
 
@@ -173,6 +164,45 @@ RacingMPC::RacingMPC(
     // primal bounds
     opti_.subject_to(opti_.bounded(config_->x_min, xi, config_->x_max));
     opti_.subject_to(opti_.bounded(config_->u_min, ui, config_->u_max));
+
+    // dynamics constraints
+    auto xip1_temp = casadi::MX(xip1);
+    // if (model_->get_base_config().modeling_config->use_frenet) {
+    //   xip1_temp(XIndex::PX) =
+    //     lmpc::utils::align_abscissa<casadi::MX>(
+    //     xip1_temp(XIndex::PX), xi(XIndex::PX),
+    //     total_length_);
+    // } else {
+    //   xip1_temp(XIndex::YAW) =
+    //     lmpc::utils::align_yaw<casadi::MX>(xip1_temp(XIndex::YAW), xi(XIndex::YAW));
+    // }
+
+    if (full_dynamics) {
+      // use full dynamics for dynamics constraints
+      const auto xip1_pred =
+        model_->discrete_dynamics()({{"x", xi}, {"u", ui}, {"k", k}, {"dt", ti}}).at("xip1");
+      opti_.subject_to(xip1_pred - xip1_temp == 0);
+    } else {
+      // or use linearlized dynamics for dynamics constraints
+      const auto xi_ref = X_ref_(Slice(), i);
+      const auto ui_ref = U_ref_(Slice(), i);
+      // const auto xi_ref = x_ic_;
+      // const auto ui_ref = u_ic_;
+      const auto AB =
+        model_->discrete_dynamics_jacobian()(
+        {{"x", xi_ref}, {"u", ui_ref}, {"k", k},
+          {"dt", ti}});
+      const auto x_ref_p1 =
+        model_->discrete_dynamics()({{"x", xi_ref}, {"u", ui_ref}, {"k", k}, {"dt", ti}}).at(
+        "xip1");
+      const auto & A = AB.at("A");
+      const auto & B = AB.at("B");
+      const auto & g = AB.at("g");
+      opti_.subject_to(
+        (xip1_temp - x_ref_p1) -
+        (MX::mtimes(A, (xi - xi_ref)) + MX::mtimes(B, (ui - ui_ref))) == 0);
+      // opti_.subject_to(xip1_temp - (MX::mtimes(A, xi) + MX::mtimes(B, ui) + g) == 0);
+    }
   }
 
   // --- initial state constraint ---

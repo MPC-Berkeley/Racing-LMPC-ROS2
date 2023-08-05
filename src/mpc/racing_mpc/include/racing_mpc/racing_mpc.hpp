@@ -42,7 +42,8 @@ public:
 
   explicit RacingMPC(
     RacingMPCConfig::SharedPtr mpc_config,
-    BaseVehicleModel::SharedPtr model);
+    BaseVehicleModel::SharedPtr model,
+    const bool & full_dynamics = false);
   const RacingMPCConfig & get_config() const;
 
   void solve(const casadi::DMDict & in, casadi::DMDict & out, casadi::Dict & stats);

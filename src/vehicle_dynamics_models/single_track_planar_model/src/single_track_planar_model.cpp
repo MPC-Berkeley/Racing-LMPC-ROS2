@@ -71,20 +71,21 @@ void SingleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casa
     const auto & P_max = get_config().P_max;
 
     // dynamics constraint
-    auto xip1_temp = casadi::MX(xip1);
-    if (base_config_->modeling_config->use_frenet) {
-      xip1_temp(XIndex::PX) =
-        lmpc::utils::align_abscissa<casadi::MX>(
-        xip1_temp(XIndex::PX), x(XIndex::PX),
-        in.at("track_length"));
-    } else {
-      xip1_temp(XIndex::YAW) =
-        lmpc::utils::align_yaw<casadi::MX>(xip1_temp(XIndex::YAW), x(XIndex::YAW));
-    }
+    // auto xip1_temp = casadi::MX(xip1);
+    // if (base_config_->modeling_config->use_frenet) {
+    //   xip1_temp(XIndex::PX) =
+    //     lmpc::utils::align_abscissa<casadi::MX>(
+    //     xip1_temp(XIndex::PX), x(XIndex::PX),
+    //     in.at("track_length"));
+    // } else {
+    //   xip1_temp(XIndex::YAW) =
+    //     lmpc::utils::align_yaw<casadi::MX>(xip1_temp(XIndex::YAW), x(XIndex::YAW));
+    // }
 
     // const auto out1 = dynamics_({{"x", x}, {"u", u}, {"k", k}});
-    const auto xip1_pred = discrete_dynamics_({{"x", x}, {"u", u}, {"k", k}, {"dt", t}}).at("xip1");
-    opti.subject_to(xip1_pred - xip1_temp == 0);
+    // const auto xip1_pred =
+    // discrete_dynamics_({{"x", x}, {"u", u}, {"k", k}, {"dt", t}}).at("xip1");
+    // opti.subject_to(xip1_pred - xip1_temp == 0);
 
     // tyre constraints
     // const auto Fx_ij = out1.at("Fx_ij");
@@ -100,7 +101,7 @@ void SingleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casa
     // opti.subject_to(v >= 0.0);
     opti.subject_to(opti.bounded(0.0, fd, Fd_max));
     opti.subject_to(opti.bounded(Fb_max, fb, 0.0));
-    opti.subject_to(pow(fd * fb, 2) <= 10.0);
+    opti.subject_to(pow(fd * fb, 2) <= 100.0);
     opti.subject_to(opti.bounded(-1.0 * delta_max, delta, delta_max));
   }
 
@@ -310,13 +311,14 @@ void SingleTrackPlanarModel::compile_dynamics()
 
   const auto Ad = SX::jacobian(xip1, x);
   const auto Bd = SX::jacobian(xip1, u);
+  const auto gd = xip1 - (SX::mtimes(Ad, x) + SX::mtimes(Bd, u));
 
   discrete_dynamics_jacobian_ = casadi::Function(
     "single_track_planar_model_discrete_dynamics_jacobian",
     {x, u, k, dt},
-    {Ad, Bd},
+    {Ad, Bd, gd},
     {"x", "u", "k", "dt"},
-    {"A", "B"}
+    {"A", "B", "g"}
   );
 }
 }  // namespace single_track_planar_model
