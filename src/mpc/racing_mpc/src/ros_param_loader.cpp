@@ -55,6 +55,8 @@ RacingMPCConfig::SharedPtr load_parameters(rclcpp::Node * node)
     throw std::invalid_argument("Invalid step mode: " + step_mode_str);
   }
 
+  const auto R = casadi::DM(declare_vec("racing_mpc.r"));
+
   return std::make_shared<RacingMPCConfig>(
     RacingMPCConfig{
           declare_double("racing_mpc.max_cpu_time"),
@@ -70,7 +72,9 @@ RacingMPCConfig::SharedPtr load_parameters(rclcpp::Node * node)
           casadi::DM(declare_double("racing_mpc.q_heading")),
           casadi::DM(declare_double("racing_mpc.q_vel")),
           casadi::DM(declare_double("racing_mpc.q_boundary")),
-          casadi::DM::reshape(casadi::DM(declare_vec("racing_mpc.r")), 3, 3),
+          casadi::DM::reshape(
+            R, static_cast<casadi_int>(sqrt(R.size1())),
+            static_cast<casadi_int>(sqrt(R.size1()))),
           casadi::DM(declare_vec("racing_mpc.x_max")),
           casadi::DM(declare_vec("racing_mpc.x_min")),
           casadi::DM(declare_vec("racing_mpc.u_max")),

@@ -43,15 +43,26 @@ size_t SingleTrackPlanarModel::nx() const
 
 size_t SingleTrackPlanarModel::nu() const
 {
-  return 3;
+  if (config_->simplify_lon_control) {
+    return 2;
+  } else {
+    return 3;
+  }
 }
 
 void SingleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casadi::MXDict & in)
 {
   const auto & u = in.at("u");
-  const auto & fd = u(UIndex::FD);
-  const auto & fb = u(UIndex::FB);
-  const auto & delta = u(UIndex::STEER);
+  casadi::MX fd, fb, delta;
+  if (config_->simplify_lon_control) {
+    fd = u(UIndexSimple::LON) * (casadi::MX::tanh(u(UIndexSimple::LON)) * 0.5 + 0.5);
+    fb = u(UIndexSimple::LON) * (casadi::MX::tanh(-u(UIndexSimple::LON)) * 0.5 + 0.5);
+    delta = u(UIndexSimple::STEER_SIMPLE);
+  } else {
+    fd = u(UIndex::FD);
+    fb = u(UIndex::FB);
+    delta = u(UIndex::STEER);
+  }
   const auto & t = in.at("t");
   const auto & Fd_max = get_config().Fd_max;
   const auto & Fb_max = get_config().Fb_max;
@@ -99,21 +110,38 @@ void SingleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casa
     // static actuator cconstraint
     opti.subject_to(v * fd <= P_max);
     // opti.subject_to(v >= 0.0);
-    opti.subject_to(opti.bounded(0.0, fd, Fd_max));
-    opti.subject_to(opti.bounded(Fb_max, fb, 0.0));
-    opti.subject_to(pow(fd * fb, 2) <= 100.0);
+    if (config_->simplify_lon_control) {
+      opti.subject_to(fd <= Fd_max);
+      opti.subject_to(fb >= Fb_max);
+    } else {
+      opti.subject_to(pow(fd * fb, 2) <= 100.0);
+      opti.subject_to(opti.bounded(0.0, fd, Fd_max));
+      opti.subject_to(opti.bounded(Fb_max, fb, 0.0));
+    }
     opti.subject_to(opti.bounded(-1.0 * delta_max, delta, delta_max));
   }
 
   // dynamic actuator constraint
   if (in.count("uip1")) {
     const auto & uip1 = in.at("uip1");
-    opti.subject_to((uip1(UIndex::FD) - fd) / t <= Fd_max / Td);
-    opti.subject_to((uip1(UIndex::FB) - fb) / t >= Fb_max / Tb);
-    opti.subject_to(
-      opti.bounded(
-        -delta_max / Tdelta, (uip1(UIndex::STEER) - delta) / t,
-        delta_max / Tdelta));
+
+    if (config_->simplify_lon_control) {
+      opti.subject_to(
+        opti.bounded(
+          Fb_max / Tb,
+          (uip1(UIndexSimple::LON) - u(UIndexSimple::LON)) / t, Fd_max / Td));
+      opti.subject_to(
+        opti.bounded(
+          -delta_max / Tdelta, (uip1(UIndexSimple::STEER_SIMPLE) - delta) / t,
+          delta_max / Tdelta));
+    } else {
+      opti.subject_to((uip1(UIndex::FD) - fd) / t <= Fd_max / Td);
+      opti.subject_to((uip1(UIndex::FB) - fb) / t >= Fb_max / Tb);
+      opti.subject_to(
+        opti.bounded(
+          -delta_max / Tdelta, (uip1(UIndex::STEER) - delta) / t,
+          delta_max / Tdelta));
+    }
   }
 }
 
@@ -122,8 +150,14 @@ void SingleTrackPlanarModel::calc_lon_control(
   double & brake_kpa) const
 {
   const auto & u = in.at("u").get_elements();
-  const auto & fd = u[UIndex::FD];
-  const auto & fb = u[UIndex::FB];
+  double fd, fb;
+  if (config_->simplify_lon_control) {
+    fd = u[UIndexSimple::LON] * (tanh(u[UIndexSimple::LON]) * 0.5 + 0.5);
+    fb = u[UIndexSimple::LON] * (tanh(-u[UIndexSimple::LON]) * 0.5 + 0.5);
+  } else {
+    fd = u[UIndex::FD];
+    fb = u[UIndex::FB];
+  }
   throttle = 0.0;
   brake_kpa = 0.0;
   if (abs(fd) > abs(fb)) {
@@ -138,7 +172,11 @@ void SingleTrackPlanarModel::calc_lat_control(
   double & steering_rad) const
 {
   const auto & u = in.at("u").get_elements();
-  steering_rad = u[UIndex::STEER];
+  if (config_->simplify_lon_control) {
+    steering_rad = u[UIndexSimple::STEER_SIMPLE];
+  } else {
+    steering_rad = u[UIndex::STEER];
+  }
 }
 
 void SingleTrackPlanarModel::compile_dynamics()
@@ -155,12 +193,20 @@ void SingleTrackPlanarModel::compile_dynamics()
   const auto & omega = x(XIndex::VYAW);  // yaw rate
   const auto & vx = x(XIndex::VX);  // body frame longitudinal velocity
   const auto & vy = x(XIndex::VY);  // body frame lateral velocity
+  const auto v_sq = vx * vx + vy * vy;
+  // const auto v_sq = vx * vx;
   // const auto beta = atan2(vy, vx);  // slip angle
   // const auto v = casadi::SX::hypot(vx, vy);  // velocity magnitude
-  const auto & fd = u(UIndex::FD);  // drive force
-  const auto & fb = u(UIndex::FB);  // brake forcce
-  const auto & delta = u(UIndex::STEER);  // front wheel angle
-  const auto v_sq = vx * vx + vy * vy;
+  SX fd, fb, delta;
+  if (config_->simplify_lon_control) {
+    fd = u(UIndexSimple::LON) * (SX::tanh(u(UIndexSimple::LON)) * 0.5 + 0.5);
+    fb = u(UIndexSimple::LON) * (SX::tanh(-u(UIndexSimple::LON)) * 0.5 + 0.5);
+    delta = u(UIndexSimple::STEER_SIMPLE);
+  } else {
+    fd = u(UIndex::FD);
+    fb = u(UIndex::FB);
+    delta = u(UIndex::STEER);
+  }
 
   const auto & kd_f = get_base_config().powertrain_config->kd;
   const auto & kb_f = get_base_config().front_brake_config->bias;  // front brake force bias
@@ -320,6 +366,36 @@ void SingleTrackPlanarModel::compile_dynamics()
     {"x", "u", "k", "dt"},
     {"A", "B", "g"}
   );
+
+  // convert to base state and control
+  if (config_->simplify_lon_control) {
+    const auto x_sym = SX::sym("x", nx());
+    const auto u_derived_sym = SX::sym("u", nu());
+    const auto u_base_sym = SX::sym("u", BaseVehicleModel::nu());
+
+    const auto u_base_out = SX::vertcat(
+          {
+            u_derived_sym(UIndexSimple::LON) * 1 / (1 + SX::exp(-u_derived_sym(UIndexSimple::LON))),
+            u_derived_sym(UIndexSimple::LON) * 1 / (1 + SX::exp(u_derived_sym(UIndexSimple::LON))),
+            u_derived_sym(UIndexSimple::STEER_SIMPLE)
+          });
+    const auto u_derived_out = SX::vertcat(
+          {
+            SX::if_else(
+              abs(u_base_sym(UIndex::FD)) > abs(u_base_sym(UIndex::FB)),
+              u_base_sym(UIndex::FD), u_base_sym(UIndex::FB)),
+            u_base_sym(UIndex::STEER)
+          });
+
+    to_base_control_ = casadi::Function(
+      "to_base_control", {x_sym, u_derived_sym}, {u_base_out}, {"x", "u"}, {"u_out"});
+    from_base_control_ = casadi::Function(
+      "from_base_control", {x_sym, u_base_sym}, {u_derived_out}, {"x", "u"}, {"u_out"});
+    to_base_state_ = casadi::Function(
+      "to_base_state", {x_sym, u_derived_sym}, {x_sym}, {"x", "u"}, {"x_out"});
+    from_base_state_ = casadi::Function(
+      "from_base_state", {x_sym, u_base_sym}, {x_sym}, {"x", "u"}, {"x_out"});
+  }
 }
 }  // namespace single_track_planar_model
 }  // namespace vehicle_model

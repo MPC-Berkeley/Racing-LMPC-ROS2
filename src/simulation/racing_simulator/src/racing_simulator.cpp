@@ -104,7 +104,9 @@ void RacingSimulator::step(const casadi::DM & u)
 
   // update state
   u_ = u;
-  const auto out = discrete_dynamics_(casadi::DMVector{x_, u_});
+  const auto u_derived = model_->from_base_control()(casadi::DMDict{{"x", x_}, {"u", u_}}).at(
+    "u_out");
+  const auto out = discrete_dynamics_(casadi::DMVector{x_, u_derived});
   x_ = out.at(0);
   last_x_dot_ = out.at(1);
 }

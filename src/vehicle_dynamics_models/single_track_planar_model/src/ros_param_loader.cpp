@@ -32,6 +32,9 @@ SingleTrackPlanarModelConfig::SharedPtr load_parameters(rclcpp::Node * node)
   auto declare_double = [&](const char * name) {
       return lmpc::utils::declare_parameter<double>(node, name);
     };
+  auto declare_bool = [&](const char * name) {
+      return lmpc::utils::declare_parameter<bool>(node, name);
+    };
 
   return std::make_shared<SingleTrackPlanarModelConfig>(
     SingleTrackPlanarModelConfig{
@@ -41,7 +44,8 @@ SingleTrackPlanarModelConfig::SharedPtr load_parameters(rclcpp::Node * node)
           declare_double("single_track_planar.tb"),
           declare_double("single_track_planar.v_max"),
           declare_double("single_track_planar.p_max"),
-          declare_double("single_track_planar.mu")
+          declare_double("single_track_planar.mu"),
+          declare_bool("single_track_planar.simplify_lon_control")
         }
   );
 }

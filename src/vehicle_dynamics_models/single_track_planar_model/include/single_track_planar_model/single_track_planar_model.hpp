@@ -39,6 +39,7 @@ struct SingleTrackPlanarModelConfig
   double v_max;
   double P_max;
   double mu;
+  bool simplify_lon_control;
 };
 
 enum XIndex : casadi_int
@@ -56,6 +57,12 @@ enum UIndex : casadi_int
   FD = 0,
   FB = 1,
   STEER = 2
+};
+
+enum UIndexSimple : casadi_int
+{
+  LON = 0,
+  STEER_SIMPLE = 1
 };
 
 class SingleTrackPlanarModel final : public base_vehicle_model::BaseVehicleModel

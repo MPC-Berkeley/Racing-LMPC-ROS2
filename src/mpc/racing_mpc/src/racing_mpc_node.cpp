@@ -16,7 +16,6 @@
 #include <lmpc_utils/ros_param_helper.hpp>
 #include <lmpc_utils/utils.hpp>
 #include <base_vehicle_model/ros_param_loader.hpp>
-#include <single_track_planar_model/ros_param_loader.hpp>
 
 #include "racing_mpc/racing_mpc_node.hpp"
 #include "racing_mpc/ros_param_loader.hpp"
@@ -273,7 +272,11 @@ void RacingMPCNode::on_step_timer()
     profile_step_count = 0;
   }
   // publish the actuation message
-  const auto u_vec = last_u_(Slice(), 0).get_elements();
+  const auto last_u_base =
+    model_->to_base_control()(
+    casadi::DMDict{{"x", last_x_(Slice(), 0)},
+      {"u", last_u_(Slice(), 0)}}).at("u_out");
+  const auto u_vec = last_u_base.get_elements();
   // std::cout << "x: " << last_x_(Slice(), 0) << std::endl;
   // std::cout << "u: " << last_u_(Slice(), 0) << std::endl;
   // std::cout << "xip1: "
