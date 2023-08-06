@@ -223,19 +223,17 @@ void RacingMPCNode::on_step_timer()
     RCLCPP_INFO(this->get_logger(), "Using the first solve to execute just-in-time compilation.");
   }
   mpc_->solve(sol_in_, sol_out, stats);
-  // const auto mpc_stop = std::chrono::high_resolution_clock::now();
-  // const auto mpc_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-  //   mpc_stop - mpc_start);
-  // std::cout << "MPC Execution Time: " << mpc_duration.count() << "ms" << std::endl;
-  // if (mpc_->solved()) {
-  //   sol_in_.erase("X_optm_ref");
-  //   sol_in_.erase("U_optm_ref");
-  //   sol_in_.erase("T_optm_ref");
-  // }
-
-  last_x_ = sol_out["X_optm"];
-  last_u_ = sol_out["U_optm"];
-  last_du_ = sol_out["dU_optm"];
+  
+  if (stats.at("return_status").as_string() != "Infeasible_Problem_Detected")
+  {
+    last_x_ = sol_out["X_optm"];
+    last_u_ = sol_out["U_optm"];
+    last_du_ = sol_out["dU_optm"];
+  } else {
+    RCLCPP_ERROR_THROTTLE(
+      this->get_logger(), *this->get_clock(), 1000,
+      "Infeasible problem detected.");
+  }
 
   if (!jitted) {
     // on first solve, exit since JIT will take a long time

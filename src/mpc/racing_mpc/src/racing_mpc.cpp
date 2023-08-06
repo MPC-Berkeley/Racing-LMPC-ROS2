@@ -63,6 +63,7 @@ RacingMPC::RacingMPC(
   auto p_opts = casadi::Dict{
     {"expand", true},
     {"print_time", config_->verbose ? true : false},
+    {"error_on_fail", false}
   };
   if (config_->jit) {
     p_opts["jit"] = true;
