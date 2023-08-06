@@ -56,6 +56,7 @@ RacingMPCConfig::SharedPtr load_parameters(rclcpp::Node * node)
   }
 
   const auto R = casadi::DM(declare_vec("racing_mpc.r"));
+  const auto R_d = casadi::DM(declare_vec("racing_mpc.r_d"));
 
   return std::make_shared<RacingMPCConfig>(
     RacingMPCConfig{
@@ -75,6 +76,9 @@ RacingMPCConfig::SharedPtr load_parameters(rclcpp::Node * node)
           casadi::DM::reshape(
             R, static_cast<casadi_int>(sqrt(R.size1())),
             static_cast<casadi_int>(sqrt(R.size1()))),
+          casadi::DM::reshape(
+            R_d, static_cast<casadi_int>(sqrt(R_d.size1())),
+            static_cast<casadi_int>(sqrt(R_d.size1()))),
           casadi::DM(declare_vec("racing_mpc.x_max")),
           casadi::DM(declare_vec("racing_mpc.x_min")),
           casadi::DM(declare_vec("racing_mpc.u_max")),

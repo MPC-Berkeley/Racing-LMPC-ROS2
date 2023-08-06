@@ -42,6 +42,7 @@ RacingMPC::RacingMPC(
   opti_(casadi::Opti()),
   X_(opti_.variable(model_->nx(), config_->N)),
   U_(opti_.variable(model_->nu(), config_->N - 1)),
+  dU_(opti_.variable(model_->nu(), config_->N - 1)),
   X_ref_(opti_.parameter(model_->nx(), config_->N)),
   U_ref_(opti_.parameter(model_->nu(), config_->N - 1)),
   T_ref_(opti_.parameter(1, config_->N - 1)),
@@ -103,6 +104,7 @@ RacingMPC::RacingMPC(
   for (size_t i = 0; i < config_->N - 1; i++) {
     const auto xi = X_(Slice(), i) * scale_x_;
     const auto ui = U_(Slice(), i - 1) * scale_u_;
+    const auto dui = dU_(Slice(), i - 1) * scale_u_;
     // xi start with 1 since x0 must equal to x_ic and there is nothing we can do about it
     // const auto d_px =
     // utils::align_abscissa<MX>(xi(XIndex::PX), x0(XIndex::PX), total_length_) - x0(XIndex::PX);
@@ -115,6 +117,7 @@ RacingMPC::RacingMPC(
     cost += MX::mtimes({err.T(), Q, err});
 
     cost += MX::mtimes({ui.T(), config_->R, ui});
+    cost += MX::mtimes({dui.T(), config_->R_d, dui});
   }
   const auto xN = X_(Slice(), config_->N - 1) * scale_x_;
   const auto uN = U_(Slice(), config_->N - 2) * scale_u_;
@@ -144,29 +147,18 @@ RacingMPC::RacingMPC(
       {"k", k},
       {"track_length", total_length_}
     };
-    if (i < config_->N - 2) {
-      // some model uses the next control variable to enforce control smoothness
-      const auto uip1 = U_(Slice(), i + 1) * scale_u_;
-      constraint_in["uip1"] = uip1;
-    }
-    model_->add_nlp_constraints(opti_, constraint_in);
 
-    // regulate against last control input
-    if (i == 0) {
-      casadi::MXDict constraint_in_0 = {
-        {"u", u_ic_},
-        {"uip1", ui},
-        {"t", ti}
-      };
-      model_->add_nlp_constraints(opti_, constraint_in_0);
-    }
+    const auto dui = dU_(Slice(), i) * scale_u_;
+    constraint_in["dui"] = dui;
+
+    model_->add_nlp_constraints(opti_, constraint_in);
 
     // primal bounds
     opti_.subject_to(opti_.bounded(config_->x_min, xi, config_->x_max));
     opti_.subject_to(opti_.bounded(config_->u_min, ui, config_->u_max));
 
     // dynamics constraints
-    auto xip1_temp = casadi::MX(xip1);
+    // auto xip1_temp = casadi::MX(xip1);
     // if (model_->get_base_config().modeling_config->use_frenet) {
     //   xip1_temp(XIndex::PX) =
     //     lmpc::utils::align_abscissa<casadi::MX>(
@@ -181,7 +173,7 @@ RacingMPC::RacingMPC(
       // use full dynamics for dynamics constraints
       const auto xip1_pred =
         model_->discrete_dynamics()({{"x", xi}, {"u", ui}, {"k", k}, {"dt", ti}}).at("xip1");
-      opti_.subject_to(xip1_pred - xip1_temp == 0);
+      opti_.subject_to(xip1_pred - xip1 == 0);
     } else {
       // or use linearlized dynamics for dynamics constraints
       const auto xi_ref = X_ref_(Slice(), i);
@@ -199,10 +191,19 @@ RacingMPC::RacingMPC(
       const auto & B = AB.at("B");
       const auto & g = AB.at("g");
       opti_.subject_to(
-        (xip1_temp - x_ref_p1) -
+        (xip1 - x_ref_p1) -
         (MX::mtimes(A, (xi - xi_ref)) + MX::mtimes(B, (ui - ui_ref))) == 0);
       // opti_.subject_to(xip1_temp - (MX::mtimes(A, xi) + MX::mtimes(B, ui) + g) == 0);
     }
+
+    // control rate constraints
+    MX uim1;
+    if (i == 0) {
+      uim1 = u_ic_;
+    } else {
+      uim1 = U_(Slice(), i - 1) * scale_u_;
+    }
+    opti_.subject_to(uim1 + dui * ti == ui);
   }
 
   // --- initial state constraint ---
@@ -248,8 +249,10 @@ void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out, casadi::D
         {"total_distance", DM::ones(1, config_->N) * total_length}}).at("abscissa_1_aligned");
     const auto & U_optm_ref = in.at("U_optm_ref");
     const auto & T_optm_ref = in.at("T_optm_ref");
+    const auto & dU_optm_ref = in.at("dU_optm_ref");
     opti_.set_initial(X_ * scale_x_, X_optm_ref);
     opti_.set_initial(U_ * scale_u_, U_optm_ref);
+    opti_.set_initial(dU_ * scale_u_, dU_optm_ref);
     opti_.set_value(T_ref_, T_optm_ref);
     if (sol_) {
       const auto lam_g0 = sol_->value(opti_.lam_g());
@@ -294,12 +297,14 @@ void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out, casadi::D
     solved_ = true;
     out["X_optm"] = sol_->value(X_) * scale_x_;
     out["U_optm"] = sol_->value(U_) * scale_u_;
+    out["dU_optm"] = sol_->value(dU_) * scale_u_;
     stats = sol_->stats();
   } catch (const std::exception & e) {
     std::cerr << e.what() << '\n';
     // throw e;
     out["X_optm"] = opti_.debug().value(X_) * scale_x_;
     out["U_optm"] = opti_.debug().value(U_) * scale_u_;
+    out["dU_optm"] = opti_.debug().value(dU_) * scale_u_;
     stats = opti_.stats();
   }
 }

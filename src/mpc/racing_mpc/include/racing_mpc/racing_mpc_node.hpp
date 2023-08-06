@@ -59,6 +59,7 @@ protected:
 
   casadi::DM last_x_;
   casadi::DM last_u_;
+  casadi::DM last_du_;
   casadi::DMDict sol_in_;
   casadi::Function f2g_;
   casadi::Function discrete_dynamics_ {};

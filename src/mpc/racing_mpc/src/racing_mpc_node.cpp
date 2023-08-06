@@ -149,6 +149,7 @@ void RacingMPCNode::on_step_timer()
   if (!mpc_full_->solved()) {
     last_x_ = DM::zeros(mpc_->get_model().nx(), N);
     last_u_ = DM::zeros(mpc_->get_model().nu(), N - 1) + 1e-9;
+    last_du_ = DM::zeros(mpc_->get_model().nu(), N - 1);
     last_x_(Slice(), 0) = x_ic;
     const auto v0 = x_ic_base(XIndex::VX);
     for (int i = 1; i < N; i++) {
@@ -161,6 +162,7 @@ void RacingMPCNode::on_step_timer()
     }
     sol_in_["X_optm_ref"] = last_x_;
     sol_in_["U_optm_ref"] = last_u_;
+    sol_in_["dU_optm_ref"] = last_du_;
     sol_in_["T_optm_ref"] = sol_in_.at("T_ref");
     sol_in_["X_ref"] = last_x_;
     sol_in_["U_ref"] = last_u_;
@@ -176,12 +178,14 @@ void RacingMPCNode::on_step_timer()
     }
     last_x_ = DM::horzcat({last_x_(Slice(), Slice(1, N)), DM::zeros(model_->nx(), 1)});
     last_u_ = DM::horzcat({last_u_(Slice(), Slice(1, N - 1)), last_u_(Slice(), Slice(N - 2))});
+    last_du_ = DM::horzcat({last_du_(Slice(), Slice(1, N - 1)), DM::zeros(model_->nu(), 1)});
     last_x_(Slice(), -1) =
       discrete_dynamics_(casadi::DMVector{last_x_(Slice(), -2), last_u_(Slice(), -1)})[0];
     sol_in_["X_ref"] = last_x_;
     sol_in_["U_ref"] = last_u_;
     sol_in_["X_optm_ref"] = last_x_;
     sol_in_["U_optm_ref"] = last_u_;
+    sol_in_["dU_optm_ref"] = last_du_;
   }
 
   // prepare the reference trajectory
@@ -205,6 +209,7 @@ void RacingMPCNode::on_step_timer()
     mpc_full_->solve(sol_in_, sol_out, stats);
     last_x_ = sol_out["X_optm"];
     last_u_ = sol_out["U_optm"];
+    last_du_ = sol_out["dU_optm"];
     if (mpc_full_->solved()) {
       RCLCPP_INFO(this->get_logger(), "Solved the first time with full dynamics.");
     } else {
@@ -230,6 +235,7 @@ void RacingMPCNode::on_step_timer()
 
   last_x_ = sol_out["X_optm"];
   last_u_ = sol_out["U_optm"];
+  last_du_ = sol_out["dU_optm"];
 
   if (!jitted) {
     // on first solve, exit since JIT will take a long time

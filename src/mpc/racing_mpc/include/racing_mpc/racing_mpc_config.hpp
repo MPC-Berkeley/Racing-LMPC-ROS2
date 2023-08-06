@@ -56,6 +56,7 @@ struct RacingMPCConfig
   casadi::DM q_vel;  // velocity cost-to-go
   casadi::DM q_boundary;  // boundary slack cost
   casadi::DM R;  // control cost-to-go
+  casadi::DM R_d;  // control rate cost-to-go
   casadi::DM x_max;  // primal upper bound
   casadi::DM x_min;  // primal lower bound
   casadi::DM u_max;  // primal upper bound

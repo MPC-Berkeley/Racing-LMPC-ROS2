@@ -74,10 +74,10 @@ void SingleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casa
 
   if (in.count("x")) {
     const auto & x = in.at("x");
-    const auto & xip1 = in.at("xip1");
+    // const auto & xip1 = in.at("xip1");
     const auto k =
       base_config_->modeling_config->use_frenet ? in.at("k") : casadi::MX::sym("k", 1, 1);
-    const auto v = casadi::MX::hypot(x(XIndex::VX), x(XIndex::VY));
+    const auto v = x(XIndex::VX);
     // const auto & mu = get_config().mu;
     const auto & P_max = get_config().P_max;
 
@@ -111,8 +111,7 @@ void SingleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casa
     opti.subject_to(v * fd <= P_max);
     // opti.subject_to(v >= 0.0);
     if (config_->simplify_lon_control) {
-      opti.subject_to(fd <= Fd_max);
-      opti.subject_to(fb >= Fb_max);
+      opti.subject_to(opti.bounded(Fb_max, u(UIndexSimple::LON), Fd_max));
     } else {
       opti.subject_to(pow(fd * fb, 2) <= 100.0);
       opti.subject_to(opti.bounded(0.0, fd, Fd_max));
@@ -140,6 +139,26 @@ void SingleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casa
       opti.subject_to(
         opti.bounded(
           -delta_max / Tdelta, (uip1(UIndex::STEER) - delta) / t,
+          delta_max / Tdelta));
+    }
+  }
+
+  if (in.count("dui")) {
+    const auto & dui = in.at("dui");
+    if (config_->simplify_lon_control) {
+      opti.subject_to(
+        opti.bounded(
+          Fb_max / Tb, dui(UIndexSimple::LON), Fd_max / Td));
+      opti.subject_to(
+        opti.bounded(
+          -delta_max / Tdelta, dui(UIndexSimple::STEER_SIMPLE),
+          delta_max / Tdelta));
+    } else {
+      opti.subject_to(dui(UIndex::FD) <= Fd_max / Td);
+      opti.subject_to(dui(UIndex::FB) >= Fb_max / Tb);
+      opti.subject_to(
+        opti.bounded(
+          -delta_max / Tdelta, dui(UIndex::STEER),
           delta_max / Tdelta));
     }
   }
@@ -193,8 +212,8 @@ void SingleTrackPlanarModel::compile_dynamics()
   const auto & omega = x(XIndex::VYAW);  // yaw rate
   const auto & vx = x(XIndex::VX);  // body frame longitudinal velocity
   const auto & vy = x(XIndex::VY);  // body frame lateral velocity
-  const auto v_sq = vx * vx + vy * vy;
-  // const auto v_sq = vx * vx;
+  // const auto v_sq = vx * vx + vy * vy;
+  const auto v_sq = vx * vx;
   // const auto beta = atan2(vy, vx);  // slip angle
   // const auto v = casadi::SX::hypot(vx, vy);  // velocity magnitude
   SX fd, fb, delta;
@@ -265,9 +284,9 @@ void SingleTrackPlanarModel::compile_dynamics()
 
   // tyre sideslip angles alpha (eq. 6a, 6b)
   const auto a_fl = delta -
-    atan((lf * omega + vy) / vx);
+    atan((lf * omega + vy) / (vx + 1e-3));
   // const auto a_fr = a_fl;
-  const auto a_rl = atan((lr * omega - vy) / vx);
+  const auto a_rl = atan((lr * omega - vy) / (vx + 1e-3));
   // const auto a_rr = a_rl;
 
   // lateral tyre force Fy (eq. 5)

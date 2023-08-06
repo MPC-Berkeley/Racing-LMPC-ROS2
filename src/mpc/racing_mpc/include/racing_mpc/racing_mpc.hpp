@@ -69,6 +69,7 @@ protected:
   // optimization variables
   casadi::MX X_;  // all the states, scaled
   casadi::MX U_;  // all the inputs, scaled
+  casadi::MX dU_;  // all the input deltas, scaled
   casadi::MX boundary_slack_;
 
   // optimization parameters
