@@ -10,7 +10,7 @@
       verbose: false
       jit: false
 
-      q_contour: 1.0
+      q_contour: 0.3
       q_heading: 0.5
       q_boundary: 50.0 # track boundary slack cost. 0 to disable (hard constraint)
       q_vel: 0.1
@@ -24,7 +24,7 @@
       ]
 
       x_max: [.inf, .inf, .inf, 30.0, 15.0, 2.0]
-      x_min: [-.inf, -.inf, -.inf, 1.0, -15.0, -2.0]
+      x_min: [-.inf, -.inf, -.inf, 0.1, -15.0, -2.0]
       u_max: [1000.0, 0.314159]
       u_min: [-2500.0, -0.314159]
 
