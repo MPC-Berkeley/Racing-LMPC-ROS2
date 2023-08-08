@@ -70,6 +70,7 @@ RacingMPCNode::RacingMPCNode(const rclcpp::NodeOptions & options)
   ref_vis_pub_ = this->create_publisher<nav_msgs::msg::Path>("ref_visualization", 1);
   diagnostics_pub_ = this->create_publisher<diagnostic_msgs::msg::DiagnosticArray>(
     "diagnostics", 1);
+  ss_vis_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("ss_visualization", 1);
 
   // initialize the subscribers
   // state subscription is on a separate callback group
@@ -142,6 +143,8 @@ void RacingMPCNode::on_step_timer()
       {"u", u_ic_base}}).at("u_out");
   // current input
   sol_in_["u_ic"] = u_ic;
+  // current time
+  sol_in_["t_ic"] = vehicle_state_msg_->t;
 
   // std::cout << "x_ic: " << x_ic << std::endl;
 
@@ -150,8 +153,10 @@ void RacingMPCNode::on_step_timer()
     last_x_ = DM::zeros(mpc_->get_model().nx(), N);
     last_u_ = DM::zeros(mpc_->get_model().nu(), N - 1) + 1e-9;
     last_du_ = DM::zeros(mpc_->get_model().nu(), N - 1);
+    if (config_->learning) {
+      last_convex_combi_ = DM::zeros(config_->num_ss_pts);
+    }
     last_x_(Slice(), 0) = x_ic;
-    const auto v0 = x_ic_base(XIndex::VX);
     for (int i = 1; i < N; i++) {
       last_x_(
         Slice(),
@@ -163,6 +168,9 @@ void RacingMPCNode::on_step_timer()
     sol_in_["X_optm_ref"] = last_x_;
     sol_in_["U_optm_ref"] = last_u_;
     sol_in_["dU_optm_ref"] = last_du_;
+    if (config_->learning) {
+      sol_in_["convex_combi_optm_ref"] = last_convex_combi_;
+    }
     sol_in_["T_optm_ref"] = sol_in_.at("T_ref");
     sol_in_["X_ref"] = last_x_;
     sol_in_["U_ref"] = last_u_;
@@ -186,6 +194,9 @@ void RacingMPCNode::on_step_timer()
     sol_in_["X_optm_ref"] = last_x_;
     sol_in_["U_optm_ref"] = last_u_;
     sol_in_["dU_optm_ref"] = last_du_;
+    if (config_->learning) {
+      sol_in_["convex_combi_ref"] = last_convex_combi_;
+    }
   }
 
   // prepare the reference trajectory
@@ -210,6 +221,9 @@ void RacingMPCNode::on_step_timer()
     last_x_ = sol_out["X_optm"];
     last_u_ = sol_out["U_optm"];
     last_du_ = sol_out["dU_optm"];
+    if (config_->learning) {
+      last_convex_combi_ = sol_out["convex_combi_optm"];
+    }
     if (mpc_full_->solved()) {
       RCLCPP_INFO(this->get_logger(), "Solved the first time with full dynamics.");
     } else {
@@ -223,9 +237,8 @@ void RacingMPCNode::on_step_timer()
     RCLCPP_INFO(this->get_logger(), "Using the first solve to execute just-in-time compilation.");
   }
   mpc_->solve(sol_in_, sol_out, stats);
-  
-  if (stats.at("return_status").as_string() != "Infeasible_Problem_Detected")
-  {
+
+  if (stats.at("return_status").as_string() != "Infeasible_Problem_Detected") {
     last_x_ = sol_out["X_optm"];
     last_u_ = sol_out["U_optm"];
     last_du_ = sol_out["dU_optm"];
@@ -312,6 +325,37 @@ void RacingMPCNode::on_step_timer()
         last_x_global(XIndex::YAW, i).get_elements()[0]));
   }
   mpc_vis_pub_->publish(mpc_vis_msg);
+
+  // publish the safe set visualization message
+  const auto & ss_X = sol_out["ss_x"];
+  const auto & ss_J = sol_out["ss_j"];
+  auto ss_vis_msg = visualization_msgs::msg::MarkerArray();
+  auto & marker = ss_vis_msg.markers.emplace_back();
+  marker.header.stamp = now;
+  marker.header.frame_id = "map";
+  marker.ns = "safe_set";
+  marker.id = 0;
+  marker.type = visualization_msgs::msg::Marker::SPHERE_LIST;
+  marker.action = visualization_msgs::msg::Marker::MODIFY;
+  marker.points.reserve(ss_X.size2());
+  for (casadi_int i = 0; i < ss_X.size2(); i++) {
+    const auto ss_x_frenet = ss_X(Slice(XIndex::PX, XIndex::YAW + 1), i);
+    const auto ss_x_global = track_->frenet_to_global_function()(ss_x_frenet)[0].get_elements();
+    auto & point = marker.points.emplace_back();
+    point.x = ss_x_global[0];
+    point.y = ss_x_global[1];
+    point.z = 0.0;
+    auto & color = marker.colors.emplace_back();
+    color.r = 0.0;
+    color.g = 1.0;
+    color.b = 0.0;
+    color.a = 1.0;
+  }
+  marker.scale.x = 0.5;
+  marker.scale.y = 0.5;
+  marker.scale.z = 0.5;
+  ss_vis_pub_->publish(ss_vis_msg);
+
   // std::cout << last_x_ << std::endl;
 }
 }  // namespace racing_mpc

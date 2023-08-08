@@ -290,14 +290,20 @@ void SingleTrackPlanarModel::compile_dynamics()
   // const auto a_rr = a_rl;
 
   // lateral tyre force Fy (eq. 5)
-  const auto Fy_fl = mu * Fz_fl * (1.0 + eps_f * Fz_fl / Fz0_f) *
-    sin(Cf * atan(Bf * a_fl - Ef * (Bf * a_fl - atan(Bf * a_fl))));
+  // const auto Fy_fl = mu * Fz_fl * (1.0 + eps_f * Fz_fl / Fz0_f) *
+  //   sin(Cf * atan(Bf * a_fl - Ef * (Bf * a_fl - atan(Bf * a_fl))));
   // const auto Fy_fr = mu * Fz_fr * (1.0 + eps_f * Fz_fr / Fz0_f) *
   //   sin(Cf * atan(Bf * a_fr - Ef * (Bf * a_fr - atan(Bf * a_fr))));
-  const auto Fy_rl = mu * Fz_rl * (1.0 + eps_r * Fz_rl / Fz0_r) *
-    sin(Cr * atan(Br * a_rl - Er * (Br * a_rl - atan(Br * a_rl))));
+  // const auto Fy_rl = mu * Fz_rl * (1.0 + eps_r * Fz_rl / Fz0_r) *
+  //   sin(Cr * atan(Br * a_rl - Er * (Br * a_rl - atan(Br * a_rl))));
   // const auto Fy_rr = mu * Fz_rr * (1.0 + eps_r * Fz_rr / Fz0_r) *
   //   sin(Cr * atan(Br * a_rr - Er * (Br * a_rr - atan(Br * a_rr))));
+  // simplification - version A
+  // const auto Fy_fl = mu * Fz_fl * sin(Cf * atan(Ef * atan(Bf * a_fl)));
+  // const auto Fy_rl = mu * Fz_rl * sin(Cr * atan(Er * atan(Br * a_rl)));
+  // simplification - version B
+  const auto Fy_fl = mu * Fz_fl * sin(Cf * atan(Bf * a_fl));
+  const auto Fy_rl = mu * Fz_rl * sin(Cr * atan(Br * a_rl));
 
   // dynamics (eq. 3a, 3b, 3c)
   // const auto v_dot = 1.0 / m *

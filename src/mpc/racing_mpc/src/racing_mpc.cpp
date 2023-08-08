@@ -54,7 +54,11 @@ RacingMPC::RacingMPC(
   curvatures_(opti_.parameter(1, config_->N)),
   vel_ref_(opti_.parameter(1, config_->N)),
   solved_(false),
-  sol_()
+  sol_(),
+  ss_manager_(std::make_unique<SafeSetManager>(config_->max_lap_stored)),
+  ss_recorder_(std::make_unique<SafeSetRecorder>(
+      *ss_manager_, config_->record,
+      config_->path_prefix))
 {
   using casadi::MX;
   using casadi::Slice;
@@ -83,53 +87,15 @@ RacingMPC::RacingMPC(
   // const auto X0 = MX::vertcat({P0, MX::zeros(model_->nx() - 1, config_->N)});
 
   // set up track boundary constraint
-  bool enable_boundary_slack = static_cast<double>(config_->q_boundary) > 0.0;
-  const auto PY = X_(XIndex::PY, Slice()) * scale_x_(XIndex::PY);
-  const auto margin = config_->margin + model_->get_base_config().chassis_config->b / 2.0;
-  if (enable_boundary_slack) {
-    boundary_slack_ = opti_.variable(1, config_->N);
-    opti_.subject_to(
-      opti_.bounded(
-        bound_right_ + margin - boundary_slack_, PY,
-        bound_left_ - margin + boundary_slack_));
-    opti_.subject_to(boundary_slack_ >= 0.0);
-    for (casadi_int i = 0; i < config_->N; i++) {
-      cost += MX::mtimes({boundary_slack_(i).T(), config_->q_boundary, boundary_slack_(i)});
-    }
+  build_boundary_constraint(cost);
+
+  if (config_->learning) {
+    // LMPC cost
+    build_lmpc_cost(cost);
   } else {
-    opti_.subject_to(opti_.bounded(bound_right_ + margin, PY, bound_left_ - margin));
+    // Tracking MPC cost
+    build_tracking_cost(cost);
   }
-
-  // --- MPC stage cost ---
-  const auto x0 = X_(Slice(), 0) * scale_x_;
-  for (size_t i = 0; i < config_->N - 1; i++) {
-    const auto xi = X_(Slice(), i) * scale_x_;
-    const auto ui = U_(Slice(), i - 1) * scale_u_;
-    const auto dui = dU_(Slice(), i - 1) * scale_u_;
-    // xi start with 1 since x0 must equal to x_ic and there is nothing we can do about it
-    // const auto d_px =
-    // utils::align_abscissa<MX>(xi(XIndex::PX), x0(XIndex::PX), total_length_) - x0(XIndex::PX);
-    const auto x_base = model_->to_base_state()(casadi::MXDict{{"x", xi}, {"u", ui}}).at("x_out");
-    const auto dv = x_base(XIndex::VX) - vel_ref_(i);
-    auto ref = MX::zeros(3);
-    ref(2) = vel_ref_(i);
-    const auto err = x_base(Slice(XIndex::PY, XIndex::VX + 1)) - ref;
-    const auto Q = MX::diag(MX::vertcat({config_->q_contour, config_->q_heading, config_->q_vel}));
-    cost += MX::mtimes({err.T(), Q, err});
-
-    cost += MX::mtimes({ui.T(), config_->R, ui});
-    cost += MX::mtimes({dui.T(), config_->R_d, dui});
-  }
-  const auto xN = X_(Slice(), config_->N - 1) * scale_x_;
-  const auto uN = U_(Slice(), config_->N - 2) * scale_u_;
-  const auto x_base_N = model_->to_base_state()(casadi::MXDict{{"x", xN}, {"u", uN}}).at("x_out");
-  const auto dv = x_base_N(XIndex::VX) - vel_ref_(config_->N - 1);
-  auto refN = MX::zeros(3);
-  refN(2) = vel_ref_(config_->N - 1);
-  const auto errN = x_base_N(Slice(XIndex::PY, XIndex::VX + 1)) - refN;
-  const auto Q = 10.0 *
-    MX::diag(MX::vertcat({config_->q_contour, config_->q_heading, config_->q_vel}));
-  cost += MX::mtimes({errN.T(), Q, errN});
 
   opti_.minimize(cost);
 
@@ -208,6 +174,7 @@ RacingMPC::RacingMPC(
   }
 
   // --- initial state constraint ---
+  const auto x0 = X_(Slice(), 0) * scale_x_;
   opti_.subject_to(x0 == x_ic_);
 }
 
@@ -225,6 +192,7 @@ void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out, casadi::D
   const auto & total_length = in.at("total_length");
   const auto & x_ic = in.at("x_ic");
   const auto & u_ic = in.at("u_ic");
+  const auto & t_ic = in.at("t_ic");
   auto X_ref = in.at("X_ref");
   X_ref(XIndex::PX, Slice()) = align_abscissa_(
     casadi::DMDict{{"abscissa_1", X_ref(XIndex::PX, Slice())},
@@ -235,6 +203,51 @@ void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out, casadi::D
   const auto & bound_right = in.at("bound_right");
   const auto & curvatures = in.at("curvatures");
   const auto & vel_ref = in.at("vel_ref");
+
+  if (!ss_loaded && config_->load) {
+    ss_recorder_->load(config_->load_path, static_cast<double>(total_length));
+    ss_loaded = true;
+  }
+
+  // add current state to safe set
+  ss_recorder_->step(x_ic, u_ic, t_ic, static_cast<double>(total_length));
+
+  // compute new safe set
+  const auto query = lmpc::vehicle_model::racing_trajectory::SSQuery{
+    X_ref(Slice(), -1),
+    1.0,
+    config_->num_ss_pts,
+    config_->num_ss_pts_per_lap
+  };
+  const auto ss_result = ss_manager_->query(query);
+  out["ss_x"] = ss_result.x;
+  out["ss_j"] = ss_result.J;
+  if (ss_result.x.size2() == 0) {
+    std::cout << "No safe set found, using previous safe set." << std::endl;
+  } else {
+    auto ss_x = ss_result.x;
+    auto ss_j = ss_result.J;
+    if (ss_x.size2() < config_->num_ss_pts) {
+      // pad with the last ss point
+      ss_x =
+        casadi::DM::horzcat(
+        {ss_x,
+          casadi::DM::repmat(ss_x(Slice(), -1), 1, config_->num_ss_pts - ss_x.size2())});
+      ss_j =
+        casadi::DM::horzcat(
+        {ss_j,
+          casadi::DM::repmat(ss_j(Slice(), -1), 1, config_->num_ss_pts - ss_j.size2())});
+    } else if (ss_x.size2() > config_->num_ss_pts) {
+      // truncate
+      ss_x = ss_x(Slice(), Slice(0, config_->num_ss_pts));
+      ss_j = ss_j(Slice(), Slice(0, config_->num_ss_pts));
+    }
+    if (config_->learning) {
+      opti_.set_value(ss_, ss_x);
+      opti_.set_value(ss_costs_, ss_j);
+      opti_.set_initial(convex_combi_, in.at("convex_combi_optm_ref"));
+    }
+  }
 
   // set up the offsets
   const auto P0 = X_ref(XIndex::PX, Slice());
@@ -300,12 +313,18 @@ void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out, casadi::D
     out["U_optm"] = sol_->value(U_) * scale_u_;
     out["dU_optm"] = sol_->value(dU_) * scale_u_;
     stats = sol_->stats();
+    if (config_->learning) {
+      out["convex_combi_optm"] = sol_->value(convex_combi_);
+    }
   } catch (const std::exception & e) {
     std::cerr << e.what() << '\n';
     // throw e;
     out["X_optm"] = opti_.debug().value(X_) * scale_x_;
     out["U_optm"] = opti_.debug().value(U_) * scale_u_;
     out["dU_optm"] = opti_.debug().value(dU_) * scale_u_;
+    if (config_->learning) {
+      out["convex_combi_optm"] = opti_.debug().value(convex_combi_);
+    }
     stats = opti_.stats();
   }
 }
@@ -376,6 +395,110 @@ BaseVehicleModel & RacingMPC::get_model()
 const bool & RacingMPC::solved() const
 {
   return solved_;
+}
+
+void RacingMPC::build_tracking_cost(casadi::MX & cost)
+{
+  using casadi::MX;
+  using casadi::Slice;
+
+  // --- MPC stage cost ---
+  const auto x0 = X_(Slice(), 0) * scale_x_;
+  for (size_t i = 0; i < config_->N - 1; i++) {
+    const auto xi = X_(Slice(), i) * scale_x_;
+    const auto ui = U_(Slice(), i - 1) * scale_u_;
+    const auto dui = dU_(Slice(), i - 1) * scale_u_;
+    // xi start with 1 since x0 must equal to x_ic and there is nothing we can do about it
+    // const auto d_px =
+    // utils::align_abscissa<MX>(xi(XIndex::PX), x0(XIndex::PX), total_length_) - x0(XIndex::PX);
+    const auto x_base = model_->to_base_state()(casadi::MXDict{{"x", xi}, {"u", ui}}).at("x_out");
+    // const auto dv = x_base(XIndex::VX) - vel_ref_(i);
+    // const auto dv = x_base(XIndex::VX) - 10.0;
+    auto ref = MX::zeros(3);
+    ref(2) = vel_ref_(i);
+    const auto err = x_base(Slice(XIndex::PY, XIndex::VX + 1)) - ref;
+    const auto Q = MX::diag(MX::vertcat({config_->q_contour, config_->q_heading, config_->q_vel}));
+    cost += MX::mtimes({err.T(), Q, err});
+
+    cost += MX::mtimes({ui.T(), config_->R, ui});
+    cost += MX::mtimes({dui.T(), config_->R_d, dui});
+  }
+
+  // terminal cost
+  const auto xN = X_(Slice(), config_->N - 1) * scale_x_;
+  const auto uN = U_(Slice(), config_->N - 2) * scale_u_;
+  const auto x_base_N = model_->to_base_state()(casadi::MXDict{{"x", xN}, {"u", uN}}).at("x_out");
+  const auto dv = x_base_N(XIndex::VX) - vel_ref_(config_->N - 1);
+  auto refN = MX::zeros(3);
+  refN(2) = vel_ref_(config_->N - 1);
+  const auto errN = x_base_N(Slice(XIndex::PY, XIndex::VX + 1)) - refN;
+  const auto Q = 10.0 *
+    MX::diag(MX::vertcat({config_->q_contour, config_->q_heading, config_->q_vel}));
+  cost += MX::mtimes({errN.T(), Q, errN});
+}
+
+void RacingMPC::build_lmpc_cost(casadi::MX & cost)
+{
+  using casadi::MX;
+  using casadi::Slice;
+
+  convex_combi_ = opti_.variable(config_->num_ss_pts);
+  ss_ = opti_.parameter(model_->nx(), config_->num_ss_pts);
+  ss_costs_ = opti_.parameter(1, config_->num_ss_pts);
+  const auto xN = X_(Slice(), -1) * scale_x_;
+  const auto xN_combi = MX::mtimes({ss_, convex_combi_});
+  // convex combination constraint
+  opti_.subject_to(convex_combi_ >= 0.0);
+  opti_.subject_to(MX::sum1(convex_combi_) == 1.0);
+
+  bool enable_convex_hull_slack = static_cast<double>(MX::sumsqr(config_->convex_hull_slack)) > 0.0;
+  if (enable_convex_hull_slack) {
+    convex_hull_slack_ = opti_.variable(model_->nx(), 1);
+    opti_.subject_to(
+      opti_.bounded(
+        -convex_hull_slack_,
+        xN_combi - xN,
+        convex_hull_slack_
+      )
+    );
+    opti_.subject_to(convex_hull_slack_ >= 0.0);
+    cost += MX::mtimes(
+      {convex_hull_slack_.T(), MX::diag(
+          config_->convex_hull_slack), convex_hull_slack_});
+  } else {
+    opti_.subject_to(xN_combi == xN);
+  }
+
+  cost += MX::mtimes({ss_costs_, convex_combi_});
+
+  // control effort and rate cost
+  for (size_t i = 0; i < config_->N - 1; i++) {
+    const auto ui = U_(Slice(), i - 1) * scale_u_;
+    const auto dui = dU_(Slice(), i - 1) * scale_u_;
+    cost += MX::mtimes({ui.T(), config_->R, ui});
+    cost += MX::mtimes({dui.T(), config_->R_d, dui});
+  }
+}
+
+void RacingMPC::build_boundary_constraint(casadi::MX & cost)
+{
+  using casadi::MX;
+  using casadi::Slice;
+
+  bool enable_boundary_slack = static_cast<double>(config_->q_boundary) > 0.0;
+  const auto PY = X_(XIndex::PY, Slice()) * scale_x_(XIndex::PY);
+  const auto margin = config_->margin + model_->get_base_config().chassis_config->b / 2.0;
+  if (enable_boundary_slack) {
+    boundary_slack_ = opti_.variable(1);
+    opti_.subject_to(
+      opti_.bounded(
+        bound_right_ + margin - boundary_slack_, PY,
+        bound_left_ - margin + boundary_slack_));
+    opti_.subject_to(boundary_slack_ >= 0.0);
+    cost += MX::mtimes({boundary_slack_.T(), config_->q_boundary, boundary_slack_});
+  } else {
+    opti_.subject_to(opti_.bounded(bound_right_ + margin, PY, bound_left_ - margin));
+  }
 }
 }  // namespace racing_mpc
 }  // namespace mpc

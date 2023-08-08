@@ -18,6 +18,7 @@
 
 #include <memory>
 #include <vector>
+#include <string>
 
 #include <casadi/casadi.hpp>
 
@@ -61,6 +62,20 @@ struct RacingMPCConfig
   casadi::DM x_min;  // primal lower bound
   casadi::DM u_max;  // primal upper bound
   casadi::DM u_min;  // primal lower bound
+
+  // LMPC settings
+  bool learning;
+  casadi::DM convex_hull_slack;
+  casadi_int num_ss_pts;
+  casadi_int num_ss_pts_per_lap;
+  casadi_int max_lap_stored;
+
+  // recording
+  bool record;
+  std::string path_prefix;
+
+  bool load;
+  std::vector<std::string> load_path;
 };
 }  // namespace racing_mpc
 }  // namespace mpc

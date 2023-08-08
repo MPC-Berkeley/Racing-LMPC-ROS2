@@ -24,6 +24,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <nav_msgs/msg/path.hpp>
 #include <diagnostic_msgs/msg/diagnostic_array.hpp>
+#include <visualization_msgs/msg/marker_array.hpp>
 
 #include <mpclab_msgs/msg/vehicle_state_msg.hpp>
 #include <mpclab_msgs/msg/vehicle_actuation_msg.hpp>
@@ -60,6 +61,7 @@ protected:
   casadi::DM last_x_;
   casadi::DM last_u_;
   casadi::DM last_du_;
+  casadi::DM last_convex_combi_;
   casadi::DMDict sol_in_;
   casadi::Function f2g_;
   casadi::Function discrete_dynamics_ {};
@@ -71,6 +73,7 @@ protected:
   rclcpp::Publisher<mpclab_msgs::msg::VehicleActuationMsg>::SharedPtr vehicle_actuation_pub_ {};
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr mpc_vis_pub_ {};
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr ref_vis_pub_ {};
+  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr ss_vis_pub_ {};
 
   // publishers (to diagnostics)
   rclcpp::Publisher<diagnostic_msgs::msg::DiagnosticArray>::SharedPtr diagnostics_pub_ {};

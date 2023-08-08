@@ -38,6 +38,9 @@ RacingMPCConfig::SharedPtr load_parameters(rclcpp::Node * node)
   auto declare_vec = [&](const char * name) {
       return lmpc::utils::declare_parameter<std::vector<double>>(node, name);
     };
+  auto declare_vec_str = [&](const char * name) {
+      return lmpc::utils::declare_parameter<std::vector<std::string>>(node, name);
+    };
   auto declare_int = [&](const char * name) {
       return lmpc::utils::declare_parameter<int64_t>(node, name);
     };
@@ -83,6 +86,16 @@ RacingMPCConfig::SharedPtr load_parameters(rclcpp::Node * node)
           casadi::DM(declare_vec("racing_mpc.x_min")),
           casadi::DM(declare_vec("racing_mpc.u_max")),
           casadi::DM(declare_vec("racing_mpc.u_min")),
+
+          declare_bool("racing_mpc.learning"),
+          casadi::DM(declare_vec("racing_mpc.convex_hull_slack")),
+          static_cast<casadi_int>(declare_int("racing_mpc.num_ss_pts")),
+          static_cast<casadi_int>(declare_int("racing_mpc.num_ss_pts_per_lap")),
+          static_cast<casadi_int>(declare_int("racing_mpc.max_lap_stored")),
+          declare_bool("racing_mpc.record"),
+          declare_string("racing_mpc.path_prefix"),
+          declare_bool("racing_mpc.load"),
+          declare_vec_str("racing_mpc.load_path")
         }
   );
 }

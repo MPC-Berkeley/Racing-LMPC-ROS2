@@ -16,6 +16,7 @@
   <depend>rclcpp</depend>
   <depend>backward_ros</depend>
   <depend>nav_msgs</depend>
+  <depend>visualization_msgs</depend>
 
   <depend>lmpc_utils</depend>
   <depend>vehicle_model_factory</depend>

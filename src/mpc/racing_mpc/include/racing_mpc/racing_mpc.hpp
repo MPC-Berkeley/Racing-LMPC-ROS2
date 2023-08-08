@@ -22,6 +22,7 @@
 
 #include "racing_mpc/racing_mpc_config.hpp"
 #include "vehicle_model_factory/vehicle_model_factory.hpp"
+#include "racing_trajectory/safe_set.hpp"
 
 namespace lmpc
 {
@@ -33,6 +34,8 @@ using lmpc::vehicle_model::base_vehicle_model::BaseVehicleModelConfig;
 using lmpc::vehicle_model::base_vehicle_model::BaseVehicleModel;
 using lmpc::vehicle_model::base_vehicle_model::XIndex;
 using lmpc::vehicle_model::base_vehicle_model::UIndex;
+using lmpc::vehicle_model::racing_trajectory::SafeSetManager;
+using lmpc::vehicle_model::racing_trajectory::SafeSetRecorder;
 
 class RacingMPC
 {
@@ -71,6 +74,8 @@ protected:
   casadi::MX U_;  // all the inputs, scaled
   casadi::MX dU_;  // all the input deltas, scaled
   casadi::MX boundary_slack_;
+  casadi::MX convex_hull_slack_;
+  casadi::MX convex_combi_;
 
   // optimization parameters
   casadi::MX X_ref_;  // reference states, unscaled
@@ -83,10 +88,22 @@ protected:
   casadi::MX total_length_;
   casadi::MX curvatures_;
   casadi::MX vel_ref_;
+  casadi::MX ss_;
+  casadi::MX ss_costs_;  // J in LMPC paper
 
   // flag if the nlp has been solved at least once
   bool solved_;
   std::shared_ptr<casadi::OptiSol> sol_;
+
+  // LMPC
+  SafeSetManager::UniquePtr ss_manager_;
+  SafeSetRecorder::UniquePtr ss_recorder_;
+  bool ss_loaded = false;
+
+  // helper functions
+  void build_tracking_cost(casadi::MX & cost);
+  void build_lmpc_cost(casadi::MX & cost);
+  void build_boundary_constraint(casadi::MX & cost);
 };
 }  // namespace racing_mpc
 }  // namespace mpc
