@@ -1,11 +1,11 @@
 /**:
   ros__parameters:
     single_track_planar:
-      fd_max: 7100.0 # max driving force
+      fd_max: 10000.0 # max driving force
       fb_max: -20000.0 # max brake force
-      td: 1.0 # time constant for throttle
-      tb: 1.0 # time constant for brake
+      td: 0.1 # time constant for throttle
+      tb: 0.5 # time constant for brake
       v_max: 100.0 # max velocity constraint
-      p_max: 270000.0 # max engine power
+      p_max: 339000.0 # max engine power
       mu: 1.5 # track - tyre friction coefficient
       simplify_lon_control: true # whether to combine brake and throttle into a single variable

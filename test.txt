@@ -1,0 +1,23 @@
+  const auto p_opts = casadi::Dict{
+    {"expand", true},
+    {"print_time", config_->verbose ? true : false},
+    {"print_header", false},
+    {"print_iteration", false},
+    // {"hessian_approximation", "limited-memory"},
+    {"max_iter", 100},
+    {"qpsol", "osqp"},
+    {"qpsol_options", casadi::Dict
+      {
+        {"error_on_fail", false},
+        {"osqp", casadi::Dict
+          {
+            {"polish", true},
+            {"verbose", false},
+          }
+        }
+      }
+    },
+    
+  };
+  const auto s_opts = casadi::Dict{};
+  opti_.solver("sqpmethod", p_opts, s_opts);

@@ -33,8 +33,8 @@ RacingMPC::RacingMPC(
   BaseVehicleModel::SharedPtr model,
   const bool & full_dynamics)
 : config_(mpc_config), model_(model),
-  scale_x_(casadi::DM::ones(model_->nx())),
-  scale_u_(casadi::DM::ones(model_->nu())),
+  scale_x_(casadi::DM{2000.0, 10.0, 1.0, 80.0, 2.0, 2.0}),
+  scale_u_(casadi::DM{10000.0, 0.3}),
   g_to_f_(utils::global_to_frenet_function<casadi::MX>(config_->N)),
   norm_2_(utils::norm_2_function(config_->N)),
   align_yaw_(utils::align_yaw_function(config_->N)),
@@ -223,7 +223,7 @@ void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out, casadi::D
   out["ss_x"] = ss_result.x;
   out["ss_j"] = ss_result.J;
   if (ss_result.x.size2() == 0) {
-    std::cout << "No safe set found, using previous safe set." << std::endl;
+    // std::cout << "No safe set found, using previous safe set." << std::endl;
   } else {
     auto ss_x = ss_result.x;
     auto ss_j = ss_result.J;
@@ -412,13 +412,12 @@ void RacingMPC::build_tracking_cost(casadi::MX & cost)
     // const auto d_px =
     // utils::align_abscissa<MX>(xi(XIndex::PX), x0(XIndex::PX), total_length_) - x0(XIndex::PX);
     const auto x_base = model_->to_base_state()(casadi::MXDict{{"x", xi}, {"u", ui}}).at("x_out");
-    // const auto dv = x_base(XIndex::VX) - vel_ref_(i);
+    const auto dv = x_base(XIndex::VX) - vel_ref_(i);
     // const auto dv = x_base(XIndex::VX) - 10.0;
-    auto ref = MX::zeros(3);
-    ref(2) = vel_ref_(i);
-    const auto err = x_base(Slice(XIndex::PY, XIndex::VX + 1)) - ref;
-    const auto Q = MX::diag(MX::vertcat({config_->q_contour, config_->q_heading, config_->q_vel}));
-    cost += MX::mtimes({err.T(), Q, err});
+    cost += x_base(XIndex::PY) * x_base(XIndex::PY) * config_->q_contour;
+    cost += x_base(XIndex::YAW) * x_base(XIndex::YAW) * config_->q_heading;
+    cost += dv * dv * config_->q_vel;
+    // cost += 30.0 * tanh((config_->q_vel / 30.0) * dv * dv);
 
     cost += MX::mtimes({ui.T(), config_->R, ui});
     cost += MX::mtimes({dui.T(), config_->R_d, dui});
@@ -429,12 +428,10 @@ void RacingMPC::build_tracking_cost(casadi::MX & cost)
   const auto uN = U_(Slice(), config_->N - 2) * scale_u_;
   const auto x_base_N = model_->to_base_state()(casadi::MXDict{{"x", xN}, {"u", uN}}).at("x_out");
   const auto dv = x_base_N(XIndex::VX) - vel_ref_(config_->N - 1);
-  auto refN = MX::zeros(3);
-  refN(2) = vel_ref_(config_->N - 1);
-  const auto errN = x_base_N(Slice(XIndex::PY, XIndex::VX + 1)) - refN;
-  const auto Q = 10.0 *
-    MX::diag(MX::vertcat({config_->q_contour, config_->q_heading, config_->q_vel}));
-  cost += MX::mtimes({errN.T(), Q, errN});
+  cost += x_base_N(XIndex::PY) * x_base_N(XIndex::PY) * config_->q_contour * 10.0;
+  cost += x_base_N(XIndex::YAW) * x_base_N(XIndex::YAW) * config_->q_heading * 10.0;
+  // cost += 30.0 * tanh((config_->q_vel * 10.0 / 30.0) * dv * dv);
+  cost += dv * dv * config_->q_vel * 10.0;
 }
 
 void RacingMPC::build_lmpc_cost(casadi::MX & cost)

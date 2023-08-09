@@ -5,10 +5,10 @@
       width: 0.25
       mass: 20.0
       moi: 20.0 # rotational moment of inertia
-      pacejka_b: 9.62
-      pacejka_c: 2.59
+      pacejka_b: 14.15
+      pacejka_c: 1.77
       pacejka_e: 1.0
-      pacejka_fz0: 3000.0
+      pacejka_fz0: 1543.5
       pacejka_eps: -0.0813
 
     rear_tyre:
@@ -16,10 +16,10 @@
       width: 0.25
       mass: 25.0
       rot: 20.0 # rotational moment of inertia
-      pacejka_b: 8.62
-      pacejka_c: 2.65
+      pacejka_b: 14.15
+      pacejka_c: 1.77
       pacejka_e: 1.0
-      pacejka_fz0: 3000.0
+      pacejka_fz0: 1886.5
       pacejka_eps: -0.1263
 
     front_brake:
@@ -29,7 +29,7 @@
       brake_pad_friction_coeff: 0.6
       # six piston brake averaging 14.375 mm radius
       piston_area: 0.00389508401 # 0.014375 ^ 2 * pi * 6
-      bias: 0.5
+      bias: 0.55
 
     rear_brake:
       max_brake: 4000.0
@@ -38,11 +38,11 @@
       brake_pad_friction_coeff: 0.6
       # six piston brake averaging 16.375 mm radius
       piston_area: 0.0050543317 # 0.016375 ^ 2 * pi * 6
-      bias: 0.5
+      bias: 0.45
 
     steer:
       max_steer_rate: 1.0
-      max_steer: 0.2513
+      max_steer: 0.314159
       turn_left_bias: 0.0
 
     chassis:
@@ -50,7 +50,7 @@
       sprung_mass: 131.0
       unsprung_mass: 569.0
       cg_ratio: 0.45
-      cg_height: 0.4
+      cg_height: 0.35
       wheel_base: 2.9718
       tw_f: 1.6
       tw_r: 1.6
@@ -60,10 +60,10 @@
 
     aero:
       air_density: 1.2
-      drag_coeff: 0.736
+      drag_coeff: 1.0
       frontal_area: 1.0
-      cl_f: 2.4
-      cl_r: 3.0
+      cl_f: 1.0
+      cl_r: 1.0
 
     powertrain:
       rpm: [500.0, 600.0, 700.0, 800.0, 900.0, 1000.0, 1100.0, 1200.0, 1300.0, 1400.0, 1500.0, 1600.0, 1700.0, 1800.0, 1900.0, 2000.0, 2100.0, 2200.0, 2300.0, 2400.0, 2500.0, 2600.0, 2700.0, 2800.0, 2900.0, 3000.0, 3100.0, 3200.0, 3300.0, 3400.0, 3500.0, 3600.0, 3700.0, 3800.0, 3900.0, 4000.0, 4100.0, 4200.0, 4300.0, 4400.0, 4500.0, 4600.0, 4700.0, 4800.0, 4900.0, 5000.0, 5100.0, 5200.0, 5300.0, 5400.0, 5500.0, 5600.0, 5700.0, 5800.0, 5900.0, 6000.0, 6100.0, 6200.0, 6300.0, 6400.0, 6500.0, 6600.0, 6700.0, 6800.0, 6900.0, 7000.0, 7100.0, 7200.0, 7300.0, 7400.0, 7500.0]

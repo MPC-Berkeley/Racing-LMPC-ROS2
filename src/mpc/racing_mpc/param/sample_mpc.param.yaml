@@ -1,26 +1,48 @@
 /**:
   ros__parameters:
     racing_mpc:
-      max_cpu_time: 0.2
-      max_iter: 30
-      tol: 0.1
-      n: 40
-      margin: 0.3
-      average_track_width: 11.0
+      max_cpu_time: 0.085
+      max_iter: 200
+      tol: 1e-3
+      n: 15
+      margin: -1.0
+      average_track_width: 10.0
       verbose: false
       jit: false
 
       q_contour: 1.0
-      q_heading: 1.0
+      q_heading: 0.5
       q_boundary: 50.0 # track boundary slack cost. 0 to disable (hard constraint)
-      q_vel: 0.1
+      q_vel: 0.01
       r: [
-        1.0, 0.0, 0.0,
-        0.0, 1.0, 0.0,
-        0.0, 0.0, 1.0
+        1e-10, 0.0,
+        0.0, 0.1,
+      ]
+      r_d: [
+        1e-10, 0.0,
+        0.0, 1.0,
       ]
 
-      x_max: [.inf, .inf, .inf, 1.5, 0.5236, 100.0]
-      x_min: [-.inf, -.inf, -.inf, -1.5, -0.5236, 0.0]
-      u_max: [7100.0, 0.0, 0.2513]
-      u_min: [0.0, -20000.0, -0.2513]
+      x_max: [.inf, .inf, .inf, 100.0, 15.0, 2.0]
+      x_min: [-.inf, -.inf, -.inf, 5.0, -15.0, -2.0]
+      u_max: [10000.0, 0.314159]
+      u_min: [-20000.0, -0.314159]
+
+      step_mode: "continuous"
+
+      # LMPC
+      learning: false
+      convex_hull_slack: [4000.0, 4000.0, 400.0, 4000.0, 4000.0, 400.0]
+      num_ss_pts: 48
+      num_ss_pts_per_lap: 18
+      max_lap_stored: 3
+
+      # recording
+      record: false
+      path_prefix: "/home/haoru/berkeley/experiments/mgkt/exp/exp1_"
+
+      load: false
+      load_path:
+        - /home/haoru/berkeley/experiments/mgkt/ss/ss_lap_1_x.txt
+        - /home/haoru/berkeley/experiments/mgkt/ss/ss_lap_2_x.txt
+        - /home/haoru/berkeley/experiments/mgkt/ss/ss_lap_3_x.txt
