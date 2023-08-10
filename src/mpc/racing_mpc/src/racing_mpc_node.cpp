@@ -30,15 +30,20 @@ RacingMPCNode::RacingMPCNode(const rclcpp::NodeOptions & options)
 : rclcpp::Node("racing_mpc_node", options),
   dt_(utils::declare_parameter<double>(this, "racing_mpc_node.dt")),
   config_(lmpc::mpc::racing_mpc::load_parameters(this)),
-  track_(std::make_shared<RacingTrajectory>(
-      utils::declare_parameter<std::string>(
-        this, "racing_mpc_node.race_track_file_path"))),
+  tracks_(std::make_shared<RacingTrajectoryMap>(
+    utils::declare_parameter<std::string>(
+        this, "racing_mpc_node.traj_folder")
+  )),
+  traj_idx_(utils::declare_parameter<int>(
+        this, "racing_mpc_node.default_traj_idx")),
+  track_(tracks_->get_trajectory(traj_idx_)),
   model_(vehicle_model::vehicle_model_factory::load_vehicle_model(
       utils::declare_parameter<std::string>(
         this, "racing_mpc_node.vehicle_model_name"), this)),
   mpc_(std::make_shared<RacingMPC>(config_, model_, true)),
   profiler_(std::make_unique<lmpc::utils::CycleProfiler<double>>(10)),
   profiler_iter_count_(std::make_unique<lmpc::utils::CycleProfiler<double>>(10)),
+  speed_scale_(utils::declare_parameter<double>(this, "racing_mpc_node.velocity_profile_scale")),
   f2g_(track_->frenet_to_global_function().map(mpc_->get_config().N))
 {
   auto full_config = std::make_shared<RacingMPCConfig>(*config_);
@@ -78,12 +83,25 @@ RacingMPCNode::RacingMPCNode(const rclcpp::NodeOptions & options)
   // subscription to be processed in parallel with the mpc computation in continuous mode
   state_callback_group_ = this->create_callback_group(
     rclcpp::CallbackGroupType::MutuallyExclusive);
-  rclcpp::SubscriptionOptions sub_options;
-  sub_options.callback_group = state_callback_group_;
+  rclcpp::SubscriptionOptions state_sub_options;
+  state_sub_options.callback_group = state_callback_group_;
   vehicle_state_sub_ = this->create_subscription<mpclab_msgs::msg::VehicleStateMsg>(
     "vehicle_state", 1, std::bind(
       &RacingMPCNode::on_new_state, this,
-      std::placeholders::_1), sub_options);
+      std::placeholders::_1), state_sub_options);
+
+  trajectory_command_callback_group_ = this->create_callback_group(
+    rclcpp::CallbackGroupType::MutuallyExclusive);
+  rclcpp::SubscriptionOptions trajectory_command_sub_options;
+  trajectory_command_sub_options.callback_group = trajectory_command_callback_group_;
+  trajectory_command_sub_ = this->create_subscription<lmpc_msgs::msg::TrajectoryCommand>(
+    "lmpc_trajectory_command", 1, std::bind(
+      &RacingMPCNode::on_new_trajectory_command, this,
+      std::placeholders::_1), trajectory_command_sub_options);
+
+  // initialize the parameter callback
+  callback_handle_ = add_on_set_parameters_callback(
+    std::bind(&RacingMPCNode::on_set_parameters, this, std::placeholders::_1));
 
   if (config_->step_mode == RacingMPCStepMode::CONTINUOUS) {
     // initialize the timers
@@ -94,11 +112,29 @@ RacingMPCNode::RacingMPCNode(const rclcpp::NodeOptions & options)
 
 void RacingMPCNode::on_new_state(const mpclab_msgs::msg::VehicleStateMsg::SharedPtr msg)
 {
-  state_msg_mutex_.lock();
+  std::unique_lock<std::shared_mutex> lock(state_msg_mutex_);
   vehicle_state_msg_ = msg;
-  state_msg_mutex_.unlock();
+  lock.unlock();
   if (config_->step_mode == RacingMPCStepMode::STEP) {
     on_step_timer();
+  }
+}
+
+void RacingMPCNode::on_new_trajectory_command(
+  const lmpc_msgs::msg::TrajectoryCommand::SharedPtr msg)
+{
+  std::shared_lock<std::shared_mutex> speed_limit_lock(speed_limit_mutex_);
+  const auto current_speed_limit = speed_limit_;
+  speed_limit_lock.unlock();
+  if (current_speed_limit != msg->speed_limit) {
+    set_speed_limit(msg->speed_limit);
+  }
+
+  std::shared_lock<std::shared_mutex> traj_lock(traj_mutex_);
+  const auto current_traj_idx = traj_idx_;
+  traj_lock.unlock();
+  if (current_traj_idx != msg->trajectory_index) {
+    change_trajectory(msg->trajectory_index);
   }
 }
 
@@ -108,24 +144,31 @@ void RacingMPCNode::on_step_timer()
   using casadi::Slice;
   static bool jitted = !config_->jit;  // if JIT is done
 
+  std::unique_lock<std::shared_mutex> traj_lock(traj_mutex_);
+
   // return if no state message is received
-  state_msg_mutex_.lock();
+  std::shared_lock<std::shared_mutex> state_msg_lock(state_msg_mutex_);
   if (!vehicle_state_msg_) {
     RCLCPP_INFO_THROTTLE(
       this->get_logger(), *this->get_clock(), 1000,
       "Waiting for first vehicle state message.");
-    state_msg_mutex_.unlock();
+    state_msg_lock.unlock();
     return;
   }
   const auto & p = vehicle_state_msg_->p;
   const auto & v = vehicle_state_msg_->v;
   const auto & w = vehicle_state_msg_->w;
-  const auto x_ic_base = DM{
+  auto x_ic_base = DM{
     p.s, p.x_tran, p.e_psi, v.v_long, v.v_tran, w.w_psi
   };
-  state_msg_mutex_.unlock();
+  const Pose2D current_global_pose{{vehicle_state_msg_->x.x, vehicle_state_msg_->x.y}, vehicle_state_msg_->e.psi};
+  state_msg_lock.unlock();
 
   const auto mpc_solve_start = std::chrono::system_clock::now();
+
+  FrenetPose2D current_frenet_pose;
+  track_->global_to_frenet(current_global_pose, current_frenet_pose);
+
   static size_t profile_step_count = 0;
   const auto N = static_cast<casadi_int>(mpc_->get_config().N);
 
@@ -204,7 +247,20 @@ void RacingMPCNode::on_step_timer()
   const auto left_ref = track_->left_boundary_interpolation_function()(abscissa)[0];
   const auto right_ref = track_->right_boundary_interpolation_function()(abscissa)[0];
   const auto curvature_ref = track_->curvature_interpolation_function()(abscissa)[0];
-  const auto vel_ref = track_->velocity_interpolation_function()(abscissa)[0];
+  auto vel_ref = track_->velocity_interpolation_function()(abscissa)[0];
+  // cap the velocity by the speed limit
+  std::shared_lock<std::shared_mutex> speed_limit_lock(speed_limit_mutex_);
+  std::shared_lock<std::shared_mutex> speed_scale_lock(speed_scale_mutex_);
+  for (int i = 0; i < config_->N; i++) {
+    if (static_cast<double>(vel_ref(i)) > 0.0)
+    {
+      vel_ref(i) = std::min(static_cast<double>(vel_ref(i)) * speed_scale_, this->speed_limit_);
+    } else {
+      vel_ref(i) = this->speed_limit_;
+    }
+  }
+  speed_limit_lock.unlock();
+  speed_scale_lock.unlock();
   sol_in_["bound_left"] = left_ref;
   sol_in_["bound_right"] = right_ref;
   sol_in_["curvatures"] = curvature_ref;
@@ -264,6 +320,7 @@ void RacingMPCNode::on_step_timer()
   profiler_iter_count_->add_cycle_stats(static_cast<double>(stats.at("iter_count")));
   profile_step_count++;
 
+  traj_lock.unlock();
   // sleep if the execution time is less than dt
   if (config_->step_mode == RacingMPCStepMode::CONTINUOUS) {
     if (mpc_solve_duration < std::chrono::duration<double>(dt_)) {
@@ -357,6 +414,96 @@ void RacingMPCNode::on_step_timer()
   ss_vis_pub_->publish(ss_vis_msg);
 
   // std::cout << last_x_ << std::endl;
+}
+
+rcl_interfaces::msg::SetParametersResult RacingMPCNode::on_set_parameters(
+  std::vector<rclcpp::Parameter> const & parameters) {
+  auto result = rcl_interfaces::msg::SetParametersResult();
+  result.successful = false;
+  // only accept velocity scale changes
+  for (const auto & parameter : parameters) {
+    if (parameter.get_name() == "racing_mpc_node.velocity_profile_scale") {
+      const auto speed_scale = parameter.as_double();
+      if (speed_scale < 0.0) {
+        RCLCPP_WARN(
+          this->get_logger(),
+          "Invalid velocity scale %f, must be non-negative", speed_scale);
+        return result;
+      }
+      
+      set_speed_scale(speed_scale);
+      RCLCPP_INFO(
+        this->get_logger(),
+        "Set velocity scale to %f", speed_scale_);
+      result.successful = true;
+    } else {
+      RCLCPP_WARN(
+        this->get_logger(),
+        "Cannot set parameter %s", parameter.get_name().c_str());
+    }
+  }
+  return result;
+}
+
+void RacingMPCNode::change_trajectory(const int & traj_idx) {
+  if (traj_idx == traj_idx_) {
+    return;
+  }
+
+  std::unique_lock<std::shared_mutex> traj_lock(traj_mutex_);
+  auto & old_traj = *track_;
+  auto new_traj = tracks_->get_trajectory(traj_idx);
+
+  if (new_traj) {
+    auto convert_frame = [&](const FrenetPose2D & old_frenet_pose) {
+      Pose2D global_pose;
+      old_traj.frenet_to_global(old_frenet_pose, global_pose);
+      FrenetPose2D new_frenet_pose;
+      new_traj->global_to_frenet(global_pose, new_frenet_pose);
+      return new_frenet_pose;
+    };
+    if (vehicle_state_msg_) {
+      std::unique_lock<std::shared_mutex> state_msg_lock(state_msg_mutex_);
+      auto & x = vehicle_state_msg_->x;
+      auto & e = vehicle_state_msg_->e;
+      // convert current pose to global then to new coordinate system
+      const Pose2D old_global_pose {{x.x, x.y}, e.psi};
+      FrenetPose2D new_frenet_pose;
+      new_traj->global_to_frenet(old_global_pose, new_frenet_pose);
+      vehicle_state_msg_->p.s = new_frenet_pose.position.s;
+      vehicle_state_msg_->p.x_tran = new_frenet_pose.position.t;
+      vehicle_state_msg_->p.e_psi = new_frenet_pose.yaw;
+      state_msg_lock.unlock();
+
+      // convert previous solution to new coordinate system
+      if (mpc_->solved()) {
+        for (int i = 0; i< config_->N; i++) {
+          const auto xi = last_x_(casadi::Slice(), i).get_elements();
+          const FrenetPose2D old_frenet_pose {{xi[XIndex::PX], xi[XIndex::PY]}, xi[XIndex::YAW]};
+          const FrenetPose2D new_frenet_pose = convert_frame(old_frenet_pose);
+          last_x_(XIndex::PX, i) = new_frenet_pose.position.s;
+          last_x_(XIndex::PY, i) = new_frenet_pose.position.t;
+          last_x_(XIndex::YAW, i) = new_frenet_pose.yaw;
+        }
+      }
+    }
+    track_ = new_traj;
+    f2g_ = track_->frenet_to_global_function().map(mpc_->get_config().N);
+    traj_idx_ = traj_idx;
+    std::cout << "Changed trajectory to " << traj_idx_ << std::endl;
+  }
+}
+
+void RacingMPCNode::set_speed_limit(const double & speed_limit)
+{
+  std::unique_lock<std::shared_mutex> speed_limit_lock(speed_limit_mutex_);
+  this->speed_limit_ = speed_limit;
+}
+
+void RacingMPCNode::set_speed_scale(const double & speed_scale)
+{
+  std::unique_lock<std::shared_mutex> speed_scale_lock(speed_scale_mutex_);
+  this->speed_scale_ = speed_scale;
 }
 }  // namespace racing_mpc
 }  // namespace mpc

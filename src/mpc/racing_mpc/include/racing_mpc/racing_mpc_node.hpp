@@ -17,7 +17,7 @@
 #define RACING_MPC__RACING_MPC_NODE_HPP_
 
 #include <memory>
-#include <mutex>
+#include <shared_mutex>
 
 #include <casadi/casadi.hpp>
 
@@ -28,8 +28,9 @@
 
 #include <mpclab_msgs/msg/vehicle_state_msg.hpp>
 #include <mpclab_msgs/msg/vehicle_actuation_msg.hpp>
+#include <lmpc_msgs/msg/trajectory_command.hpp>
 #include <lmpc_transform_helper/lmpc_transform_helper.hpp>
-#include <racing_trajectory/racing_trajectory.hpp>
+#include <racing_trajectory/racing_trajectory_map.hpp>
 #include <lmpc_utils/cycle_profiler.hpp>
 
 #include "racing_mpc/racing_mpc_config.hpp"
@@ -41,6 +42,7 @@ namespace mpc
 {
 namespace racing_mpc
 {
+using lmpc::vehicle_model::racing_trajectory::RacingTrajectoryMap;
 using lmpc::vehicle_model::racing_trajectory::RacingTrajectory;
 class RacingMPCNode : public rclcpp::Node
 {
@@ -50,13 +52,20 @@ public:
 protected:
   double dt_;
   RacingMPCConfig::SharedPtr config_ {};
+  RacingTrajectoryMap::SharedPtr tracks_ {};
+  int traj_idx_ = 0;
   RacingTrajectory::SharedPtr track_ {};
   BaseVehicleModel::SharedPtr model_ {};
   RacingMPC::SharedPtr mpc_ {};
   RacingMPC::SharedPtr mpc_full_ {};
   lmpc::utils::CycleProfiler<double>::UniquePtr profiler_ {};
   lmpc::utils::CycleProfiler<double>::UniquePtr profiler_iter_count_ {};
-  std::mutex state_msg_mutex_;
+  double speed_limit_ = config_->x_max(XIndex::VX).get_elements()[0];
+  double speed_scale_ = 1.0;
+  std::shared_mutex state_msg_mutex_;
+  std::shared_mutex traj_mutex_;
+  std::shared_mutex speed_limit_mutex_;
+  std::shared_mutex speed_scale_mutex_;
 
   casadi::DM last_x_;
   casadi::DM last_u_;
@@ -80,6 +89,7 @@ protected:
 
   // subscribers (from world/simulator)
   rclcpp::Subscription<mpclab_msgs::msg::VehicleStateMsg>::SharedPtr vehicle_state_sub_ {};
+  rclcpp::Subscription<lmpc_msgs::msg::TrajectoryCommand>::SharedPtr trajectory_command_sub_ {};
 
   // timers
   // republish vehicle state (TODO(haoru): to be replaced by a service)
@@ -87,10 +97,22 @@ protected:
 
   // callback groups
   rclcpp::CallbackGroup::SharedPtr state_callback_group_;
+  rclcpp::CallbackGroup::SharedPtr trajectory_command_callback_group_;
+
+  // parameter callback handle
+  OnSetParametersCallbackHandle::SharedPtr callback_handle_;
 
   // callbacks
   void on_new_state(const mpclab_msgs::msg::VehicleStateMsg::SharedPtr msg);
+  void on_new_trajectory_command(const lmpc_msgs::msg::TrajectoryCommand::SharedPtr msg);
   void on_step_timer();
+  rcl_interfaces::msg::SetParametersResult on_set_parameters(
+  std::vector<rclcpp::Parameter> const & parameters);
+
+  // helpers
+  void change_trajectory(const int & traj_idx);
+  void set_speed_limit(const double & speed_limit);
+  void set_speed_scale(const double & speed_scale);
 };
 }  // namespace racing_mpc
 }  // namespace mpc

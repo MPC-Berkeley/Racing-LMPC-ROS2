@@ -30,12 +30,14 @@ ament_auto_find_build_dependencies(REQUIRED
 
 set(${PROJECT_NAME}_SRC
   src/racing_trajectory.cpp
+  src/racing_trajectory_map.cpp
   src/trajectory_kd_tree.cpp
   src/safe_set.cpp
 )
 
 set(${PROJECT_NAME}_HEADER
   include/racing_trajectory/racing_trajectory.hpp
+  include/racing_trajectory/racing_trajectory_map.hpp
   include/racing_trajectory/trajectory_kd_tree.hpp
   include/racing_trajectory/safe_set.hpp
 )

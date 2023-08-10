@@ -22,6 +22,7 @@
   <depend>vehicle_model_factory</depend>
   <depend>racing_trajectory</depend>
   <depend>mpclab_msgs</depend>
+  <depend>lmpc_msgs</depend>
   <depend>lmpc_transform_helper</depend>
 
   <export>

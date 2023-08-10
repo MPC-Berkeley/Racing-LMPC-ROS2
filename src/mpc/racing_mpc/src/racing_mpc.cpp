@@ -33,7 +33,7 @@ RacingMPC::RacingMPC(
   BaseVehicleModel::SharedPtr model,
   const bool & full_dynamics)
 : config_(mpc_config), model_(model),
-  scale_x_(casadi::DM{2000.0, 10.0, 1.0, 80.0, 2.0, 2.0}),
+  scale_x_(casadi::DM{2000.0, 10.0, 0.1, 80.0, 2.0, 2.0}),
   scale_u_(casadi::DM{10000.0, 0.3}),
   g_to_f_(utils::global_to_frenet_function<casadi::MX>(config_->N)),
   norm_2_(utils::norm_2_function(config_->N)),
@@ -417,7 +417,6 @@ void RacingMPC::build_tracking_cost(casadi::MX & cost)
     cost += x_base(XIndex::PY) * x_base(XIndex::PY) * config_->q_contour;
     cost += x_base(XIndex::YAW) * x_base(XIndex::YAW) * config_->q_heading;
     cost += dv * dv * config_->q_vel;
-    // cost += 30.0 * tanh((config_->q_vel / 30.0) * dv * dv);
 
     cost += MX::mtimes({ui.T(), config_->R, ui});
     cost += MX::mtimes({dui.T(), config_->R_d, dui});
@@ -430,7 +429,6 @@ void RacingMPC::build_tracking_cost(casadi::MX & cost)
   const auto dv = x_base_N(XIndex::VX) - vel_ref_(config_->N - 1);
   cost += x_base_N(XIndex::PY) * x_base_N(XIndex::PY) * config_->q_contour * 10.0;
   cost += x_base_N(XIndex::YAW) * x_base_N(XIndex::YAW) * config_->q_heading * 10.0;
-  // cost += 30.0 * tanh((config_->q_vel * 10.0 / 30.0) * dv * dv);
   cost += dv * dv * config_->q_vel * 10.0;
 }
 
