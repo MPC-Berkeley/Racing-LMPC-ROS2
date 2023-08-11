@@ -51,7 +51,7 @@ def generate_launch_description():
         "sample_vehicle.param.yaml",
     )
     track_file = get_share_file(
-        "racing_trajectory", "test_data", "putnam_optm.txt")
+        "racing_trajectory", "test_data", "putnam", "27_putnam_pit.txt")
 
     return LaunchDescription(
         [

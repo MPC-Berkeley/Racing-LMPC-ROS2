@@ -37,6 +37,7 @@ RacingMPCNode::RacingMPCNode(const rclcpp::NodeOptions & options)
   traj_idx_(utils::declare_parameter<int>(
         this, "racing_mpc_node.default_traj_idx")),
   track_(tracks_->get_trajectory(traj_idx_)),
+  vis_(std::make_unique<ROSTrajectoryVisualizer>(*track_)),
   model_(vehicle_model::vehicle_model_factory::load_vehicle_model(
       utils::declare_parameter<std::string>(
         this, "racing_mpc_node.vehicle_model_name"), this)),
@@ -46,10 +47,14 @@ RacingMPCNode::RacingMPCNode(const rclcpp::NodeOptions & options)
   speed_scale_(utils::declare_parameter<double>(this, "racing_mpc_node.velocity_profile_scale")),
   f2g_(track_->frenet_to_global_function().map(mpc_->get_config().N))
 {
+  // add a full dynamics MPC solver for the problem initialization
   auto full_config = std::make_shared<RacingMPCConfig>(*config_);
   full_config->max_cpu_time = 10.0;
   full_config->max_iter = 1000;
   mpc_full_ = std::make_shared<RacingMPC>(full_config, model_, true);
+
+  // add visualizations for the trajectory
+  vis_->attach_ros_publishers(this, 1.0, true, true);
 
   // initialize the actuation message
   vehicle_actuation_msg_ = std::make_shared<mpclab_msgs::msg::VehicleActuationMsg>();
@@ -490,6 +495,8 @@ void RacingMPCNode::change_trajectory(const int & traj_idx) {
     track_ = new_traj;
     f2g_ = track_->frenet_to_global_function().map(mpc_->get_config().N);
     traj_idx_ = traj_idx;
+    vis_ = std::make_unique<ROSTrajectoryVisualizer>(*track_);
+    vis_->attach_ros_publishers(this, 1.0, true, true);
     std::cout << "Changed trajectory to " << traj_idx_ << std::endl;
   }
 }

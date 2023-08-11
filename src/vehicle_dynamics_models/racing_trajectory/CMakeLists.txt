@@ -33,6 +33,7 @@ set(${PROJECT_NAME}_SRC
   src/racing_trajectory_map.cpp
   src/trajectory_kd_tree.cpp
   src/safe_set.cpp
+  src/ros_trajectory_visualizer.cpp
 )
 
 set(${PROJECT_NAME}_HEADER
@@ -40,6 +41,7 @@ set(${PROJECT_NAME}_HEADER
   include/racing_trajectory/racing_trajectory_map.hpp
   include/racing_trajectory/trajectory_kd_tree.hpp
   include/racing_trajectory/safe_set.hpp
+  include/racing_trajectory/ros_trajectory_visualizer.hpp
 )
 
 ament_auto_add_library(${PROJECT_NAME} SHARED

@@ -93,43 +93,6 @@ RacingSimulatorNode::RacingSimulatorNode(const rclcpp::NodeOptions & options)
           }), 2, 4);
     vehicle_polygon_msg_->polygon = build_polygon(pts);
   }
-  const auto abscissa =
-    casadi::DM::linspace(0.0, track_->total_length(), 1001)(casadi::Slice(0, -1));
-  const auto N = abscissa.size1();
-  if (config_->visualize_abscissa) {
-    abscissa_polygon_msg_ = std::make_shared<PolygonStamped>();
-    abscissa_polygon_msg_->header.frame_id = "map";
-    const auto pts = casadi::DM::horzcat(
-          {
-            track_->x_interpolation_function()(abscissa)[0],
-            track_->y_interpolation_function()(abscissa)[0]
-          }).T();
-    abscissa_polygon_msg_->polygon = build_polygon(pts);
-  }
-  if (config_->visualize_boundary) {
-    left_boundary_polygon_msg_ = std::make_shared<PolygonStamped>();
-    left_boundary_polygon_msg_->header.frame_id = "map";
-    right_boundary_polygon_msg_ = std::make_shared<PolygonStamped>();
-    right_boundary_polygon_msg_->header.frame_id = "map";
-    const auto & left_boundary_frenet = casadi::DM::horzcat(
-          {
-            abscissa,
-            track_->left_boundary_interpolation_function()(abscissa)[0],
-            casadi::DM::zeros(N)
-          }).T();
-    const auto & right_boundary_frenet = casadi::DM::horzcat(
-          {
-            abscissa,
-            track_->right_boundary_interpolation_function()(abscissa)[0],
-            casadi::DM::zeros(N)
-          }).T();
-    const auto left_boundary_global =
-      track_->frenet_to_global_function().map(N)(left_boundary_frenet)[0];
-    const auto right_boundary_global =
-      track_->frenet_to_global_function().map(N)(right_boundary_frenet)[0];
-    left_boundary_polygon_msg_->polygon = build_polygon(left_boundary_global);
-    right_boundary_polygon_msg_->polygon = build_polygon(right_boundary_global);
-  }
 
   // initialize state publishers
   vehicle_state_pub_ = this->create_publisher<mpclab_msgs::msg::VehicleStateMsg>(
@@ -140,16 +103,7 @@ RacingSimulatorNode::RacingSimulatorNode(const rclcpp::NodeOptions & options)
     vehicle_polygon_pub_ = this->create_publisher<PolygonStamped>(
       "vehicle_polygon", 1);
   }
-  if (config_->visualize_boundary) {
-    left_boundary_polygon_pub_ = this->create_publisher<PolygonStamped>(
-      "left_boundary_polygon", 1);
-    right_boundary_polygon_pub_ = this->create_publisher<PolygonStamped>(
-      "right_boundary_polygon", 1);
-  }
-  if (config_->visualize_abscissa) {
-    abscissa_polygon_pub_ = this->create_publisher<PolygonStamped>(
-      "abscissa_polygon", 1);
-  }
+  // initialize odom publishers
   vehicle_odom_pub_ = this->create_publisher<nav_msgs::msg::Odometry>(
     "vehicle_odom", 1);
 
@@ -162,10 +116,6 @@ RacingSimulatorNode::RacingSimulatorNode(const rclcpp::NodeOptions & options)
     std::bind(&RacingSimulatorNode::on_reset_state, this, std::placeholders::_1));
 
   // initialize timer
-  static_vis_timer_ = this->create_wall_timer(
-    std::chrono::milliseconds(1000),
-    std::bind(&RacingSimulatorNode::on_static_vis_timer, this));
-
   if (config_->repeat_state_dt > 0) {
     state_repub_timer_ = this->create_wall_timer(
       std::chrono::milliseconds(static_cast<int>(config_->repeat_state_dt * 1000.0)),
@@ -217,21 +167,6 @@ void RacingSimulatorNode::on_reset_state(const mpclab_msgs::msg::VehicleStateMsg
   simulator_->set_state(x);
   // sim_step_ = 0;
   // lap_count_ = msg->lap_num;
-}
-
-void RacingSimulatorNode::on_static_vis_timer()
-{
-  const auto now = this->now();
-  if (config_->visualize_abscissa) {
-    abscissa_polygon_msg_->header.stamp = now;
-    abscissa_polygon_pub_->publish(*abscissa_polygon_msg_);
-  }
-  if (config_->visualize_boundary) {
-    left_boundary_polygon_msg_->header.stamp = now;
-    left_boundary_polygon_pub_->publish(*left_boundary_polygon_msg_);
-    right_boundary_polygon_msg_->header.stamp = now;
-    right_boundary_polygon_pub_->publish(*right_boundary_polygon_msg_);
-  }
 }
 
 void RacingSimulatorNode::on_state_repub_timer()
@@ -360,7 +295,8 @@ void RacingSimulatorNode::on_state_update()
     map_to_cg.setOrigin(tf2::Vector3(global_pose.position.x, global_pose.position.y, 0.0));
     map_to_cg.setRotation(utils::TransformHelper::quaternion_from_heading(global_pose.yaw));
     // find the map to baselink transform
-    map_to_baselink_msg_->transform = tf2::toMsg(map_to_cg * cg_to_baselink_);
+    // map_to_baselink_msg_->transform = tf2::toMsg(map_to_cg * cg_to_baselink_);
+    map_to_baselink_msg_->transform = tf2::toMsg(map_to_cg);
     map_to_baselink_msg_->header.stamp = now;
     // publish the transforms
     tf_helper_.send_transform(*map_to_baselink_msg_);

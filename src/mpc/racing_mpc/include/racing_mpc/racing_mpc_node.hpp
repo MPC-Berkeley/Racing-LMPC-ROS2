@@ -31,6 +31,7 @@
 #include <lmpc_msgs/msg/trajectory_command.hpp>
 #include <lmpc_transform_helper/lmpc_transform_helper.hpp>
 #include <racing_trajectory/racing_trajectory_map.hpp>
+#include <racing_trajectory/ros_trajectory_visualizer.hpp>
 #include <lmpc_utils/cycle_profiler.hpp>
 
 #include "racing_mpc/racing_mpc_config.hpp"
@@ -44,6 +45,7 @@ namespace racing_mpc
 {
 using lmpc::vehicle_model::racing_trajectory::RacingTrajectoryMap;
 using lmpc::vehicle_model::racing_trajectory::RacingTrajectory;
+using lmpc::vehicle_model::racing_trajectory::ROSTrajectoryVisualizer;
 class RacingMPCNode : public rclcpp::Node
 {
 public:
@@ -55,6 +57,7 @@ protected:
   RacingTrajectoryMap::SharedPtr tracks_ {};
   int traj_idx_ = 0;
   RacingTrajectory::SharedPtr track_ {};
+  ROSTrajectoryVisualizer::UniquePtr vis_ {};
   BaseVehicleModel::SharedPtr model_ {};
   RacingMPC::SharedPtr mpc_ {};
   RacingMPC::SharedPtr mpc_full_ {};

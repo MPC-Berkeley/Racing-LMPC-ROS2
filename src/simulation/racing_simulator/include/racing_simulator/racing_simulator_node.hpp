@@ -60,9 +60,6 @@ protected:
   utils::TransformHelper tf_helper_;
 
   PolygonStamped::SharedPtr vehicle_polygon_msg_ {};
-  PolygonStamped::SharedPtr left_boundary_polygon_msg_ {};
-  PolygonStamped::SharedPtr right_boundary_polygon_msg_ {};
-  PolygonStamped::SharedPtr abscissa_polygon_msg_ {};
   mpclab_msgs::msg::VehicleStateMsg::SharedPtr vehicle_state_msg_ {};
   mpclab_msgs::msg::VehicleActuationMsg::SharedPtr vehicle_actuation_msg_ {};
   TransformStamped::SharedPtr map_to_baselink_msg_ {};
@@ -72,9 +69,6 @@ protected:
 
   // publishers (to visualization)
   rclcpp::Publisher<PolygonStamped>::SharedPtr vehicle_polygon_pub_;
-  rclcpp::Publisher<PolygonStamped>::SharedPtr left_boundary_polygon_pub_;
-  rclcpp::Publisher<PolygonStamped>::SharedPtr right_boundary_polygon_pub_;
-  rclcpp::Publisher<PolygonStamped>::SharedPtr abscissa_polygon_pub_;
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr vehicle_odom_pub_;
 
   // subscribers (from controller)
@@ -84,8 +78,6 @@ protected:
   rclcpp::Subscription<mpclab_msgs::msg::VehicleStateMsg>::SharedPtr reset_state_sub_;
 
   // timers
-  // a slow rate timer to visualize track boundaries and abscissa
-  rclcpp::TimerBase::SharedPtr static_vis_timer_;
   // step mode: republish vehicle state (TODO(haoru): to be replaced by a service)
   rclcpp::TimerBase::SharedPtr state_repub_timer_;
   // continuous mode: stream vehicle state
@@ -94,7 +86,6 @@ protected:
   // callbacks
   void on_actuation(const mpclab_msgs::msg::VehicleActuationMsg::SharedPtr msg);
   void on_reset_state(const mpclab_msgs::msg::VehicleStateMsg::SharedPtr msg);
-  void on_static_vis_timer();
   void on_state_repub_timer();
   void on_state_update();
 
