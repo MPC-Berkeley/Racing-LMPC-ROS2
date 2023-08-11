@@ -173,6 +173,9 @@ void RacingMPCNode::on_step_timer()
 
   FrenetPose2D current_frenet_pose;
   track_->global_to_frenet(current_global_pose, current_frenet_pose);
+  x_ic_base(XIndex::PX) = current_frenet_pose.position.s;
+  x_ic_base(XIndex::PY) = current_frenet_pose.position.t;
+  x_ic_base(XIndex::YAW) = current_frenet_pose.yaw;
 
   static size_t profile_step_count = 0;
   const auto N = static_cast<casadi_int>(mpc_->get_config().N);
