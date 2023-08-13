@@ -39,7 +39,7 @@ RacingMPC::RacingMPC(
   norm_2_(utils::norm_2_function(config_->N)),
   align_yaw_(utils::align_yaw_function(config_->N)),
   align_abscissa_(utils::align_abscissa_function(config_->N)),
-  opti_(casadi::Opti()),
+  opti_(full_dynamics ? casadi::Opti() : casadi::Opti("conic")),
   X_(opti_.variable(model_->nx(), config_->N)),
   U_(opti_.variable(model_->nu(), config_->N - 1)),
   dU_(opti_.variable(model_->nu(), config_->N - 1)),
@@ -64,22 +64,39 @@ RacingMPC::RacingMPC(
   using casadi::Slice;
 
   // configure solver
-  auto p_opts = casadi::Dict{
-    {"expand", true},
-    {"print_time", config_->verbose ? true : false},
-    {"error_on_fail", false}
-  };
-  if (config_->jit) {
-    p_opts["jit"] = true;
-    p_opts["jit_options"] = casadi::Dict{{"flags", "-Ofast"}};
+  if (full_dynamics)
+  {
+    auto p_opts = casadi::Dict{
+      {"expand", true},
+      {"print_time", config_->verbose ? true : false},
+      {"error_on_fail", false}
+    };
+    if (config_->jit) {
+      p_opts["jit"] = true;
+      p_opts["jit_options"] = casadi::Dict{{"flags", "-Ofast"}};
+    }
+    const auto s_opts = casadi::Dict{
+      {"max_cpu_time", config_->max_cpu_time},
+      {"tol", config_->tol},
+      {"print_level", config_->verbose ? 5 : 0},
+      {"max_iter", static_cast<casadi_int>(config_->max_iter)}
+    };
+    opti_.solver("ipopt", p_opts, s_opts);
+  } else {
+    const auto p_opts = casadi::Dict{
+      {"expand", true},
+      {"print_time", config_->verbose ? true : false},
+      {"osqp", casadi::Dict
+        {
+          {"polish", true},
+          {"verbose", config_->verbose ? true : false},
+        }
+      }
+    };
+    const auto s_opts = casadi::Dict{};
+    opti_.solver("osqp", p_opts, s_opts);
   }
-  const auto s_opts = casadi::Dict{
-    {"max_cpu_time", config_->max_cpu_time},
-    {"tol", config_->tol},
-    {"print_level", config_->verbose ? 5 : 0},
-    {"max_iter", static_cast<casadi_int>(config_->max_iter)}
-  };
-  opti_.solver("ipopt", p_opts, s_opts);
+
   auto cost = MX::zeros(1);
 
   // set up abscissa offsets
@@ -204,6 +221,16 @@ void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out, casadi::D
   const auto & curvatures = in.at("curvatures");
   const auto & vel_ref = in.at("vel_ref");
 
+  // std::cout << "[x_ic]:\n" << x_ic << std::endl;
+  // std::cout << "[u_ic]:\n" << u_ic << std::endl;
+  // std::cout << "[t_ic]:\n" << t_ic << std::endl;
+  // std::cout << "[X_ref]:" << X_ref << std::endl;
+  // std::cout << "[U_ref]:" << U_ref << std::endl;
+  // std::cout << "[bound_left]\n:" << bound_left << std::endl;
+  // std::cout << "[bound_right]\n:" << bound_right << std::endl;
+  // std::cout << "[curvatures]\n:" << curvatures << std::endl;
+  // std::cout << "[vel_ref]\n:" << vel_ref << std::endl;
+
   if (!ss_loaded && config_->load) {
     ss_recorder_->load(config_->load_path, static_cast<double>(total_length));
     ss_loaded = true;
@@ -316,6 +343,9 @@ void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out, casadi::D
     if (config_->learning) {
       out["convex_combi_optm"] = sol_->value(convex_combi_);
     }
+    // std::cout << "[X_optm]:" << out.at("X_optm") << std::endl;
+    // std::cout << "[U_optm]:" << out.at("U_optm") << std::endl;
+    // std::cout << "[dU_optm]:" << out.at("dU_optm") << std::endl;
   } catch (const std::exception & e) {
     std::cerr << e.what() << '\n';
     // throw e;
@@ -326,6 +356,9 @@ void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out, casadi::D
       out["convex_combi_optm"] = opti_.debug().value(convex_combi_);
     }
     stats = opti_.stats();
+    // std::cout << "[X_optm]:" << out.at("X_optm") << std::endl;
+    // std::cout << "[U_optm]:" << out.at("U_optm") << std::endl;
+    // std::cout << "[dU_optm]:" << out.at("dU_optm") << std::endl;
   }
 }
 

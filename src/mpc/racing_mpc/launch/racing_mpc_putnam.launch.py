@@ -67,11 +67,11 @@ def generate_launch_description():
                     base_model_config,
                     use_sim_time,
                     {
-                        "racing_mpc_node.dt": 0.1,
+                        "racing_mpc_node.dt": 0.04,
                         "racing_mpc_node.vehicle_model_name": "single_track_planar_model",
                         "racing_mpc_node.default_traj_idx": 27,
                         "racing_mpc_node.traj_folder": track_file,
-                        "racing_mpc_node.velocity_profile_scale": 0.8,
+                        "racing_mpc_node.velocity_profile_scale": 0.5,
                     },
                 ],
                 remappings=[
