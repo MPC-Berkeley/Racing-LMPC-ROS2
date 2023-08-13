@@ -4,29 +4,32 @@
       max_cpu_time: 0.085
       max_iter: 200
       tol: 1e-3
-      n: 15
+      n: 30
       margin: -1.0
       average_track_width: 10.0
       verbose: false
       jit: false
 
-      q_contour: 1.0
-      q_heading: 0.5
+      q_contour: 10.0
+      q_heading: 100.0
       q_boundary: 50.0 # track boundary slack cost. 0 to disable (hard constraint)
-      q_vel: 0.01
+      q_vel: 1.0
+      q_vy: 0.1
+      q_vyaw: 0.1
       r: [
-        1e-10, 0.0,
-        0.0, 0.1,
+        1e-4, 0.0,
+        0.0, 5.0,
       ]
       r_d: [
-        1e-10, 0.0,
-        0.0, 1.0,
+        1e-2, 0.0,
+        0.0, 5.0,
       ]
+      max_vel_ref_diff: 30.0 # max difference between reference velocity and actual velocity
 
       x_max: [.inf, .inf, .inf, 100.0, 15.0, 2.0]
-      x_min: [-.inf, -.inf, -.inf, 5.0, -15.0, -2.0]
-      u_max: [10000.0, 0.314159]
-      u_min: [-20000.0, -0.314159]
+      x_min: [-.inf, -.inf, -.inf, 10.0, -15.0, -2.0]
+      u_max: [10.0, 0.314159]
+      u_min: [-20.0, -0.314159]
 
       step_mode: "continuous"
 

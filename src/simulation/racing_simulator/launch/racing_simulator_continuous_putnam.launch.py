@@ -69,7 +69,8 @@ def generate_launch_description():
                     {
                         "racing_simulator.race_track_file_path": track_file,
                         "modeling.use_frenet": False,
-                        "racing_simulator.x0": [0.0, 2.0, 3.14, 15.0, 0.0, 0.0]
+                        # "racing_simulator.x0": [0.0, 2.0, 3.14, 15.0, 0.0, 0.0]
+                        "racing_simulator.x0": [-67.9, 247.6, -2.61799, 15.0, 0.0, 0.0]
                     },
                 ],
                 remappings=[

@@ -41,7 +41,7 @@ RacingMPCNode::RacingMPCNode(const rclcpp::NodeOptions & options)
   model_(vehicle_model::vehicle_model_factory::load_vehicle_model(
       utils::declare_parameter<std::string>(
         this, "racing_mpc_node.vehicle_model_name"), this)),
-  mpc_(std::make_shared<RacingMPC>(config_, model_, true)),
+  mpc_(std::make_shared<RacingMPC>(config_, model_, false)),
   profiler_(std::make_unique<lmpc::utils::CycleProfiler<double>>(10)),
   profiler_iter_count_(std::make_unique<lmpc::utils::CycleProfiler<double>>(10)),
   speed_scale_(utils::declare_parameter<double>(this, "racing_mpc_node.velocity_profile_scale")),
@@ -260,11 +260,20 @@ void RacingMPCNode::on_step_timer()
   std::shared_lock<std::shared_mutex> speed_limit_lock(speed_limit_mutex_);
   std::shared_lock<std::shared_mutex> speed_scale_lock(speed_scale_mutex_);
   for (int i = 0; i < config_->N; i++) {
-    if (static_cast<double>(vel_ref(i)) > 0.0)
+    // clip the velocity reference within +- 20m/s of current speed
+    const auto current_speed = static_cast<double>(x_ic(XIndex::VX));
+    const auto ref_speed = static_cast<double>(vel_ref(i)) * speed_scale_;
+    const auto speed_limit_clipped = std::clamp(
+      this->speed_limit_, current_speed - config_->max_vel_ref_diff, current_speed + config_->max_vel_ref_diff);
+    // valid TTL has positive velocity profile.
+    // if the velocity profile is negative, set it to the speed limit
+    if (ref_speed > 0.0)
     {
-      vel_ref(i) = std::min(static_cast<double>(vel_ref(i)) * speed_scale_, this->speed_limit_);
+      const auto ref_speed_clipped = std::clamp(
+        ref_speed, current_speed - config_->max_vel_ref_diff, current_speed + config_->max_vel_ref_diff);
+      vel_ref(i) = std::min(ref_speed_clipped, speed_limit_clipped);
     } else {
-      vel_ref(i) = this->speed_limit_;
+      vel_ref(i) = speed_limit_clipped;
     }
   }
   speed_limit_lock.unlock();
@@ -500,6 +509,7 @@ void RacingMPCNode::change_trajectory(const int & traj_idx) {
     traj_idx_ = traj_idx;
     vis_ = std::make_unique<ROSTrajectoryVisualizer>(*track_);
     vis_->attach_ros_publishers(this, 1.0, true, true);
+    sol_in_["total_length"] = track_->total_length();
     std::cout << "Changed trajectory to " << traj_idx_ << std::endl;
   }
 }

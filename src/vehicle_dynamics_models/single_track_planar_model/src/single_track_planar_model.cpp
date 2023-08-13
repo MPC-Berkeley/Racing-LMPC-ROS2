@@ -55,8 +55,8 @@ void SingleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casa
   const auto & u = in.at("u");
   casadi::MX fd, fb, delta;
   if (config_->simplify_lon_control) {
-    fd = u(UIndexSimple::LON) * (casadi::MX::tanh(u(UIndexSimple::LON)) * 0.5 + 0.5);
-    fb = u(UIndexSimple::LON) * (casadi::MX::tanh(-u(UIndexSimple::LON)) * 0.5 + 0.5);
+    fd = u(UIndexSimple::LON) * (casadi::MX::tanh(u(UIndexSimple::LON)) * 0.5 + 0.5) * 1000.0;
+    fb = u(UIndexSimple::LON) * (casadi::MX::tanh(-u(UIndexSimple::LON)) * 0.5 + 0.5) * 1000.0;
     delta = u(UIndexSimple::STEER_SIMPLE);
   } else {
     fd = u(UIndex::FD);
@@ -108,10 +108,10 @@ void SingleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casa
     // }
 
     // static actuator cconstraint
-    opti.subject_to(v * fd <= P_max);
+    // opti.subject_to(v * fd <= P_max);
     // opti.subject_to(v >= 0.0);
     if (config_->simplify_lon_control) {
-      opti.subject_to(opti.bounded(Fb_max, u(UIndexSimple::LON), Fd_max));
+      opti.subject_to(opti.bounded(Fb_max / 1000.0, u(UIndexSimple::LON), Fd_max / 1000.0));
     } else {
       opti.subject_to(pow(fd * fb, 2) <= 100.0);
       opti.subject_to(opti.bounded(0.0, fd, Fd_max));
@@ -127,8 +127,8 @@ void SingleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casa
     if (config_->simplify_lon_control) {
       opti.subject_to(
         opti.bounded(
-          Fb_max / Tb,
-          (uip1(UIndexSimple::LON) - u(UIndexSimple::LON)) / t, Fd_max / Td));
+          Fb_max / 1000.0 / Tb,
+          (uip1(UIndexSimple::LON) - u(UIndexSimple::LON)) / t, Fd_max / 1000.0 / Td));
       opti.subject_to(
         opti.bounded(
           -delta_max / Tdelta, (uip1(UIndexSimple::STEER_SIMPLE) - delta) / t,
@@ -148,7 +148,7 @@ void SingleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casa
     if (config_->simplify_lon_control) {
       opti.subject_to(
         opti.bounded(
-          Fb_max / Tb, dui(UIndexSimple::LON), Fd_max / Td));
+          Fb_max / 1000.0 / Tb, dui(UIndexSimple::LON), Fd_max / 1000.0 / Td));
       opti.subject_to(
         opti.bounded(
           -delta_max / Tdelta, dui(UIndexSimple::STEER_SIMPLE),
@@ -171,8 +171,8 @@ void SingleTrackPlanarModel::calc_lon_control(
   const auto & u = in.at("u").get_elements();
   double fd, fb;
   if (config_->simplify_lon_control) {
-    fd = u[UIndexSimple::LON] * (tanh(u[UIndexSimple::LON]) * 0.5 + 0.5);
-    fb = u[UIndexSimple::LON] * (tanh(-u[UIndexSimple::LON]) * 0.5 + 0.5);
+    fd = u[UIndexSimple::LON] * (tanh(u[UIndexSimple::LON]) * 0.5 + 0.5) * 1000.0;
+    fb = u[UIndexSimple::LON] * (tanh(-u[UIndexSimple::LON]) * 0.5 + 0.5) * 1000.0;
   } else {
     fd = u[UIndex::FD];
     fb = u[UIndex::FB];
@@ -218,8 +218,8 @@ void SingleTrackPlanarModel::compile_dynamics()
   // const auto v = casadi::SX::hypot(vx, vy);  // velocity magnitude
   SX fd, fb, delta;
   if (config_->simplify_lon_control) {
-    fd = u(UIndexSimple::LON) * (SX::tanh(u(UIndexSimple::LON)) * 0.5 + 0.5);
-    fb = u(UIndexSimple::LON) * (SX::tanh(-u(UIndexSimple::LON)) * 0.5 + 0.5);
+    fd = u(UIndexSimple::LON) * (SX::tanh(u(UIndexSimple::LON)) * 0.5 + 0.5) * 1000.0;
+    fb = u(UIndexSimple::LON) * (SX::tanh(-u(UIndexSimple::LON)) * 0.5 + 0.5) * 1000.0;
     delta = u(UIndexSimple::STEER_SIMPLE);
   } else {
     fd = u(UIndex::FD);

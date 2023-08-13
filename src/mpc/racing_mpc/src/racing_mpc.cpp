@@ -34,7 +34,7 @@ RacingMPC::RacingMPC(
   const bool & full_dynamics)
 : config_(mpc_config), model_(model),
   scale_x_(casadi::DM{2000.0, 10.0, 0.1, 80.0, 2.0, 2.0}),
-  scale_u_(casadi::DM{10000.0, 0.3}),
+  scale_u_(casadi::DM{10.0, 0.3}),
   g_to_f_(utils::global_to_frenet_function<casadi::MX>(config_->N)),
   norm_2_(utils::norm_2_function(config_->N)),
   align_yaw_(utils::align_yaw_function(config_->N)),
@@ -157,10 +157,10 @@ RacingMPC::RacingMPC(
       const auto & A = AB.at("A");
       const auto & B = AB.at("B");
       const auto & g = AB.at("g");
-      opti_.subject_to(
-        (xip1 - x_ref_p1) -
-        (MX::mtimes(A, (xi - xi_ref)) + MX::mtimes(B, (ui - ui_ref))) == 0);
-      // opti_.subject_to(xip1_temp - (MX::mtimes(A, xi) + MX::mtimes(B, ui) + g) == 0);
+      // opti_.subject_to(
+      //   (xip1 - x_ref_p1) -
+      //   (MX::mtimes(A, (xi - xi_ref)) + MX::mtimes(B, (ui - ui_ref))) == 0);
+      opti_.subject_to(xip1 - (MX::mtimes(A, xi) + MX::mtimes(B, ui) + g) == 0);
     }
 
     // control rate constraints
@@ -268,10 +268,10 @@ void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out, casadi::D
     opti_.set_initial(U_ * scale_u_, U_optm_ref);
     opti_.set_initial(dU_ * scale_u_, dU_optm_ref);
     opti_.set_value(T_ref_, T_optm_ref);
-    if (sol_) {
-      const auto lam_g0 = sol_->value(opti_.lam_g());
-      opti_.set_initial(opti_.lam_g(), lam_g0);
-    }
+    // if (sol_) {
+    //   const auto lam_g0 = sol_->value(opti_.lam_g());
+    //   opti_.set_initial(opti_.lam_g(), lam_g0);
+    // }
   } else {
     // TODO(haoru): just initialize with X_ref if no optm ref given
     if (!sol_) {
@@ -287,8 +287,8 @@ void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out, casadi::D
       casadi::DMDict{{"abscissa_1", last_abscissa_optm},
         {"abscissa_2", P0}, {"total_distance", total_lengths}}).at("abscissa_1_aligned");
     opti_.set_initial((X_ * scale_x_)(XIndex::PX, Slice()), this_abscissa_optm);
-    const auto lam_g0 = sol_->value(opti_.lam_g());
-    opti_.set_initial(opti_.lam_g(), lam_g0);
+    // const auto lam_g0 = sol_->value(opti_.lam_g());
+    // opti_.set_initial(opti_.lam_g(), lam_g0);
   }
 
   // starting state must match
@@ -417,6 +417,8 @@ void RacingMPC::build_tracking_cost(casadi::MX & cost)
     cost += x_base(XIndex::PY) * x_base(XIndex::PY) * config_->q_contour;
     cost += x_base(XIndex::YAW) * x_base(XIndex::YAW) * config_->q_heading;
     cost += dv * dv * config_->q_vel;
+    cost += x_base(XIndex::VY) * x_base(XIndex::VY) * config_->q_vy;
+    cost += x_base(XIndex::VYAW) * x_base(XIndex::VYAW) * config_->q_vyaw;
 
     cost += MX::mtimes({ui.T(), config_->R, ui});
     cost += MX::mtimes({dui.T(), config_->R_d, dui});

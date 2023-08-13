@@ -43,7 +43,10 @@ RacingTrajectoryMap::RacingTrajectoryMap(const std::string & directory_path)
     if (trajectories_.find(number) != trajectories_.end()) {
       throw std::runtime_error("Duplicate trajectory number found: " + std::to_string(number));
     }
-    trajectories_[number] = std::make_shared<RacingTrajectory>(entry.path().string());
+    const auto traj_path = entry.path().string();
+    trajectories_[number] = std::make_shared<RacingTrajectory>(traj_path);
+    std::cout << "Loaded trajectory " << number << " from " << traj_path << ". ";
+    std::cout << "Length: " << trajectories_[number]->total_length() << " m." << std::endl;
   }
 }
 

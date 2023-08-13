@@ -75,6 +75,8 @@ RacingMPCConfig::SharedPtr load_parameters(rclcpp::Node * node)
           casadi::DM(declare_double("racing_mpc.q_contour")),
           casadi::DM(declare_double("racing_mpc.q_heading")),
           casadi::DM(declare_double("racing_mpc.q_vel")),
+          casadi::DM(declare_double("racing_mpc.q_vy")),
+          casadi::DM(declare_double("racing_mpc.q_vyaw")),
           casadi::DM(declare_double("racing_mpc.q_boundary")),
           casadi::DM::reshape(
             R, static_cast<casadi_int>(sqrt(R.size1())),
@@ -86,6 +88,7 @@ RacingMPCConfig::SharedPtr load_parameters(rclcpp::Node * node)
           casadi::DM(declare_vec("racing_mpc.x_min")),
           casadi::DM(declare_vec("racing_mpc.u_max")),
           casadi::DM(declare_vec("racing_mpc.u_min")),
+          declare_double("racing_mpc.max_vel_ref_diff"),
 
           declare_bool("racing_mpc.learning"),
           casadi::DM(declare_vec("racing_mpc.convex_hull_slack")),

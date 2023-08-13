@@ -55,6 +55,8 @@ struct RacingMPCConfig
   casadi::DM q_contour;  // contour (lateral error) cost-to-go
   casadi::DM q_heading;  // heading cost-to-go
   casadi::DM q_vel;  // velocity cost-to-go
+  casadi::DM q_vy;  // lateral velocity cost-to-go
+  casadi::DM q_vyaw;  // yaw rate cost-to-go
   casadi::DM q_boundary;  // boundary slack cost
   casadi::DM R;  // control cost-to-go
   casadi::DM R_d;  // control rate cost-to-go
@@ -62,6 +64,7 @@ struct RacingMPCConfig
   casadi::DM x_min;  // primal lower bound
   casadi::DM u_max;  // primal upper bound
   casadi::DM u_min;  // primal lower bound
+  double max_vel_ref_diff;  // max velocity reference difference
 
   // LMPC settings
   bool learning;
