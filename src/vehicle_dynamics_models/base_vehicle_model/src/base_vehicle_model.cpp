@@ -179,8 +179,9 @@ double BaseVehicleModel::calc_brake(const double & fb) const
     (rear_brake_lever * rb_config.brake_pad_friction_coeff *
     rb_config.piston_area);
 
-  return std::clamp(front_brake_kpa, 0.0, fb_config.max_brake) +
-         std::clamp(rear_brake_kpa, 0.0, rb_config.max_brake);
+  // return std::clamp(front_brake_kpa, 0.0, fb_config.max_brake) +
+  //        std::clamp(rear_brake_kpa, 0.0, rb_config.max_brake);
+  return std::clamp(front_brake_kpa, 0.0, fb_config.max_brake);
 }
 
 double BaseVehicleModel::calc_drive_force(const double & throttle)
