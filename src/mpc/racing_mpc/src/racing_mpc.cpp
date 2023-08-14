@@ -69,7 +69,7 @@ RacingMPC::RacingMPC(
     auto p_opts = casadi::Dict{
       {"expand", true},
       {"print_time", config_->verbose ? true : false},
-      {"error_on_fail", false}
+      {"error_on_fail", true}
     };
     if (config_->jit) {
       p_opts["jit"] = true;
@@ -83,9 +83,10 @@ RacingMPC::RacingMPC(
     };
     opti_.solver("ipopt", p_opts, s_opts);
   } else {
-    const auto p_opts = casadi::Dict{
+    auto p_opts = casadi::Dict{
       {"expand", true},
       {"print_time", config_->verbose ? true : false},
+      {"error_on_fail", true},
       {"osqp", casadi::Dict
         {
           {"polish", true},
@@ -93,6 +94,10 @@ RacingMPC::RacingMPC(
         }
       }
     };
+    if (config_->jit) {
+      p_opts["jit"] = true;
+      p_opts["jit_options"] = casadi::Dict{{"flags", "-Ofast"}};
+    }
     const auto s_opts = casadi::Dict{};
     opti_.solver("osqp", p_opts, s_opts);
   }
@@ -349,13 +354,13 @@ void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out, casadi::D
   } catch (const std::exception & e) {
     std::cerr << e.what() << '\n';
     // throw e;
-    out["X_optm"] = opti_.debug().value(X_) * scale_x_;
-    out["U_optm"] = opti_.debug().value(U_) * scale_u_;
-    out["dU_optm"] = opti_.debug().value(dU_) * scale_u_;
-    if (config_->learning) {
-      out["convex_combi_optm"] = opti_.debug().value(convex_combi_);
-    }
-    stats = opti_.stats();
+    // out["X_optm"] = opti_.debug().value(X_) * scale_x_;
+    // out["U_optm"] = opti_.debug().value(U_) * scale_u_;
+    // out["dU_optm"] = opti_.debug().value(dU_) * scale_u_;
+    // if (config_->learning) {
+    //   out["convex_combi_optm"] = opti_.debug().value(convex_combi_);
+    // }
+    // stats = opti_.stats();
     // std::cout << "[X_optm]:" << out.at("X_optm") << std::endl;
     // std::cout << "[U_optm]:" << out.at("U_optm") << std::endl;
     // std::cout << "[dU_optm]:" << out.at("dU_optm") << std::endl;

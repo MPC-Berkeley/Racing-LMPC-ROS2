@@ -29,6 +29,7 @@
 #include <mpclab_msgs/msg/vehicle_state_msg.hpp>
 #include <mpclab_msgs/msg/vehicle_actuation_msg.hpp>
 #include <lmpc_msgs/msg/trajectory_command.hpp>
+#include <lmpc_msgs/msg/mpc_telemetry.hpp>
 #include <lmpc_transform_helper/lmpc_transform_helper.hpp>
 #include <racing_trajectory/racing_trajectory_map.hpp>
 #include <racing_trajectory/ros_trajectory_visualizer.hpp>
@@ -86,6 +87,7 @@ protected:
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr mpc_vis_pub_ {};
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr ref_vis_pub_ {};
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr ss_vis_pub_ {};
+  rclcpp::Publisher<lmpc_msgs::msg::MPCTelemetry>::SharedPtr mpc_telemetry_pub_ {};
 
   // publishers (to diagnostics)
   rclcpp::Publisher<diagnostic_msgs::msg::DiagnosticArray>::SharedPtr diagnostics_pub_ {};

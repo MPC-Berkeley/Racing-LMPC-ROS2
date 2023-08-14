@@ -81,6 +81,7 @@ RacingMPCNode::RacingMPCNode(const rclcpp::NodeOptions & options)
   diagnostics_pub_ = this->create_publisher<diagnostic_msgs::msg::DiagnosticArray>(
     "diagnostics", 1);
   ss_vis_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("ss_visualization", 1);
+  mpc_telemetry_pub_ = this->create_publisher<lmpc_msgs::msg::MPCTelemetry>("mpc_telemetry", 1);
 
   // initialize the subscribers
   // state subscription is on a separate callback group
@@ -135,6 +136,13 @@ void RacingMPCNode::on_new_trajectory_command(
     set_speed_limit(msg->speed_limit);
   }
 
+  std::shared_lock<std::shared_mutex> speed_scale_lock(speed_scale_mutex_);
+  const auto current_speed_scale = speed_scale_;
+  speed_scale_lock.unlock();
+  if (current_speed_scale != msg->velocity_profile_scale) {
+    set_speed_scale(msg->velocity_profile_scale);
+  }
+
   std::shared_lock<std::shared_mutex> traj_lock(traj_mutex_);
   const auto current_traj_idx = traj_idx_;
   traj_lock.unlock();
@@ -149,8 +157,10 @@ void RacingMPCNode::on_step_timer()
   using casadi::Slice;
   static bool jitted = !config_->jit;  // if JIT is done
 
-  std::unique_lock<std::shared_mutex> traj_lock(traj_mutex_);
+  lmpc_msgs::msg::MPCTelemetry telemetry_msg;
 
+  std::unique_lock<std::shared_mutex> traj_lock(traj_mutex_);
+  telemetry_msg.trajectory_index = traj_idx_;
   // return if no state message is received
   std::shared_lock<std::shared_mutex> state_msg_lock(state_msg_mutex_);
   if (!vehicle_state_msg_) {
@@ -261,7 +271,7 @@ void RacingMPCNode::on_step_timer()
   std::shared_lock<std::shared_mutex> speed_scale_lock(speed_scale_mutex_);
   for (int i = 0; i < config_->N; i++) {
     // clip the velocity reference within +- 20m/s of current speed
-    const auto current_speed = static_cast<double>(x_ic(XIndex::VX));
+    const auto current_speed = static_cast<double>(last_x_(XIndex::VX, i));
     const auto ref_speed = static_cast<double>(vel_ref(i)) * speed_scale_;
     const auto speed_limit_clipped = std::clamp(
       this->speed_limit_, current_speed - config_->max_vel_ref_diff, current_speed + config_->max_vel_ref_diff);
@@ -311,15 +321,19 @@ void RacingMPCNode::on_step_timer()
   }
   mpc_->solve(sol_in_, sol_out, stats);
 
-  if (stats.at("return_status").as_string() != "Infeasible_Problem_Detected") {
+  if (sol_out.count("X_optm")) {
     last_x_ = sol_out["X_optm"];
     last_u_ = sol_out["U_optm"];
     last_du_ = sol_out["dU_optm"];
+    telemetry_msg.solved = true;
   } else {
     RCLCPP_ERROR_THROTTLE(
       this->get_logger(), *this->get_clock(), 1000,
-      "Infeasible problem detected.");
+      "MPC could not be solved.");
+    telemetry_msg.solved = false;
   }
+  telemetry_msg.state = last_x_.get_elements();
+  telemetry_msg.control = last_u_.get_elements();
 
   if (!jitted) {
     // on first solve, exit since JIT will take a long time
@@ -332,9 +346,17 @@ void RacingMPCNode::on_step_timer()
   last_x_global(Slice(XIndex::PX, XIndex::YAW + 1), Slice()) =
     f2g_(last_x_(Slice(XIndex::PX, XIndex::YAW + 1), Slice()))[0];
 
+  auto x_ref_global = sol_in_.at("X_optm_ref");
+  x_ref_global(Slice(XIndex::PX, XIndex::YAW + 1), Slice()) =
+    f2g_(sol_in_.at("X_optm_ref")(Slice(XIndex::PX, XIndex::YAW + 1), Slice()))[0]; 
+
   const auto mpc_solve_duration = std::chrono::system_clock::now() - mpc_solve_start;
-  profiler_->add_cycle_stats(mpc_solve_duration.count() * 1e-6);
-  profiler_iter_count_->add_cycle_stats(static_cast<double>(stats.at("iter_count")));
+  const auto mpc_solve_duration_ms = mpc_solve_duration.count() * 1e-6;
+  profiler_->add_cycle_stats(mpc_solve_duration_ms);
+  telemetry_msg.solve_time = mpc_solve_duration_ms;
+  if (stats.count("iter_count")) {
+    profiler_iter_count_->add_cycle_stats(static_cast<double>(stats.at("iter_count")));
+  }
   profile_step_count++;
 
   traj_lock.unlock();
@@ -391,6 +413,24 @@ void RacingMPCNode::on_step_timer()
     auto & pose = mpc_vis_msg.poses.emplace_back();
     pose.header.stamp = now;
     pose.header.frame_id = "map";
+    pose.pose.position.x = x_ref_global(XIndex::PX, i).get_elements()[0];
+    pose.pose.position.y = x_ref_global(XIndex::PY, i).get_elements()[0];
+    pose.pose.position.z = 0.0;
+    pose.pose.orientation = tf2::toMsg(
+      utils::TransformHelper::quaternion_from_heading(
+        x_ref_global(XIndex::YAW, i).get_elements()[0]));
+  }
+  mpc_vis_pub_->publish(mpc_vis_msg);
+
+  // publish the ref visualization message
+  auto ref_vis_msg = nav_msgs::msg::Path();
+  ref_vis_msg.header.stamp = now;
+  ref_vis_msg.header.frame_id = "map";
+  ref_vis_msg.poses.reserve(N);
+  for (int i = 0; i < N; i++) {
+    auto & pose = ref_vis_msg.poses.emplace_back();
+    pose.header.stamp = now;
+    pose.header.frame_id = "map";
     pose.pose.position.x = last_x_global(XIndex::PX, i).get_elements()[0];
     pose.pose.position.y = last_x_global(XIndex::PY, i).get_elements()[0];
     pose.pose.position.z = 0.0;
@@ -398,39 +438,44 @@ void RacingMPCNode::on_step_timer()
       utils::TransformHelper::quaternion_from_heading(
         last_x_global(XIndex::YAW, i).get_elements()[0]));
   }
-  mpc_vis_pub_->publish(mpc_vis_msg);
+  ref_vis_pub_->publish(ref_vis_msg);
 
   // publish the safe set visualization message
-  const auto & ss_X = sol_out["ss_x"];
-  const auto & ss_J = sol_out["ss_j"];
-  auto ss_vis_msg = visualization_msgs::msg::MarkerArray();
-  auto & marker = ss_vis_msg.markers.emplace_back();
-  marker.header.stamp = now;
-  marker.header.frame_id = "map";
-  marker.ns = "safe_set";
-  marker.id = 0;
-  marker.type = visualization_msgs::msg::Marker::SPHERE_LIST;
-  marker.action = visualization_msgs::msg::Marker::MODIFY;
-  marker.points.reserve(ss_X.size2());
-  for (casadi_int i = 0; i < ss_X.size2(); i++) {
-    const auto ss_x_frenet = ss_X(Slice(XIndex::PX, XIndex::YAW + 1), i);
-    const auto ss_x_global = track_->frenet_to_global_function()(ss_x_frenet)[0].get_elements();
-    auto & point = marker.points.emplace_back();
-    point.x = ss_x_global[0];
-    point.y = ss_x_global[1];
-    point.z = 0.0;
-    auto & color = marker.colors.emplace_back();
-    color.r = 0.0;
-    color.g = 1.0;
-    color.b = 0.0;
-    color.a = 1.0;
+  if (sol_out.count("ss_x"))
+  {
+    const auto & ss_X = sol_out["ss_x"];
+    const auto & ss_J = sol_out["ss_j"];
+    auto ss_vis_msg = visualization_msgs::msg::MarkerArray();
+    auto & marker = ss_vis_msg.markers.emplace_back();
+    marker.header.stamp = now;
+    marker.header.frame_id = "map";
+    marker.ns = "safe_set";
+    marker.id = 0;
+    marker.type = visualization_msgs::msg::Marker::SPHERE_LIST;
+    marker.action = visualization_msgs::msg::Marker::MODIFY;
+    marker.points.reserve(ss_X.size2());
+    for (casadi_int i = 0; i < ss_X.size2(); i++) {
+      const auto ss_x_frenet = ss_X(Slice(XIndex::PX, XIndex::YAW + 1), i);
+      const auto ss_x_global = track_->frenet_to_global_function()(ss_x_frenet)[0].get_elements();
+      auto & point = marker.points.emplace_back();
+      point.x = ss_x_global[0];
+      point.y = ss_x_global[1];
+      point.z = 0.0;
+      auto & color = marker.colors.emplace_back();
+      color.r = 0.0;
+      color.g = 1.0;
+      color.b = 0.0;
+      color.a = 1.0;
+    }
+    marker.scale.x = 0.5;
+    marker.scale.y = 0.5;
+    marker.scale.z = 0.5;
+    ss_vis_pub_->publish(ss_vis_msg);
   }
-  marker.scale.x = 0.5;
-  marker.scale.y = 0.5;
-  marker.scale.z = 0.5;
-  ss_vis_pub_->publish(ss_vis_msg);
 
-  // std::cout << last_x_ << std::endl;
+  // publish the telemetry message
+  telemetry_msg.header.stamp = now;
+  mpc_telemetry_pub_->publish(telemetry_msg);
 }
 
 rcl_interfaces::msg::SetParametersResult RacingMPCNode::on_set_parameters(
@@ -510,7 +555,19 @@ void RacingMPCNode::change_trajectory(const int & traj_idx) {
     vis_ = std::make_unique<ROSTrajectoryVisualizer>(*track_);
     vis_->attach_ros_publishers(this, 1.0, true, true);
     sol_in_["total_length"] = track_->total_length();
-    std::cout << "Changed trajectory to " << traj_idx_ << std::endl;
+
+    // build discrete dynamics
+    const auto x_sym = casadi::MX::sym("x", model_->nx());
+    const auto u_sym = casadi::MX::sym("u", model_->nu());
+    const auto k = track_->curvature_interpolation_function()(x_sym(XIndex::PX))[0];
+    const auto xip1 = model_->discrete_dynamics()(
+      casadi::MXDict{{"x", x_sym}, {"u", u_sym}, {"k", k}, {"dt", dt_}}
+    ).at("xip1");
+    discrete_dynamics_ = casadi::Function("discrete_dynamics", {x_sym, u_sym}, {xip1});
+
+    RCLCPP_INFO(
+      this->get_logger(),
+      "Changed trajectory to %d.", traj_idx_);
   }
 }
 
@@ -518,12 +575,28 @@ void RacingMPCNode::set_speed_limit(const double & speed_limit)
 {
   std::unique_lock<std::shared_mutex> speed_limit_lock(speed_limit_mutex_);
   this->speed_limit_ = speed_limit;
+  speed_limit_lock.unlock();
+  RCLCPP_INFO(
+    this->get_logger(),
+    "Set speed limit to %f m/s.", speed_limit_);
 }
 
 void RacingMPCNode::set_speed_scale(const double & speed_scale)
 {
+  double scale = 0.2;
+  if (speed_scale > 1.0 || speed_scale <= 0.0)
+  {
+    RCLCPP_WARN(
+      this->get_logger(),
+      "Invalid velocity scale %f, must be between (0.0-1.0]. Resetting to 20%.", speed_scale);
+  } else {
+    scale = speed_scale;
+    RCLCPP_INFO(
+      this->get_logger(),
+      "Set velocity scale to %f", speed_scale_);
+  }
   std::unique_lock<std::shared_mutex> speed_scale_lock(speed_scale_mutex_);
-  this->speed_scale_ = speed_scale;
+  this->speed_scale_ = scale;
 }
 }  // namespace racing_mpc
 }  // namespace mpc
