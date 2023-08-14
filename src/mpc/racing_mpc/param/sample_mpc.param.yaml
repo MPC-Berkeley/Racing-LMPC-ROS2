@@ -4,7 +4,7 @@
       max_cpu_time: 0.085
       max_iter: 200
       tol: 1e-3
-      n: 100
+      n: 50
       margin: -1.0
       average_track_width: 10.0
       verbose: false

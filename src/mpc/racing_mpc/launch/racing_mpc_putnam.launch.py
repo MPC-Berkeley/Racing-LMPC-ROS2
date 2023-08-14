@@ -76,6 +76,7 @@ def generate_launch_description():
                 ],
                 remappings=[
                 ],
+                prefix=['taskset -c 22,23'],
                 emulate_tty=True,
             ),
         ]
