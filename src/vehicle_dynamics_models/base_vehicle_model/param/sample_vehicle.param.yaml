@@ -46,8 +46,8 @@
       turn_left_bias: 0.0
 
     chassis:
-      # total_mass: 811.9303
-      total_mass: 700.0
+      total_mass: 811.9303
+      # total_mass: 700.0
       sprung_mass: 131.0
       unsprung_mass: 680.9303
       cg_ratio: 0.45
