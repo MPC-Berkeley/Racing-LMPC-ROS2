@@ -41,14 +41,15 @@
       bias: 0.45
 
     steer:
-      max_steer_rate: 1.0
+      max_steer_rate: 0.5
       max_steer: 0.314159
       turn_left_bias: 0.0
 
     chassis:
+      # total_mass: 811.9303
       total_mass: 700.0
       sprung_mass: 131.0
-      unsprung_mass: 569.0
+      unsprung_mass: 680.9303
       cg_ratio: 0.45
       cg_height: 0.35
       wheel_base: 2.9718
