@@ -22,6 +22,7 @@ endif()
 
 # Require that dependencies from package.xml be available.
 find_package(ament_cmake_auto REQUIRED)
+find_package(casadi REQUIRED)
 ament_auto_find_build_dependencies(REQUIRED
   ${${PROJECT_NAME}_BUILD_DEPENDS}
   ${${PROJECT_NAME}_BUILDTOOL_DEPENDS}
@@ -49,6 +50,10 @@ set(${PROJECT_NAME}_HEADER
 ament_auto_add_library(${PROJECT_NAME} SHARED
   ${${PROJECT_NAME}_SRC}
   ${${PROJECT_NAME}_HEADER}
+)
+
+target_link_libraries(${PROJECT_NAME}
+  casadi
 )
 
 if(BUILD_TESTING)
