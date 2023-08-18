@@ -69,7 +69,7 @@ void SingleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casa
   const auto & delta_max = get_base_config().steer_config->max_steer;
   const auto & Td = get_config().Td;
   const auto & Tb = get_config().Tb;
-  const auto & Tdelta = get_base_config().steer_config->max_steer /
+  const auto & max_steer_rate =
     get_base_config().steer_config->max_steer_rate;
 
   if (in.count("x")) {
@@ -129,17 +129,13 @@ void SingleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casa
         opti.bounded(
           Fb_max / 1000.0 / Tb,
           (uip1(UIndexSimple::LON) - u(UIndexSimple::LON)) / t, Fd_max / 1000.0 / Td));
-      opti.subject_to(
-        opti.bounded(
-          -delta_max / Tdelta, (uip1(UIndexSimple::STEER_SIMPLE) - delta) / t,
-          delta_max / Tdelta));
+      opti.subject_to(opti.bounded(
+        -max_steer_rate, (uip1(UIndexSimple::STEER_SIMPLE) - delta) / t, max_steer_rate));
     } else {
       opti.subject_to((uip1(UIndex::FD) - fd) / t <= Fd_max / Td);
       opti.subject_to((uip1(UIndex::FB) - fb) / t >= Fb_max / Tb);
-      opti.subject_to(
-        opti.bounded(
-          -delta_max / Tdelta, (uip1(UIndex::STEER) - delta) / t,
-          delta_max / Tdelta));
+      opti.subject_to(opti.bounded(
+        -max_steer_rate, (uip1(UIndex::STEER) - delta) / t, max_steer_rate));
     }
   }
 
@@ -150,16 +146,12 @@ void SingleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casa
         opti.bounded(
           Fb_max / 1000.0 / Tb, dui(UIndexSimple::LON), Fd_max / 1000.0 / Td));
       opti.subject_to(
-        opti.bounded(
-          -delta_max / Tdelta, dui(UIndexSimple::STEER_SIMPLE),
-          delta_max / Tdelta));
+        opti.bounded(-max_steer_rate, dui(UIndexSimple::STEER_SIMPLE), max_steer_rate));
     } else {
       opti.subject_to(dui(UIndex::FD) <= Fd_max / Td);
       opti.subject_to(dui(UIndex::FB) >= Fb_max / Tb);
       opti.subject_to(
-        opti.bounded(
-          -delta_max / Tdelta, dui(UIndex::STEER),
-          delta_max / Tdelta));
+        opti.bounded(-max_steer_rate, dui(UIndex::STEER), max_steer_rate));
     }
   }
 }

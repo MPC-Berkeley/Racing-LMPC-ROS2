@@ -3,7 +3,7 @@
     single_track_planar:
       fd_max: 10000.0 # max driving force
       fb_max: -20000.0 # max brake force
-      td: 0.5 # time constant for throttle
+      td: 0.8 # time constant for throttle
       tb: 0.5 # time constant for brake
       v_max: 100.0 # max velocity constraint
       p_max: 339000.0 # max engine power
