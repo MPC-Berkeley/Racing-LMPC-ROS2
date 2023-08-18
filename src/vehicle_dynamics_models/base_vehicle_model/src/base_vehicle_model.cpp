@@ -13,6 +13,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+#include <iostream>
+
 #include "base_vehicle_model/base_vehicle_model.hpp"
 
 namespace lmpc
@@ -128,13 +130,18 @@ void BaseVehicleModel::calc_lat_control(const casadi::DMDict & in, double & stee
 
 double BaseVehicleModel::calc_throttle(const double & fd) const
 {
-  if (fd < 0.0) {
-    return 0.0;
-  }
+  // commented out:
+  // throttle could be applicable even when drive force is negative
+  // because low throttle value in high speed could be used to drag the car
+  // causing the car to slow down and smooth out the throttle-brake behavior.
+  // this is why some engine map has negative torque value in high rpm low throttle.
+  // if (fd < 0.0) {
+  //   return 0.0;
+  // }
   const auto & pt_config = *base_config_->powertrain_config.get();
 
   if (base_state_.gear > pt_config.gear_ratio.size()) {
-    printf("Gear number of %d is not possible.", base_state_.gear);
+    std::cout << "Gear number of " << base_state_.gear << " is not possible." << std::endl;
     return 0.0;
   }
 
@@ -155,6 +162,8 @@ double BaseVehicleModel::calc_throttle(const double & fd) const
 
 double BaseVehicleModel::calc_brake(const double & fb) const
 {
+  // one cannot possibly request positive control force with brake.
+  // because brake will always slow down the car.
   if (fb > 0.0) {
     return 0.0;
   }
