@@ -149,7 +149,9 @@ double BaseVehicleModel::calc_throttle(const double & fd) const
     pt_config.kd;
   const auto target_rear_wheel_torque = fd * base_config_->rear_tyre_config->radius *
     (1 - pt_config.kd);
-  const auto target_engine_torque = (target_front_wheel_torque + target_rear_wheel_torque) /
+  const auto target_wheel_torque = (target_front_wheel_torque + target_rear_wheel_torque) /
+    pt_config.mechanical_efficiency;
+  const auto target_engine_torque = target_wheel_torque /
     (pt_config.gear_ratio[base_state_.gear - 1] * pt_config.final_drive_ratio);
   const auto sample_throttle = base_config_->modeling_config->sample_throttle;
   const auto min_engine_torque = bilinear_interpolate(

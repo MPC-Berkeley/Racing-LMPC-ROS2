@@ -1,7 +1,7 @@
 /**:
   ros__parameters:
     front_tyre:
-      radius: 0.19
+      radius: 0.29
       width: 0.25
       mass: 20.0
       moi: 20.0 # rotational moment of inertia
@@ -12,7 +12,7 @@
       pacejka_eps: -0.0813
 
     rear_tyre:
-      radius: 0.19
+      radius: 0.29
       width: 0.25
       mass: 25.0
       rot: 20.0 # rotational moment of inertia
@@ -145,6 +145,7 @@
       gear_ratio: [2.9167, 1.875, 1.3809, 1.1154, 0.96, 0.8889]
       final_drive_ratio: 3.0
       kd: 0.0
+      mechanical_efficiency: 0.9
 
     modeling:
       use_frenet: true

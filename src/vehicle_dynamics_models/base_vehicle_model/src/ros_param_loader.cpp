@@ -135,7 +135,8 @@ BaseVehicleModelConfig::SharedPtr load_parameters(rclcpp::Node * node)
           },
           declare_vec("powertrain.gear_ratio"),
           declare_double("powertrain.final_drive_ratio"),
-          declare_double("powertrain.kd")
+          declare_double("powertrain.kd"),
+          declare_double("powertrain.mechanical_efficiency"),
         }
   );
 

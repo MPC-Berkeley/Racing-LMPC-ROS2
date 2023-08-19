@@ -109,7 +109,9 @@ struct PowerTrainConfig
   // Drive force distribution at front axle as a fraction of total drive force
   double kd;
 
-  // TODO(haoru): add mechanical loss
+  // mechanical efficiency of powertrain - percentage of torque transmitted
+  // from engine crankshaft to wheels
+  double mechanical_efficiency;
 };
 
 enum IntegratorType : uint8_t

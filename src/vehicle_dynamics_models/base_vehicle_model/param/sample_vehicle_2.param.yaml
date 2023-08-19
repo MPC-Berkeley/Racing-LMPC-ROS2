@@ -77,6 +77,7 @@
       gear_ratio: [1.0]
       final_drive_ratio: 1.5
       kd: 0.0
+      mechanical_efficiency: 0.9
 
     modeling:
       use_frenet: true
