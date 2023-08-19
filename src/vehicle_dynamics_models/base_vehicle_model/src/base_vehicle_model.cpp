@@ -151,13 +151,23 @@ double BaseVehicleModel::calc_throttle(const double & fd) const
     (1 - pt_config.kd);
   const auto target_engine_torque = (target_front_wheel_torque + target_rear_wheel_torque) /
     (pt_config.gear_ratio[base_state_.gear - 1] * pt_config.final_drive_ratio);
+  const auto sample_throttle = base_config_->modeling_config->sample_throttle;
   const auto min_engine_torque = bilinear_interpolate(
     pt_config.torque_v_rpm_throttle, base_state_.engine_rpm, 0.0, false);
+  const auto sample_engine_torque = bilinear_interpolate(
+    pt_config.torque_v_rpm_throttle, base_state_.engine_rpm, sample_throttle, false);
   const auto max_engine_torque = bilinear_interpolate(
     pt_config.torque_v_rpm_throttle, base_state_.engine_rpm, 100.0, false);
-  return utils::fast_linear_interpolate(
-    min_engine_torque, max_engine_torque, 0.0, 100.0,
+  if (target_engine_torque < sample_engine_torque)
+  {
+    return utils::fast_linear_interpolate(
+    min_engine_torque, sample_engine_torque, 0.0, sample_throttle,
     target_engine_torque, false);
+  } else {
+    return utils::fast_linear_interpolate(
+    sample_engine_torque, max_engine_torque, sample_throttle, 100.0,
+    target_engine_torque, false);
+  }
 }
 
 double BaseVehicleModel::calc_brake(const double & fb) const

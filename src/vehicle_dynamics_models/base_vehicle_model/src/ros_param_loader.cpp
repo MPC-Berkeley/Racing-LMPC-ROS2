@@ -152,7 +152,8 @@ BaseVehicleModelConfig::SharedPtr load_parameters(rclcpp::Node * node)
   auto modeling_config = std::make_shared<ModelingConfig>(
     ModelingConfig{
           declare_bool("modeling.use_frenet"),
-          integrator_type
+          integrator_type,
+          declare_double("modeling.sample_throttle"),
         }
   );
 

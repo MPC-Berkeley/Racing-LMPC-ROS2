@@ -128,7 +128,12 @@ struct ModelingConfig
 
   // Express the dynamics in frenet frame?
   bool use_frenet;
+
+  // Integrator type
   IntegratorType integrator_type;
+
+  // Sample throttle point for torque lookup (0-100)
+  double sample_throttle;
 };
 
 struct BaseVehicleModelConfig
