@@ -71,10 +71,11 @@ RacingMPC::RacingMPC(
       {"print_time", config_->verbose ? true : false},
       {"error_on_fail", true}
     };
-    if (config_->jit) {
-      p_opts["jit"] = true;
-      p_opts["jit_options"] = casadi::Dict{{"flags", "-Ofast"}};
-    }
+    // if (config_->jit) {
+    //   p_opts["jit"] = true;
+    //   p_opts["jit_options"] = casadi::Dict{{"flags", "-Ofast"}};
+    //   p_opts["compiler"] = "shell";
+    // }
     const auto s_opts = casadi::Dict{
       {"max_cpu_time", config_->max_cpu_time},
       {"tol", config_->tol},
@@ -97,6 +98,7 @@ RacingMPC::RacingMPC(
     if (config_->jit) {
       p_opts["jit"] = true;
       p_opts["jit_options"] = casadi::Dict{{"flags", "-Ofast"}};
+      p_opts["compiler"] = "shell";
     }
     const auto s_opts = casadi::Dict{};
     opti_.solver("osqp", p_opts, s_opts);

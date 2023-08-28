@@ -57,6 +57,7 @@ protected:
   RacingMPCConfig::SharedPtr config_ {};
   RacingTrajectoryMap::SharedPtr tracks_ {};
   int traj_idx_ = 0;
+  int delay_step_ = 0;
   RacingTrajectory::SharedPtr track_ {};
   ROSTrajectoryVisualizer::UniquePtr vis_ {};
   BaseVehicleModel::SharedPtr model_ {};

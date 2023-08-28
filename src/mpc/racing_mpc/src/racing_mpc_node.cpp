@@ -36,6 +36,8 @@ RacingMPCNode::RacingMPCNode(const rclcpp::NodeOptions & options)
   )),
   traj_idx_(utils::declare_parameter<int>(
         this, "racing_mpc_node.default_traj_idx")),
+  delay_step_(utils::declare_parameter<int>(
+        this, "racing_mpc_node.delay_step")),
   track_(tracks_->get_trajectory(traj_idx_)),
   vis_(std::make_unique<ROSTrajectoryVisualizer>(*track_)),
   model_(vehicle_model::vehicle_model_factory::load_vehicle_model(
@@ -387,8 +389,8 @@ void RacingMPCNode::on_step_timer()
   // publish the actuation message
   const auto last_u_base =
     model_->to_base_control()(
-    casadi::DMDict{{"x", last_x_(Slice(), 0)},
-      {"u", last_u_(Slice(), 0)}}).at("u_out");
+    casadi::DMDict{{"x", last_x_(Slice(), delay_step_)},
+      {"u", last_u_(Slice(), delay_step_)}}).at("u_out");
   const auto u_vec = last_u_base.get_elements();
   // std::cout << "x: " << last_x_(Slice(), 0) << std::endl;
   // std::cout << "u: " << last_u_(Slice(), 0) << std::endl;
@@ -588,7 +590,7 @@ void RacingMPCNode::set_speed_scale(const double & speed_scale)
   {
     RCLCPP_WARN(
       this->get_logger(),
-      "Invalid velocity scale %f, must be between (0.0-1.0]. Resetting to 20%.", speed_scale);
+      "Invalid velocity scale %f, must be between (0.0-1.0]. Resetting to 20\%.", speed_scale);
   } else {
     scale = speed_scale;
     RCLCPP_INFO(
