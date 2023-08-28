@@ -41,7 +41,7 @@
       bias: 0.46
 
     steer:
-      max_steer_rate: 0.4
+      max_steer_rate: 0.66
       max_steer: 0.314159
       turn_left_bias: 0.0
 

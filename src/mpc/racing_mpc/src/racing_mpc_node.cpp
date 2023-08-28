@@ -593,7 +593,7 @@ void RacingMPCNode::set_speed_scale(const double & speed_scale)
     scale = speed_scale;
     RCLCPP_INFO(
       this->get_logger(),
-      "Set velocity scale to %f", speed_scale_);
+      "Set velocity scale to %f", speed_scale);
   }
   std::unique_lock<std::shared_mutex> speed_scale_lock(speed_scale_mutex_);
   this->speed_scale_ = scale;
