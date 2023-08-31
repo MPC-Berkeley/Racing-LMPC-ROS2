@@ -56,7 +56,7 @@ RacingMPCNode::RacingMPCNode(const rclcpp::NodeOptions & options)
   mpc_full_ = std::make_shared<RacingMPC>(full_config, model_, true);
 
   // add visualizations for the trajectory
-  vis_->attach_ros_publishers(this, 1.0, true, true);
+  vis_->attach_ros_publishers(this, true, true);
 
   // initialize the actuation message
   vehicle_actuation_msg_ = std::make_shared<mpclab_msgs::msg::VehicleActuationMsg>();
@@ -555,7 +555,7 @@ void RacingMPCNode::change_trajectory(const int & traj_idx) {
     f2g_ = track_->frenet_to_global_function().map(mpc_->get_config().N);
     traj_idx_ = traj_idx;
     vis_ = std::make_unique<ROSTrajectoryVisualizer>(*track_);
-    vis_->attach_ros_publishers(this, 1.0, true, true);
+    vis_->attach_ros_publishers(this, true, true);
     sol_in_["total_length"] = track_->total_length();
 
     // build discrete dynamics

@@ -44,7 +44,7 @@ public:
   ~ROSTrajectoryVisualizer();
 
   void attach_ros_publishers(
-    rclcpp::Node * node, const double & dt, const bool & vis_boundary,
+    rclcpp::Node * node, const bool & vis_boundary,
     const bool & vis_abscissa);
 
 private:

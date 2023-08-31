@@ -51,7 +51,7 @@ def generate_launch_description():
         "sample_vehicle.param.yaml",
     )
     track_file = get_share_file(
-        "racing_trajectory", "test_data", "putnam", "10_putnam_optm.txt")
+        "racing_trajectory", "test_data", "putnam_short", "15_putnam_short_optm.txt")
 
     return LaunchDescription(
         [
@@ -71,9 +71,9 @@ def generate_launch_description():
                         "modeling.use_frenet": False,
                         # "racing_simulator.x0": [-100.0, -5.0, 3.14, 15.0, 0.0, 0.0]
                         # "racing_simulator.x0": [50.0, 5.0, 3.14, 15.0, 0.0, 0.0]
-                        # "racing_simulator.x0": [-10.0, 2.0, 3.14, 15.0, 0.0, 0.0]
+                        "racing_simulator.x0": [-10.0, 2.0, 3.14, 15.0, 0.0, 0.0]
                         # "racing_simulator.x0": [-350.0, -20.0, 3.14, 15.0, 0.0, 0.0]
-                        "racing_simulator.x0": [-67.9, 247.6, -2.61799, 15.0, 0.0, 0.0]
+                        # "racing_simulator.x0": [-67.9, 247.6, -2.61799, 15.0, 0.0, 0.0]
                     },
                 ],
                 remappings=[

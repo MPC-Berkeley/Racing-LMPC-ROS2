@@ -51,7 +51,7 @@ def generate_launch_description():
         "sample_vehicle.param.yaml",
     )
     track_file = get_share_file(
-        "racing_trajectory", "test_data", "putnam")
+        "racing_trajectory", "test_data", "putnam_short")
 
     return LaunchDescription(
         [
@@ -67,9 +67,9 @@ def generate_launch_description():
                     base_model_config,
                     use_sim_time,
                     {
-                        "racing_mpc_node.dt": 0.0333,
+                        "racing_mpc_node.dt": 0.05,
                         "racing_mpc_node.vehicle_model_name": "single_track_planar_model",
-                        "racing_mpc_node.default_traj_idx": 27,
+                        "racing_mpc_node.default_traj_idx": 4,
                         "racing_mpc_node.traj_folder": track_file,
                         "racing_mpc_node.velocity_profile_scale": 1.0,
                         "racing_mpc_node.delay_step": 0,

@@ -81,7 +81,7 @@ ROSTrajectoryVisualizer::~ROSTrajectoryVisualizer() {
 }
 
 void ROSTrajectoryVisualizer::attach_ros_publishers(
-  rclcpp::Node * node, const double & dt,
+  rclcpp::Node * node,
   const bool & vis_boundary,
   const bool & vis_abscissa)
 {

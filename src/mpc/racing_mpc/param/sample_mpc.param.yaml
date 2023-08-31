@@ -4,8 +4,8 @@
       max_cpu_time: 0.085
       max_iter: 200
       tol: 1e-3
-      n: 60
-      margin: -1.0
+      n: 30
+      margin: 0.5
       average_track_width: 10.0
       verbose: false
       jit: true
@@ -17,12 +17,12 @@
       q_vy: 0.01
       q_vyaw: 0.01
       r: [
-        1e-5, 0.0,
+        7e-3, 0.0,
         0.0, 1.0,
       ]
       r_d: [
-        1e-4, 0.0,
-        0.0, 10.0,
+        1e-2, 0.0,
+        0.0, 1.0,
       ]
       max_vel_ref_diff: 1.0 # max difference between reference velocity and actual velocity
 
@@ -34,8 +34,8 @@
       step_mode: "continuous"
 
       # LMPC
-      learning: false
-      convex_hull_slack: [4000.0, 4000.0, 400.0, 4000.0, 4000.0, 400.0]
+      learning: true
+      convex_hull_slack: [40.0, 40.0, 4.0, 40.0, 40.0, 4.0]
       num_ss_pts: 48
       num_ss_pts_per_lap: 18
       max_lap_stored: 3
@@ -44,8 +44,8 @@
       record: false
       path_prefix: "/home/haoru/berkeley/experiments/mgkt/exp/exp1_"
 
-      load: false
+      load: true
       load_path:
-        - /home/haoru/berkeley/experiments/mgkt/ss/ss_lap_1_x.txt
-        - /home/haoru/berkeley/experiments/mgkt/ss/ss_lap_2_x.txt
-        - /home/haoru/berkeley/experiments/mgkt/ss/ss_lap_3_x.txt
+        - /home/autera-admin/ART/mpc_data/putnam_short_ss/ss_lap_1_x.txt
+        - /home/autera-admin/ART/mpc_data/putnam_short_ss/ss_lap_2_x.txt
+        - /home/autera-admin/ART/mpc_data/putnam_short_ss/ss_lap_3_x.txt
