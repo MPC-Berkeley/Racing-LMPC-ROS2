@@ -64,8 +64,9 @@ SafeSetManager::SafeSetManager(const size_t & max_lap_stored)
 
 void SafeSetManager::add_lap(const casadi::DM & x, const double & total_length)
 {
+  const auto traj = std::make_unique<SSTrajectory>(x, total_length);
   std::unique_lock<std::shared_mutex> lock(mutex_);
-  laps_.push_back(std::make_unique<SSTrajectory>(x, total_length));
+  laps_.push_back(traj);
 }
 
 SSResult SafeSetManager::query(const SSQuery & query)
