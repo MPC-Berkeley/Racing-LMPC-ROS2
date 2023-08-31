@@ -56,9 +56,6 @@ private:
   rclcpp::Publisher<PolygonStamped>::SharedPtr right_boundary_polygon_pub_;
   rclcpp::Publisher<PolygonStamped>::SharedPtr abscissa_polygon_pub_;
 
-  rclcpp::TimerBase::SharedPtr static_vis_timer_;
-  rclcpp::CallbackGroup::SharedPtr vis_callback_group_;
-
   rclcpp::Node * node_;
 
   Polygon build_polygon(const casadi::DM & pts);

@@ -5,8 +5,8 @@
       width: 0.25
       mass: 20.0
       moi: 20.0 # rotational moment of inertia
-      pacejka_b: 14.15
-      pacejka_c: 1.77
+      pacejka_b: 11.0
+      pacejka_c: 1.7
       pacejka_e: 1.0
       pacejka_fz0: 1543.5
       pacejka_eps: -0.0813
@@ -16,8 +16,8 @@
       width: 0.25
       mass: 25.0
       rot: 20.0 # rotational moment of inertia
-      pacejka_b: 14.15
-      pacejka_c: 1.77
+      pacejka_b: 11.0
+      pacejka_c: 1.7
       pacejka_e: 1.0
       pacejka_fz0: 1886.5
       pacejka_eps: -0.1263

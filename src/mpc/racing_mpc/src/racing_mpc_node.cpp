@@ -590,7 +590,7 @@ void RacingMPCNode::set_speed_scale(const double & speed_scale)
   {
     RCLCPP_WARN(
       this->get_logger(),
-      "Invalid velocity scale %f, must be between (0.0-1.0]. Resetting to 20\%.", speed_scale);
+      "Invalid velocity scale %f, must be between (0.0-1.0]. Resetting to 20%%.", speed_scale);
   } else {
     scale = speed_scale;
     RCLCPP_INFO(
