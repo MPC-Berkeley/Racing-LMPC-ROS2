@@ -41,8 +41,8 @@
       max_lap_stored: 3
 
       # recording
-      record: false
-      path_prefix: "/home/haoru/berkeley/experiments/mgkt/exp/exp1_"
+      record: true
+      path_prefix: "/home/autera-admin/ART/mpc_data/putnam_short_ss/exp1_"
 
       load: true
       load_path:

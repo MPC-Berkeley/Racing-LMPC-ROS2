@@ -23,7 +23,7 @@
       pacejka_eps: -0.1263
 
     front_brake:
-      max_brake: 2500.0
+      max_brake: 3000.0
       brake_pad_out_r: 0.154
       brake_pad_in_r: 0.1143
       brake_pad_friction_coeff: 0.5
@@ -32,7 +32,7 @@
       bias: 0.54
 
     rear_brake:
-      max_brake: 2500.0
+      max_brake: 3000.0
       brake_pad_out_r: 0.154
       brake_pad_in_r: 0.1143
       brake_pad_friction_coeff: 0.5
