@@ -56,6 +56,9 @@ target_link_libraries(${PROJECT_NAME}
   casadi
 )
 
+# build python utils
+ament_python_install_package(${PROJECT_NAME})
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   ament_lint_auto_find_test_dependencies()
