@@ -144,13 +144,7 @@ void RacingMPCNode::on_new_trajectory_command(
   if (current_speed_scale != msg->velocity_profile_scale) {
     set_speed_scale(msg->velocity_profile_scale);
   }
-
-  std::shared_lock<std::shared_mutex> traj_lock(traj_mutex_);
-  const auto current_traj_idx = traj_idx_;
-  traj_lock.unlock();
-  if (current_traj_idx != msg->trajectory_index) {
-    change_trajectory(msg->trajectory_index);
-  }
+  change_trajectory(msg->trajectory_index);
 }
 
 void RacingMPCNode::on_step_timer()
@@ -557,8 +551,7 @@ void RacingMPCNode::change_trajectory(const int & traj_idx)
     track_ = new_traj;
     f2g_ = track_->frenet_to_global_function().map(mpc_->get_config().N);
     traj_idx_ = traj_idx;
-    vis_ = std::make_unique<ROSTrajectoryVisualizer>(*track_);
-    vis_->attach_ros_publishers(this, 1.0, true, true);
+    vis_->change_trajectory(*track_);
     sol_in_["total_length"] = track_->total_length();
 
     // build discrete dynamics

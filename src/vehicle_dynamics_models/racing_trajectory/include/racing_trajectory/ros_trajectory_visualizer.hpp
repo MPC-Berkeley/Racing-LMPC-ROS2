@@ -18,6 +18,7 @@
 
 #include <memory>
 #include <string>
+#include <shared_mutex>
 
 #include <casadi/casadi.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -43,6 +44,8 @@ public:
   explicit ROSTrajectoryVisualizer(RacingTrajectory & trajectory);
   ~ROSTrajectoryVisualizer();
 
+  void change_trajectory(RacingTrajectory & trajectory);
+
   void attach_ros_publishers(
     rclcpp::Node * node, const double & dt, const bool & vis_boundary,
     const bool & vis_abscissa);
@@ -60,6 +63,8 @@ private:
   rclcpp::CallbackGroup::SharedPtr vis_callback_group_;
 
   rclcpp::Node * node_;
+
+  std::shared_mutex mutex_;
 
   Polygon build_polygon(const casadi::DM & pts);
   void on_static_vis_timer();

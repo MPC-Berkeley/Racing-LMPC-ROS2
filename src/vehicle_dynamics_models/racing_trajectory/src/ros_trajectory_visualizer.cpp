@@ -26,6 +26,12 @@ namespace racing_trajectory
 
 ROSTrajectoryVisualizer::ROSTrajectoryVisualizer(RacingTrajectory & trajectory)
 {
+  change_trajectory(trajectory);
+}
+
+void ROSTrajectoryVisualizer::change_trajectory(RacingTrajectory & trajectory)
+{
+  std::unique_lock<std::shared_mutex> lock(mutex_);
   const auto abscissa =
     casadi::DM::linspace(0.0, trajectory.total_length(), 1001)(casadi::Slice(0, -1));
   const auto N = abscissa.size1();
@@ -121,6 +127,7 @@ Polygon ROSTrajectoryVisualizer::build_polygon(const casadi::DM & pts)
 
 void ROSTrajectoryVisualizer::on_static_vis_timer()
 {
+  std::shared_lock<std::shared_mutex> lock(mutex_);
   const auto now = node_->now();
   if (abscissa_polygon_pub_) {
     abscissa_polygon_msg_->header.stamp = now;
