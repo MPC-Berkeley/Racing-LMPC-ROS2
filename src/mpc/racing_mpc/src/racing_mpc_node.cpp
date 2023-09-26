@@ -31,13 +31,13 @@ RacingMPCNode::RacingMPCNode(const rclcpp::NodeOptions & options)
   dt_(utils::declare_parameter<double>(this, "racing_mpc_node.dt")),
   config_(lmpc::mpc::racing_mpc::load_parameters(this)),
   tracks_(std::make_shared<RacingTrajectoryMap>(
-    utils::declare_parameter<std::string>(
+      utils::declare_parameter<std::string>(
         this, "racing_mpc_node.traj_folder")
-  )),
+    )),
   traj_idx_(utils::declare_parameter<int>(
-        this, "racing_mpc_node.default_traj_idx")),
+      this, "racing_mpc_node.default_traj_idx")),
   delay_step_(utils::declare_parameter<int>(
-        this, "racing_mpc_node.delay_step")),
+      this, "racing_mpc_node.delay_step")),
   track_(tracks_->get_trajectory(traj_idx_)),
   vis_(std::make_unique<ROSTrajectoryVisualizer>(*track_)),
   model_(vehicle_model::vehicle_model_factory::load_vehicle_model(
@@ -178,7 +178,8 @@ void RacingMPCNode::on_step_timer()
   auto x_ic_base = DM{
     p.s, p.x_tran, p.e_psi, v.v_long, v.v_tran, w.w_psi
   };
-  const Pose2D current_global_pose{{vehicle_state_msg_->x.x, vehicle_state_msg_->x.y}, vehicle_state_msg_->e.psi};
+  const Pose2D current_global_pose{{vehicle_state_msg_->x.x, vehicle_state_msg_->x.y},
+    vehicle_state_msg_->e.psi};
   state_msg_lock.unlock();
 
   const auto mpc_solve_start = std::chrono::system_clock::now();
@@ -276,13 +277,14 @@ void RacingMPCNode::on_step_timer()
     const auto current_speed = static_cast<double>(last_x_(XIndex::VX, i));
     const auto ref_speed = static_cast<double>(vel_ref(i)) * speed_scale_;
     const auto speed_limit_clipped = std::clamp(
-      this->speed_limit_, current_speed - config_->max_vel_ref_diff, current_speed + config_->max_vel_ref_diff);
+      this->speed_limit_, current_speed - config_->max_vel_ref_diff,
+      current_speed + config_->max_vel_ref_diff);
     // valid TTL has positive velocity profile.
     // if the velocity profile is negative, set it to the speed limit
-    if (ref_speed > 0.0)
-    {
+    if (ref_speed > 0.0) {
       const auto ref_speed_clipped = std::clamp(
-        ref_speed, current_speed - config_->max_vel_ref_diff, current_speed + config_->max_vel_ref_diff);
+        ref_speed, current_speed - config_->max_vel_ref_diff,
+        current_speed + config_->max_vel_ref_diff);
       vel_ref(i) = std::min(ref_speed_clipped, speed_limit_clipped);
     } else {
       vel_ref(i) = speed_limit_clipped;
@@ -350,7 +352,7 @@ void RacingMPCNode::on_step_timer()
 
   auto x_ref_global = sol_in_.at("X_optm_ref");
   x_ref_global(Slice(XIndex::PX, XIndex::YAW + 1), Slice()) =
-    f2g_(sol_in_.at("X_optm_ref")(Slice(XIndex::PX, XIndex::YAW + 1), Slice()))[0]; 
+    f2g_(sol_in_.at("X_optm_ref")(Slice(XIndex::PX, XIndex::YAW + 1), Slice()))[0];
 
   const auto mpc_solve_duration = std::chrono::system_clock::now() - mpc_solve_start;
   const auto mpc_solve_duration_ms = mpc_solve_duration.count() * 1e-6;
@@ -443,8 +445,7 @@ void RacingMPCNode::on_step_timer()
   ref_vis_pub_->publish(ref_vis_msg);
 
   // publish the safe set visualization message
-  if (sol_out.count("ss_x"))
-  {
+  if (sol_out.count("ss_x")) {
     const auto & ss_X = sol_out["ss_x"];
     const auto & ss_J = sol_out["ss_j"];
     auto ss_vis_msg = visualization_msgs::msg::MarkerArray();
@@ -481,7 +482,8 @@ void RacingMPCNode::on_step_timer()
 }
 
 rcl_interfaces::msg::SetParametersResult RacingMPCNode::on_set_parameters(
-  std::vector<rclcpp::Parameter> const & parameters) {
+  std::vector<rclcpp::Parameter> const & parameters)
+{
   auto result = rcl_interfaces::msg::SetParametersResult();
   result.successful = false;
   // only accept velocity scale changes
@@ -494,7 +496,7 @@ rcl_interfaces::msg::SetParametersResult RacingMPCNode::on_set_parameters(
           "Invalid velocity scale %f, must be non-negative", speed_scale);
         return result;
       }
-      
+
       set_speed_scale(speed_scale);
       RCLCPP_INFO(
         this->get_logger(),
@@ -509,7 +511,8 @@ rcl_interfaces::msg::SetParametersResult RacingMPCNode::on_set_parameters(
   return result;
 }
 
-void RacingMPCNode::change_trajectory(const int & traj_idx) {
+void RacingMPCNode::change_trajectory(const int & traj_idx)
+{
   if (traj_idx == traj_idx_) {
     return;
   }
@@ -520,12 +523,12 @@ void RacingMPCNode::change_trajectory(const int & traj_idx) {
 
   if (new_traj) {
     auto convert_frame = [&](const FrenetPose2D & old_frenet_pose) {
-      Pose2D global_pose;
-      old_traj.frenet_to_global(old_frenet_pose, global_pose);
-      FrenetPose2D new_frenet_pose;
-      new_traj->global_to_frenet(global_pose, new_frenet_pose);
-      return new_frenet_pose;
-    };
+        Pose2D global_pose;
+        old_traj.frenet_to_global(old_frenet_pose, global_pose);
+        FrenetPose2D new_frenet_pose;
+        new_traj->global_to_frenet(global_pose, new_frenet_pose);
+        return new_frenet_pose;
+      };
     if (vehicle_state_msg_) {
       std::unique_lock<std::shared_mutex> state_msg_lock(state_msg_mutex_);
       auto & x = vehicle_state_msg_->x;
@@ -541,7 +544,7 @@ void RacingMPCNode::change_trajectory(const int & traj_idx) {
 
       // convert previous solution to new coordinate system
       if (mpc_->solved()) {
-        for (int i = 0; i< config_->N; i++) {
+        for (int i = 0; i < config_->N; i++) {
           const auto xi = last_x_(casadi::Slice(), i).get_elements();
           const FrenetPose2D old_frenet_pose {{xi[XIndex::PX], xi[XIndex::PY]}, xi[XIndex::YAW]};
           const FrenetPose2D new_frenet_pose = convert_frame(old_frenet_pose);
@@ -586,8 +589,7 @@ void RacingMPCNode::set_speed_limit(const double & speed_limit)
 void RacingMPCNode::set_speed_scale(const double & speed_scale)
 {
   double scale = 0.2;
-  if (speed_scale > 1.0 || speed_scale <= 0.0)
-  {
+  if (speed_scale > 1.0 || speed_scale <= 0.0) {
     RCLCPP_WARN(
       this->get_logger(),
       "Invalid velocity scale %f, must be between (0.0-1.0]. Resetting to 20%%.", speed_scale);

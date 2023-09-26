@@ -18,6 +18,7 @@
 
 #include <memory>
 #include <shared_mutex>
+#include <vector>
 
 #include <casadi/casadi.hpp>
 
@@ -113,7 +114,7 @@ protected:
   void on_new_trajectory_command(const lmpc_msgs::msg::TrajectoryCommand::SharedPtr msg);
   void on_step_timer();
   rcl_interfaces::msg::SetParametersResult on_set_parameters(
-  std::vector<rclcpp::Parameter> const & parameters);
+    std::vector<rclcpp::Parameter> const & parameters);
 
   // helpers
   void change_trajectory(const int & traj_idx);

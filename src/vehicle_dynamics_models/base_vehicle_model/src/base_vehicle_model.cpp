@@ -160,15 +160,14 @@ double BaseVehicleModel::calc_throttle(const double & fd) const
     pt_config.torque_v_rpm_throttle, base_state_.engine_rpm, sample_throttle, false);
   const auto max_engine_torque = bilinear_interpolate(
     pt_config.torque_v_rpm_throttle, base_state_.engine_rpm, 100.0, false);
-  if (target_engine_torque < sample_engine_torque)
-  {
+  if (target_engine_torque < sample_engine_torque) {
     return utils::fast_linear_interpolate(
-    min_engine_torque, sample_engine_torque, 0.0, sample_throttle,
-    target_engine_torque, false);
+      min_engine_torque, sample_engine_torque, 0.0, sample_throttle,
+      target_engine_torque, false);
   } else {
     return utils::fast_linear_interpolate(
-    sample_engine_torque, max_engine_torque, sample_throttle, 100.0,
-    target_engine_torque, false);
+      sample_engine_torque, max_engine_torque, sample_throttle, 100.0,
+      target_engine_torque, false);
   }
 }
 

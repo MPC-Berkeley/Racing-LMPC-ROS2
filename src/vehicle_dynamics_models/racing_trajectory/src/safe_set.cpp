@@ -145,7 +145,8 @@ void SafeSetRecorder::step(
     if (initialized_) {
       std::cout << "Lap " << lap_count_ << " completed. Adding to safe set." << std::endl;
       std::cout << "Lap " << lap_count_ << " ave speed: " <<
-        static_cast<double>(total_length / (t - last_t_(0))) << " m/s, time: " << (t - last_t_(0)) << " s." << std::endl;
+        static_cast<double>(total_length / (t - last_t_(0))) << " m/s, time: " <<
+        (t - last_t_(0)) << " s." << std::endl;
       manager_.add_lap(last_x_, total_length);
       if (to_file_) {
         const auto filename = file_prefix_ + "lap_" + std::to_string(lap_count_);

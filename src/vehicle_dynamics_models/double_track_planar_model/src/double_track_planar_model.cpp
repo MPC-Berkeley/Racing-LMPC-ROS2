@@ -130,8 +130,9 @@ void DoubleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casa
     const auto & uip1 = in.at("uip1");
     opti.subject_to((uip1(UIndex::FD) - fd) / t <= Fd_max / Td);
     opti.subject_to((uip1(UIndex::FB) - fb) / t >= Fb_max / Tb);
-    opti.subject_to(opti.bounded(
-      -max_steer_rate, (uip1(UIndex::STEER) - delta) / t, max_steer_rate));
+    opti.subject_to(
+      opti.bounded(
+        -max_steer_rate, (uip1(UIndex::STEER) - delta) / t, max_steer_rate));
   }
 }
 

@@ -64,8 +64,7 @@ RacingMPC::RacingMPC(
   using casadi::Slice;
 
   // configure solver
-  if (full_dynamics)
-  {
+  if (full_dynamics) {
     auto p_opts = casadi::Dict{
       {"expand", true},
       {"print_time", config_->verbose ? true : false},

@@ -63,25 +63,22 @@ ROSTrajectoryVisualizer::ROSTrajectoryVisualizer(RacingTrajectory & trajectory)
   right_boundary_polygon_msg_->polygon = build_polygon(right_boundary_global);
 }
 
-ROSTrajectoryVisualizer::~ROSTrajectoryVisualizer() {
-  if (static_vis_timer_)
-  {
+ROSTrajectoryVisualizer::~ROSTrajectoryVisualizer()
+{
+  if (static_vis_timer_) {
     static_vis_timer_->cancel();
     static_vis_timer_.reset();
   }
 
-  if (left_boundary_polygon_pub_)
-  {
+  if (left_boundary_polygon_pub_) {
     left_boundary_polygon_pub_.reset();
   }
 
-  if (right_boundary_polygon_pub_)
-  {
+  if (right_boundary_polygon_pub_) {
     right_boundary_polygon_pub_.reset();
   }
 
-  if ( abscissa_polygon_pub_)
-  {
+  if (abscissa_polygon_pub_) {
     abscissa_polygon_pub_.reset();
   }
 }
