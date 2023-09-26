@@ -67,7 +67,7 @@ def generate_launch_description():
                     base_model_config,
                     use_sim_time,
                     {
-                        "racing_mpc_node.dt": 0.05,
+                        "racing_mpc_node.dt": 0.025,
                         "racing_mpc_node.vehicle_model_name": "single_track_planar_model",
                         "racing_mpc_node.default_traj_idx": 4,
                         "racing_mpc_node.traj_folder": track_file,
@@ -77,7 +77,7 @@ def generate_launch_description():
                 ],
                 remappings=[
                 ],
-                prefix=['taskset -c 22,23'],
+                # prefix=['taskset -c 22,23'],
                 emulate_tty=True,
             ),
         ]

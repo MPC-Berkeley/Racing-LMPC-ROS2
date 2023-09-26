@@ -269,7 +269,7 @@ void SingleTrackPlanarModel::compile_dynamics()
     cl_f * rho * A * v_sq;
   const auto Fz_fl = Fz_f;
   // const auto Fz_fr = Fz_f;
-  const auto Fz_r = 0.5 * m * GRAVITY * lr / (lf + lr) + 0.5 * hcog / (lf + lr) * m * ax + 0.25 *
+  const auto Fz_r = 0.5 * m * GRAVITY * lf / (lf + lr) + 0.5 * hcog / (lf + lr) * m * ax + 0.25 *
     cl_r * rho * A * v_sq;
   const auto Fz_rl = Fz_r;
   // const auto Fz_rr = Fz_r;

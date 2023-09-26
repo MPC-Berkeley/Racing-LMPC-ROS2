@@ -64,6 +64,12 @@ ROSTrajectoryVisualizer::ROSTrajectoryVisualizer(RacingTrajectory & trajectory)
 }
 
 ROSTrajectoryVisualizer::~ROSTrajectoryVisualizer() {
+  if (static_vis_timer_)
+  {
+    static_vis_timer_->cancel();
+    static_vis_timer_.reset();
+  }
+
   if (left_boundary_polygon_pub_)
   {
     left_boundary_polygon_pub_.reset();
@@ -81,28 +87,27 @@ ROSTrajectoryVisualizer::~ROSTrajectoryVisualizer() {
 }
 
 void ROSTrajectoryVisualizer::attach_ros_publishers(
-  rclcpp::Node * node,
+  rclcpp::Node * node, const double & dt,
   const bool & vis_boundary,
   const bool & vis_abscissa)
 {
   node_ = node;
-  const auto now = node_->now();
   if (vis_boundary) {
     left_boundary_polygon_pub_ = node->create_publisher<PolygonStamped>(
-      "left_boundary_polygon", rclcpp::QoS(rclcpp::KeepLast(1)).transient_local());
+      "left_boundary_polygon", 1);
     right_boundary_polygon_pub_ = node->create_publisher<PolygonStamped>(
-      "right_boundary_polygon", rclcpp::QoS(rclcpp::KeepLast(1)).transient_local());
-    left_boundary_polygon_msg_->header.stamp = now;
-    left_boundary_polygon_pub_->publish(*left_boundary_polygon_msg_);
-    right_boundary_polygon_msg_->header.stamp = now;
-    right_boundary_polygon_pub_->publish(*right_boundary_polygon_msg_);
+      "right_boundary_polygon", 1);
   }
   if (vis_abscissa) {
     abscissa_polygon_pub_ = node->create_publisher<PolygonStamped>(
-      "abscissa_polygon", rclcpp::QoS(rclcpp::KeepLast(1)).transient_local());
-    abscissa_polygon_msg_->header.stamp = now;
-    abscissa_polygon_pub_->publish(*abscissa_polygon_msg_);
+      "abscissa_polygon", 1);
   }
+
+  vis_callback_group_ = node->create_callback_group(
+    rclcpp::CallbackGroupType::MutuallyExclusive);
+  static_vis_timer_ = node->create_wall_timer(
+    std::chrono::milliseconds(static_cast<int>(dt * 1000.0)),
+    std::bind(&ROSTrajectoryVisualizer::on_static_vis_timer, this), vis_callback_group_);
 }
 
 Polygon ROSTrajectoryVisualizer::build_polygon(const casadi::DM & pts)
@@ -115,6 +120,21 @@ Polygon ROSTrajectoryVisualizer::build_polygon(const casadi::DM & pts)
     pt.y = static_cast<double>(pts(1, i));
   }
   return polygon;
+}
+
+void ROSTrajectoryVisualizer::on_static_vis_timer()
+{
+  const auto now = node_->now();
+  if (abscissa_polygon_pub_) {
+    abscissa_polygon_msg_->header.stamp = now;
+    abscissa_polygon_pub_->publish(*abscissa_polygon_msg_);
+  }
+  if (left_boundary_polygon_pub_ && right_boundary_polygon_pub_) {
+    left_boundary_polygon_msg_->header.stamp = now;
+    left_boundary_polygon_pub_->publish(*left_boundary_polygon_msg_);
+    right_boundary_polygon_msg_->header.stamp = now;
+    right_boundary_polygon_pub_->publish(*right_boundary_polygon_msg_);
+  }
 }
 }  // namespace racing_trajectory
 }  // namespace vehicle_model
