@@ -1,0 +1,316 @@
+{
+  "configById": {
+    "3D!3e3sxiq": {
+      "cameraState": {
+        "perspective": true,
+        "distance": 7.169718448168025,
+        "phi": 0.6767490212883991,
+        "thetaOffset": 0.2706557029871321,
+        "targetOffset": [
+          0.732648181521875,
+          2.244399767860213,
+          3.6798831901530716e-14
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ],
+        "targetOrientation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "fovy": 47.57372222163243,
+        "near": 0.5,
+        "far": 5000
+      },
+      "followMode": "follow-none",
+      "followTf": "map",
+      "scene": {
+        "transforms": {
+          "showLabel": false,
+          "editable": true
+        }
+      },
+      "transforms": {
+        "frame:map": {
+          "visible": false
+        },
+        "frame:base_link": {
+          "visible": false
+        }
+      },
+      "topics": {
+        "/abscissa_polygon": {
+          "visible": true,
+          "lineWidth": 0.0166127434758411,
+          "color": "#7c6bffff"
+        },
+        "/left_boundary_polygon": {
+          "visible": true,
+          "color": "#afaaaaa3",
+          "lineWidth": 0.0380431608119673
+        },
+        "/right_boundary_polygon": {
+          "visible": true,
+          "lineWidth": 0.03248262650274961,
+          "color": "#b1acac91"
+        },
+        "/vehicle_polygon": {
+          "visible": true,
+          "color": "#daed0c",
+          "lineWidth": 0.050267092111941365
+        },
+        "/mpc_visualization": {
+          "visible": true,
+          "lineWidth": 0.05229457709294937,
+          "gradient": [
+            "#00f0c2ff",
+            "#7c6bff"
+          ],
+          "type": "line"
+        },
+        "/ss_visualization": {
+          "visible": true,
+          "showOutlines": true,
+          "namespaces": {
+            "safe_set": {
+              "visible": true
+            }
+          }
+        },
+        "/ref_visualization": {
+          "visible": false
+        }
+      },
+      "layers": {},
+      "publish": {
+        "type": "point",
+        "poseTopic": "/move_base_simple/goal",
+        "pointTopic": "/clicked_point",
+        "poseEstimateTopic": "/initialpose",
+        "poseEstimateXDeviation": 0.5,
+        "poseEstimateYDeviation": 0.5,
+        "poseEstimateThetaDeviation": 0.26179939
+      },
+      "imageMode": {}
+    },
+    "Plot!4d6rns5": {
+      "title": "Plot",
+      "paths": [
+        {
+          "value": "/vehicle_state.p.e_psi",
+          "enabled": true,
+          "timestampMethod": "receiveTime",
+          "label": "Frenet Heading (rad)",
+          "color": "#cde34f"
+        }
+      ],
+      "showXAxisLabels": true,
+      "showYAxisLabels": true,
+      "showLegend": true,
+      "legendDisplay": "floating",
+      "showPlotValuesInLegend": false,
+      "isSynced": true,
+      "xAxisVal": "timestamp",
+      "sidebarDimension": 240,
+      "foxglovePanelTitle": "Heading Error",
+      "followingViewWidth": 10
+    },
+    "Plot!1xpb330": {
+      "paths": [
+        {
+          "value": "/vehicle_state.w.w_psi",
+          "enabled": true,
+          "timestampMethod": "receiveTime",
+          "label": "Yaw Rate (rad/s)",
+          "color": "#994fe3"
+        }
+      ],
+      "showXAxisLabels": true,
+      "showYAxisLabels": true,
+      "showLegend": true,
+      "legendDisplay": "floating",
+      "showPlotValuesInLegend": false,
+      "isSynced": true,
+      "xAxisVal": "timestamp",
+      "sidebarDimension": 240,
+      "foxglovePanelTitle": "Longitudinal Control",
+      "followingViewWidth": 10,
+      "title": "Plot"
+    },
+    "Plot!1jrxkqj": {
+      "paths": [
+        {
+          "value": "/vehicle_state.v.v_tran",
+          "enabled": true,
+          "timestampMethod": "receiveTime",
+          "label": "Lateral Velocity (m/s)",
+          "color": "#4fe3aa"
+        }
+      ],
+      "showXAxisLabels": true,
+      "showYAxisLabels": true,
+      "showLegend": true,
+      "legendDisplay": "floating",
+      "showPlotValuesInLegend": false,
+      "isSynced": true,
+      "xAxisVal": "timestamp",
+      "sidebarDimension": 240,
+      "foxglovePanelTitle": "Lateral Error",
+      "followingViewWidth": 10,
+      "title": "Plot"
+    },
+    "Plot!xkzkcg": {
+      "paths": [
+        {
+          "value": "/vehicle_state.v.v_long",
+          "enabled": true,
+          "timestampMethod": "receiveTime",
+          "label": "Longitudinal Velocity (m/s)"
+        }
+      ],
+      "showXAxisLabels": true,
+      "showYAxisLabels": true,
+      "showLegend": true,
+      "legendDisplay": "floating",
+      "showPlotValuesInLegend": false,
+      "isSynced": true,
+      "xAxisVal": "timestamp",
+      "sidebarDimension": 240,
+      "foxglovePanelTitle": "Velocity",
+      "followingViewWidth": 10,
+      "title": "Plot"
+    },
+    "DiagnosticStatusPanel!4ioio1k": {
+      "topicToRender": "/diagnostics",
+      "collapsedSections": [],
+      "numericPrecision": 2.17002911894973
+    },
+    "Plot!3kvtt6q": {
+      "paths": [
+        {
+          "value": "/vehicle_actuation.u_a",
+          "enabled": true,
+          "timestampMethod": "receiveTime",
+          "label": "Drive Force (kN)",
+          "color": "#e34f4f"
+        },
+        {
+          "timestampMethod": "receiveTime",
+          "value": "/vehicle_actuation.u_a.@negative",
+          "enabled": true,
+          "label": "Brake Force (kN)",
+          "color": "#4cb4f5"
+        }
+      ],
+      "showXAxisLabels": true,
+      "showYAxisLabels": true,
+      "showLegend": true,
+      "legendDisplay": "floating",
+      "showPlotValuesInLegend": false,
+      "isSynced": true,
+      "xAxisVal": "timestamp",
+      "sidebarDimension": 240,
+      "foxglovePanelTitle": "Longitudinal Control",
+      "followingViewWidth": 20,
+      "title": "Plot",
+      "minYValue": 0,
+      "maxYValue": 0.005
+    },
+    "Plot!4fraizh": {
+      "paths": [
+        {
+          "value": "/vehicle_actuation.u_steer",
+          "enabled": true,
+          "timestampMethod": "receiveTime",
+          "label": "Steering Angle (rad)",
+          "color": "#e34fd8"
+        }
+      ],
+      "showXAxisLabels": true,
+      "showYAxisLabels": true,
+      "showLegend": true,
+      "legendDisplay": "floating",
+      "showPlotValuesInLegend": false,
+      "isSynced": true,
+      "xAxisVal": "timestamp",
+      "sidebarDimension": 240,
+      "foxglovePanelTitle": "Steering",
+      "followingViewWidth": 10,
+      "title": "Plot",
+      "minYValue": -0.33,
+      "maxYValue": 0.33
+    },
+    "Gauge!3xzhpg3": {
+      "path": "/vehicle_state.v.v_long",
+      "minValue": 0,
+      "maxValue": 4,
+      "colorMap": "turbo",
+      "colorMode": "colormap",
+      "gradient": [
+        "#0000ff",
+        "#ff00ff"
+      ],
+      "reverse": false,
+      "foxglovePanelTitle": "Velocity"
+    },
+    "Tab!6lqjfw": {
+      "activeTabIdx": 0,
+      "tabs": [
+        {
+          "title": "MPC",
+          "layout": {
+            "first": "3D!3e3sxiq",
+            "second": {
+              "first": {
+                "first": {
+                  "first": "Plot!4d6rns5",
+                  "second": "Plot!1xpb330",
+                  "direction": "column"
+                },
+                "second": {
+                  "first": {
+                    "first": "Plot!1jrxkqj",
+                    "second": "Plot!xkzkcg",
+                    "direction": "column"
+                  },
+                  "second": "DiagnosticStatusPanel!4ioio1k",
+                  "direction": "row",
+                  "splitPercentage": 72.09612817089453
+                },
+                "direction": "row",
+                "splitPercentage": 46.670005007511264
+              },
+              "second": {
+                "first": "Plot!3kvtt6q",
+                "second": {
+                  "first": "Plot!4fraizh",
+                  "second": "Gauge!3xzhpg3",
+                  "direction": "row",
+                  "splitPercentage": 72.36315086782378
+                },
+                "direction": "row",
+                "splitPercentage": 46.670005007511264
+              },
+              "direction": "column",
+              "splitPercentage": 66.97936210131331
+            },
+            "direction": "column",
+            "splitPercentage": 47.38400789733465
+          }
+        }
+      ]
+    }
+  },
+  "globalVariables": {
+    "globalVariable": 0
+  },
+  "userNodes": {},
+  "playbackConfig": {
+    "speed": 1
+  },
+  "layout": "Tab!6lqjfw"
+}
