@@ -511,7 +511,8 @@ void RacingMPC::build_lmpc_cost(casadi::MX & cost)
     cost += MX::mtimes({dui.T(), config_->R_d, dui});
 
     // const auto xi = X_(Slice(), i) * scale_x_;
-    // const auto x_base = model_->to_base_state()(casadi::MXDict{{"x", xi}, {"u", ui}}).at("x_out");
+    // const auto x_base =
+    //   model_->to_base_state()(casadi::MXDict{{"x", xi}, {"u", ui}}).at("x_out");
     // cost += x_base(XIndex::VY) * x_base(XIndex::VY) * config_->q_vy;
     // cost += x_base(XIndex::VYAW) * x_base(XIndex::VYAW) * config_->q_vyaw;
 

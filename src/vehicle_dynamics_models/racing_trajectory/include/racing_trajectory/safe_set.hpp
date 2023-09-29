@@ -93,7 +93,9 @@ public:
   typedef std::shared_ptr<SSTrajectory> SharedPtr;
   typedef std::unique_ptr<SSTrajectory> UniquePtr;
 
-  explicit SSTrajectory(const casadi::DM & x, const casadi::DM & u, const casadi::DM & k, const casadi::DM & t, const double & total_length);
+  explicit SSTrajectory(
+    const casadi::DM & x, const casadi::DM & u, const casadi::DM & k,
+    const casadi::DM & t, const double & total_length);
 
   SSResult query(const SSQuery & query) const;
   std::vector<RegResult> query(const RegQuery & query) const;
@@ -102,7 +104,10 @@ private:
   SSTrajectoryData lap_;
   lmpc::vehicle_model::racing_trajectory::TrajectoryKDTree tree_;
 
-  SSTrajectoryData process_lap_data(const casadi::DM & x, const casadi::DM & u, const casadi::DM & k, const casadi::DM & t, const double & total_length) const;
+  SSTrajectoryData process_lap_data(
+    const casadi::DM & x, const casadi::DM & u,
+    const casadi::DM & k, const casadi::DM & t,
+    const double & total_length) const;
 };
 
 class SafeSetManager
@@ -113,7 +118,9 @@ public:
 
   explicit SafeSetManager(const size_t & max_lap_stored);
 
-  void add_lap(const casadi::DM & x, const casadi::DM & u, const casadi::DM & k, const casadi::DM & t, const double & total_length);
+  void add_lap(
+    const casadi::DM & x, const casadi::DM & u, const casadi::DM & k,
+    const casadi::DM & t, const double & total_length);
   SSResult query(const SSQuery & query);
   RegResult query(const RegQuery & query);
 

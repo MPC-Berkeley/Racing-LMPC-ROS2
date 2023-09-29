@@ -79,7 +79,7 @@ void SingleTrackPlanarModel::add_nlp_constraints(casadi::Opti & opti, const casa
       base_config_->modeling_config->use_frenet ? in.at("k") : casadi::MX::sym("k", 1, 1);
     const auto v = x(XIndex::VX);
     // const auto & mu = get_config().mu;
-    const auto & P_max = get_config().P_max;
+    // const auto & P_max = get_config().P_max;
 
     // dynamics constraint
     // auto xip1_temp = casadi::MX(xip1);
@@ -243,15 +243,15 @@ void SingleTrackPlanarModel::compile_dynamics()
   const auto & tyre_f = *get_base_config().front_tyre_config;
   const auto & Bf = tyre_f.pacejka_b;  // magic formula B - front
   const auto & Cf = tyre_f.pacejka_c;  // magic formula C - front
-  const auto & Ef = tyre_f.pacejka_e;  // magic formula E - front
-  const auto & Fz0_f = tyre_f.pacejka_fz0;  // magic formula Fz0 - front
-  const auto & eps_f = tyre_f.pacejka_eps;  // extended magic formula epsilon - front
+  // const auto & Ef = tyre_f.pacejka_e;  // magic formula E - front
+  // const auto & Fz0_f = tyre_f.pacejka_fz0;  // magic formula Fz0 - front
+  // const auto & eps_f = tyre_f.pacejka_eps;  // extended magic formula epsilon - front
   const auto & tyre_r = *get_base_config().rear_tyre_config;
   const auto & Br = tyre_r.pacejka_b;  // magic formula B - rear
   const auto & Cr = tyre_r.pacejka_c;  // magic formula C - rear
-  const auto & Er = tyre_r.pacejka_e;  // magic formula E - rear
-  const auto & Fz0_r = tyre_r.pacejka_fz0;  // magic formula Fz0 - rear
-  const auto & eps_r = tyre_r.pacejka_eps;  // extended magic formula epsilon - rear
+  // const auto & Er = tyre_r.pacejka_e;  // magic formula E - rear
+  // const auto & Fz0_r = tyre_r.pacejka_fz0;  // magic formula Fz0 - rear
+  // const auto & eps_r = tyre_r.pacejka_eps;  // extended magic formula epsilon - rear
 
   // longitudinal tyre force Fx (eq. 4a, 4b)
   // TODO(haoru): consider differential

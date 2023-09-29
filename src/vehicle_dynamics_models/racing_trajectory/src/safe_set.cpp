@@ -13,13 +13,14 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+#include <Eigen/Dense>
+
 #include <memory>
 #include <vector>
 #include <algorithm>
 #include <execution>
 
 #include <casadi/casadi.hpp>
-#include <Eigen/Dense>
 
 #include "racing_trajectory/safe_set.hpp"
 
@@ -29,7 +30,9 @@ namespace vehicle_model
 {
 namespace racing_trajectory
 {
-SSTrajectory::SSTrajectory(const casadi::DM & x, const casadi::DM & u, const casadi::DM & k, const casadi::DM & t, const double & total_length)
+SSTrajectory::SSTrajectory(
+  const casadi::DM & x, const casadi::DM & u, const casadi::DM & k,
+  const casadi::DM & t, const double & total_length)
 : lap_(process_lap_data(x, u, k, t, total_length)),
   tree_(lap_.x_repeat(0, casadi::Slice()).get_elements(),
     lap_.x_repeat(1, casadi::Slice()).get_elements())
@@ -54,11 +57,9 @@ std::vector<RegResult> SSTrajectory::query(const RegQuery & query) const
 {
   std::vector<RegResult> results;
 
-  for (casadi_int i = 0; i < query.reg_out_state_idxs.size(); i++)
-  {
+  for (casadi_int i = 0; i < static_cast<casadi_int>(query.reg_out_state_idxs.size()); i++) {
     auto & result = results.emplace_back();
-    if (query.reg_out_state_idxs[i].size() != 1)
-    {
+    if (query.reg_out_state_idxs[i].size() != 1) {
       throw std::invalid_argument("Only one state variable is supported in every regression");
     }
 
@@ -66,7 +67,10 @@ std::vector<RegResult> SSTrajectory::query(const RegQuery & query) const
     // the last x is not considered since no xip1 is available for it
     casadi::DM x_data = lap_.x(query.reg_in_state_idxs[i], casadi::Slice(0, -1));
     casadi::DM u_data = lap_.u(query.reg_in_control_idxs[i], casadi::Slice(0, -1));
-    casadi::DM xip1_data = lap_.x(query.reg_in_state_idxs[i], casadi::Slice(1, std::numeric_limits<casadi_int>::max()));
+    casadi::DM xip1_data = lap_.x(
+      query.reg_in_state_idxs[i], casadi::Slice(
+        1,
+        std::numeric_limits<casadi_int>::max()));
     casadi::DM k_data = lap_.k(casadi::Slice(), casadi::Slice(0, -1));
     casadi::DM dt_data = lap_.dt(casadi::Slice(), casadi::Slice(0, -1));
 
@@ -94,7 +98,8 @@ std::vector<RegResult> SSTrajectory::query(const RegQuery & query) const
     auto dist_vec = result.dists.get_elements();
     Eigen::Map<Eigen::VectorXd> dist_eigen(dist_vec.data(), dist_vec.size());
     Eigen::VectorXi idx = Eigen::VectorXi::LinSpaced(dist_vec.size(), 0, dist_vec.size() - 1);
-    std::sort(idx.data(), idx.data() + idx.size(),
+    std::sort(
+      idx.data(), idx.data() + idx.size(),
       [&dist_eigen](size_t i1, size_t i2) {return dist_eigen(i1) < dist_eigen(i2);});
     // convert idx to std vector
     std::vector<casadi_int> idx_vec(idx.data(), idx.data() + idx.size());
@@ -108,7 +113,10 @@ std::vector<RegResult> SSTrajectory::query(const RegQuery & query) const
   return results;
 }
 
-SSTrajectoryData SSTrajectory::process_lap_data(const casadi::DM & x, const casadi::DM & u, const casadi::DM & k, const casadi::DM & t, const double & total_length) const
+SSTrajectoryData SSTrajectory::process_lap_data(
+  const casadi::DM & x, const casadi::DM & u,
+  const casadi::DM & k, const casadi::DM & t,
+  const double & total_length) const
 {
   SSTrajectoryData data;
   const auto J = casadi::DM::linspace(x.size2() - 1, 0, x.size2()).T();
@@ -119,7 +127,11 @@ SSTrajectoryData SSTrajectory::process_lap_data(const casadi::DM & x, const casa
   data.k = k;
   data.J = casadi::DM::horzcat({J + x.size2() - 1, J, J - x.size2() + 1});
   data.x = x;
-  data.dt = t(casadi::Slice(), casadi::Slice(0, -1)) - t(casadi::Slice(), casadi::Slice(1, std::numeric_limits<casadi_int>::max()));
+  data.dt =
+    t(casadi::Slice(), casadi::Slice(0, -1)) - t(
+    casadi::Slice(), casadi::Slice(
+      1,
+      std::numeric_limits<casadi_int>::max()));
   data.dt = casadi::DM::horzcat({data.dt, data.dt(casadi::Slice(), -1)});
   return data;
 }
@@ -129,7 +141,9 @@ SafeSetManager::SafeSetManager(const size_t & max_lap_stored)
 {
 }
 
-void SafeSetManager::add_lap(const casadi::DM & x, const casadi::DM & u, const casadi::DM & k, const casadi::DM & t, const double & total_length)
+void SafeSetManager::add_lap(
+  const casadi::DM & x, const casadi::DM & u, const casadi::DM & k,
+  const casadi::DM & t, const double & total_length)
 {
   auto traj = std::make_unique<SSTrajectory>(x, u, k, t, total_length);
   std::unique_lock<std::shared_mutex> lock(mutex_);
@@ -181,8 +195,7 @@ RegResult SafeSetManager::query(const RegQuery & query)
   result.A = query.A;
   result.B = query.B;
   result.C = query.C;
-  for (casadi_int i = 0; i < query.reg_out_state_idxs.size(); i++)
-  {
+  for (casadi_int i = 0; i < static_cast<casadi_int>(query.reg_out_state_idxs.size()); i++) {
     // concatenate the results from all the laps
     casadi::DM xs;
     casadi::DM us;
@@ -203,9 +216,13 @@ RegResult SafeSetManager::query(const RegQuery & query)
       continue;
     }
     // predict the next state
-    const auto xip1s_pred = query.f.map(xs.size2())(casadi::DMDict{{"x", xs}, {"u", us}, {"k", ks}, {"dt", dts}}).at("xip1");
+    const auto xip1s_pred =
+      query.f.map(xs.size2())(
+      casadi::DMDict{{"x", xs}, {"u", us}, {"k", ks},
+        {"dt", dts}}).at("xip1");
     // compute Epanechnikov kernel weights
-    const auto K = 0.75 / query.dist_max * casadi::DM::pow(1 - casadi::DM::pow(dists / query.dist_max, 2), 2);
+    const auto K = 0.75 / query.dist_max *
+      casadi::DM::pow(1 - casadi::DM::pow(dists / query.dist_max, 2), 2);
     // compute the regression matrices
     const auto reg_x_data = casadi::DM::horzcat({xs.T(), us.T()});
     const auto reg_y_data = xip1s.T() - xip1s_pred(query.reg_in_state_idxs[i], casadi::Slice()).T();
@@ -216,7 +233,8 @@ RegResult SafeSetManager::query(const RegQuery & query)
     const auto R = casadi::DM::solve(Q, b);
     // extract the regression results
     const auto dA = R(casadi::Slice(0, static_cast<casadi_int>(query.reg_in_state_idxs[i].size())));
-    const auto dB = R(casadi::Slice(static_cast<casadi_int>(query.reg_in_state_idxs[i].size()), -1));
+    const auto dB =
+      R(casadi::Slice(static_cast<casadi_int>(query.reg_in_state_idxs[i].size()), -1));
     const auto dC = R(-1);
     // update the regression results
     result.A(query.reg_out_state_idxs[i], query.reg_in_state_idxs[i]) += dA;

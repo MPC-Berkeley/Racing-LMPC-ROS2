@@ -171,21 +171,21 @@ void KinematicBicycleModel::compile_dynamics()
   const auto & rho = get_base_config().aero_config->air_density;  // air density
   const auto & A = get_base_config().aero_config->frontal_area;  // frontal area
   const auto & cd = get_base_config().aero_config->drag_coeff;  // drag coefficient
-  const auto & mu = get_config().mu;  // tyre - track friction coefficient
+  // const auto & mu = get_config().mu;  // tyre - track friction coefficient
 
   // magic tyre parameters
-  const auto & tyre_f = *get_base_config().front_tyre_config;
-  const auto & Bf = tyre_f.pacejka_b;  // magic formula B - front
-  const auto & Cf = tyre_f.pacejka_c;  // magic formula C - front
-  const auto & Ef = tyre_f.pacejka_e;  // magic formula E - front
-  const auto & Fz0_f = tyre_f.pacejka_fz0;  // magic formula Fz0 - front
-  const auto & eps_f = tyre_f.pacejka_eps;  // extended magic formula epsilon - front
-  const auto & tyre_r = *get_base_config().rear_tyre_config;
-  const auto & Br = tyre_r.pacejka_b;  // magic formula B - rear
-  const auto & Cr = tyre_r.pacejka_c;  // magic formula C - rear
-  const auto & Er = tyre_r.pacejka_e;  // magic formula E - rear
-  const auto & Fz0_r = tyre_r.pacejka_fz0;  // magic formula Fz0 - rear
-  const auto & eps_r = tyre_r.pacejka_eps;  // extended magic formula epsilon - rear
+  // const auto & tyre_f = *get_base_config().front_tyre_config;
+  // const auto & Bf = tyre_f.pacejka_b;  // magic formula B - front
+  // const auto & Cf = tyre_f.pacejka_c;  // magic formula C - front
+  // const auto & Ef = tyre_f.pacejka_e;  // magic formula E - front
+  // const auto & Fz0_f = tyre_f.pacejka_fz0;  // magic formula Fz0 - front
+  // const auto & eps_f = tyre_f.pacejka_eps;  // extended magic formula epsilon - front
+  // const auto & tyre_r = *get_base_config().rear_tyre_config;
+  // const auto & Br = tyre_r.pacejka_b;  // magic formula B - rear
+  // const auto & Cr = tyre_r.pacejka_c;  // magic formula C - rear
+  // const auto & Er = tyre_r.pacejka_e;  // magic formula E - rear
+  // const auto & Fz0_r = tyre_r.pacejka_fz0;  // magic formula Fz0 - rear
+  // const auto & eps_r = tyre_r.pacejka_eps;  // extended magic formula epsilon - rear
 
   // compute kinematics
   const auto beta = atan(lr * tan(delta) / l);
