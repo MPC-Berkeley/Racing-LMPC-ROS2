@@ -11,6 +11,9 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 # Set ROS_DISTRO macros
+if(NOT DEFINED ENV{ROS_DISTRO})
+    message(FATAL_ERROR "Environment variable ROS_DISTRO is not defined. Have you sourced your ROS workspace?")
+endif()
 set(ROS_DISTRO $ENV{ROS_DISTRO})
 if(${ROS_DISTRO} STREQUAL "rolling")
   add_compile_definitions(ROS_DISTRO_ROLLING)
@@ -22,7 +25,11 @@ endif()
 
 # Require that dependencies from package.xml be available.
 find_package(casadi REQUIRED)
+find_package(TBB REQUIRED)
 find_package(ament_cmake_auto REQUIRED)
+find_package(eigen3_cmake_module REQUIRED)
+find_package(Eigen3 REQUIRED)
+include_directories(SYSTEM ${EIGEN3_INCLUDE_DIRS})
 ament_auto_find_build_dependencies(REQUIRED
   ${${PROJECT_NAME}_BUILD_DEPENDS}
   ${${PROJECT_NAME}_BUILDTOOL_DEPENDS}
@@ -49,7 +56,7 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
   ${${PROJECT_NAME}_HEADER}
 )
 
-target_link_libraries(${PROJECT_NAME} casadi)
+target_link_libraries(${PROJECT_NAME} casadi Eigen3::Eigen TBB::tbb)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

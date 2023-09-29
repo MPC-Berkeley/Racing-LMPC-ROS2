@@ -11,6 +11,9 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 # Set ROS_DISTRO macros
+if(NOT DEFINED ENV{ROS_DISTRO})
+    message(FATAL_ERROR "Environment variable ROS_DISTRO is not defined. Have you sourced your ROS workspace?")
+endif()
 set(ROS_DISTRO $ENV{ROS_DISTRO})
 if(${ROS_DISTRO} STREQUAL "rolling")
   add_compile_definitions(ROS_DISTRO_ROLLING)
