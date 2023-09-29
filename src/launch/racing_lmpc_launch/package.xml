@@ -16,6 +16,7 @@
   <depend>rclcpp</depend>
   <exec_depend>racing_mpc</exec_depend>
   <exec_depend>racing_trajectory</exec_depend>
+  <exec_depend>racing_simulator</exec_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

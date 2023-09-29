@@ -43,7 +43,48 @@ struct SSQuery
 struct SSResult
 {
   casadi::DM x;    // query results
+  casadi::DM u;
   casadi::DM J;    // costs at the query results
+};
+
+struct SSTrajectoryData
+{
+  casadi::DM x;
+  casadi::DM u;
+  casadi::DM k;
+  casadi::DM dt;
+
+  casadi::DM x_repeat;
+  casadi::DM J;
+};
+
+struct RegQuery
+{
+  typedef std::vector<std::vector<casadi_int>> Indices;
+  casadi::DM x;  // state query
+  casadi::DM A;  // from nominal model
+  casadi::DM B;  // from nominal model
+  casadi::DM C;  // from nominal model
+  casadi::Function f;  // nominal model
+  double dist_max;  // maximum distance to the safe set
+  casadi_int max_num_total;  // maximum number of points to return
+  casadi_int max_num_per_lap;  // maximum number of points to return per lap
+  Indices reg_in_state_idxs;  // indices of the state variables to be used for regression
+  Indices reg_in_control_idxs;  // indices of the control variables to be used for regression
+  Indices reg_out_state_idxs;  // indices of the output variables of the regression
+};
+
+struct RegResult
+{
+  casadi::DM A;  // after error dynamics regression
+  casadi::DM B;  // after error dynamics regression
+  casadi::DM C;  // after error dynamics regression
+  casadi::DM xs;  // query results
+  casadi::DM us;  // control results
+  casadi::DM xip1s;  // next state results
+  casadi::DM dists;  // distances to the query results
+  casadi::DM ks;  // curvature results
+  casadi::DM dts;  // time step results
 };
 
 class SSTrajectory
@@ -52,15 +93,16 @@ public:
   typedef std::shared_ptr<SSTrajectory> SharedPtr;
   typedef std::unique_ptr<SSTrajectory> UniquePtr;
 
-  explicit SSTrajectory(const casadi::DM & x, const double & total_length);
+  explicit SSTrajectory(const casadi::DM & x, const casadi::DM & u, const casadi::DM & k, const casadi::DM & t, const double & total_length);
 
-  SSResult query(const SSQuery & query);
+  SSResult query(const SSQuery & query) const;
+  std::vector<RegResult> query(const RegQuery & query) const;
 
 private:
-  SSResult lap_;
+  SSTrajectoryData lap_;
   lmpc::vehicle_model::racing_trajectory::TrajectoryKDTree tree_;
 
-  SSResult process_lap_data(const casadi::DM & x, const double & total_length) const;
+  SSTrajectoryData process_lap_data(const casadi::DM & x, const casadi::DM & u, const casadi::DM & k, const casadi::DM & t, const double & total_length) const;
 };
 
 class SafeSetManager
@@ -71,8 +113,9 @@ public:
 
   explicit SafeSetManager(const size_t & max_lap_stored);
 
-  void add_lap(const casadi::DM & x, const double & total_length);
+  void add_lap(const casadi::DM & x, const casadi::DM & u, const casadi::DM & k, const casadi::DM & t, const double & total_length);
   SSResult query(const SSQuery & query);
+  RegResult query(const RegQuery & query);
 
 private:
   boost::circular_buffer<SSTrajectory::UniquePtr> laps_;
@@ -90,7 +133,7 @@ public:
     const bool & to_file,
     const std::string & file_prefix);
   void step(
-    const casadi::DM & x, const casadi::DM & u, const casadi::DM & t,
+    const casadi::DM & x, const casadi::DM & u, const casadi::DM & k, const casadi::DM & t,
     const double & total_length);
 
   void load(const std::vector<std::string> & from_files, const double & total_length);
@@ -100,6 +143,7 @@ private:
   casadi::DM last_x_;
   casadi::DM last_u_;
   casadi::DM last_t_;
+  casadi::DM last_k_;
   bool last_x_valid_;
   bool initialized_;
   bool to_file_;

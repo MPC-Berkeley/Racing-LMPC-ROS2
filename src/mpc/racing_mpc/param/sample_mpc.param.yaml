@@ -46,6 +46,6 @@
 
       load: true
       load_path:
-        - /home/haoru/berkeley/experiments/putnam_short/ss/ss_lap_1_x.txt
-        - /home/haoru/berkeley/experiments/putnam_short/ss/ss_lap_2_x.txt
-        - /home/haoru/berkeley/experiments/putnam_short/ss/ss_lap_3_x.txt
+        - /home/haoru/berkeley/experiments/putnam_short/ss/ss_lap_1
+        - /home/haoru/berkeley/experiments/putnam_short/ss/ss_lap_2
+        - /home/haoru/berkeley/experiments/putnam_short/ss/ss_lap_3

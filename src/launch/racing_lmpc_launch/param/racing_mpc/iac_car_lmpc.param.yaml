@@ -4,7 +4,7 @@
       max_cpu_time: 0.085
       max_iter: 200
       tol: 1e-3
-      n: 40
+      n: 60
       margin: 0.5
       average_track_width: 10.0
       verbose: false
@@ -17,11 +17,11 @@
       q_vy: 0.01
       q_vyaw: 0.01
       r: [
-        1e-3, 0.0,
-        0.0, 1e-1,
+        1e-4, 0.0,
+        0.0, 1e-3,
       ]
       r_d: [
-        1e-3, 0.0,
+        5e-4, 0.0,
         0.0, 1e-1,
       ]
       max_vel_ref_diff: 1.0 # max difference between reference velocity and actual velocity
@@ -35,9 +35,9 @@
 
       # LMPC
       learning: true
-      convex_hull_slack: [20.0, 20.0, 2.0, 20.0, 20.0, 2.0]
-      num_ss_pts: 48
-      num_ss_pts_per_lap: 16
+      convex_hull_slack: [200.0, 20.0, 2.0, 200.0, 2.0, 20.0]
+      num_ss_pts: 96
+      num_ss_pts_per_lap: 32
       max_lap_stored: 3
 
       # recording
@@ -46,6 +46,6 @@
 
       load: true
       load_path:
-        - /home/haoru/berkeley/Racing-LMPC-ROS2/src/mpc/racing_mpc/test_data/putnam_short_ss/ss_lap_1_x.txt
-        - /home/haoru/berkeley/Racing-LMPC-ROS2/src/mpc/racing_mpc/test_data/putnam_short_ss/ss_lap_2_x.txt
-        - /home/haoru/berkeley/Racing-LMPC-ROS2/src/mpc/racing_mpc/test_data/putnam_short_ss/ss_lap_3_x.txt
+        - /home/haoru/berkeley/Racing-LMPC-ROS2/src/mpc/racing_mpc/test_data/putnam_short_ss/ss_lap_1
+        - /home/haoru/berkeley/Racing-LMPC-ROS2/src/mpc/racing_mpc/test_data/putnam_short_ss/ss_lap_2
+        - /home/haoru/berkeley/Racing-LMPC-ROS2/src/mpc/racing_mpc/test_data/putnam_short_ss/ss_lap_3

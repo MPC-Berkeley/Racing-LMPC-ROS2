@@ -27,15 +27,15 @@ def generate_launch_description():
     sim_config = get_share_file(
         "racing_lmpc_launch", "param", "racing_simulator", "continuous_simulator.param.yaml")
     dt_model_config = get_share_file(
-        "racing_lmpc_launch", "param", "iac_car", "iac_car_single_track.param.yaml")
+        "racing_lmpc_launch", "param", "barc", "barc_single_track.param.yaml")
     base_model_config = get_share_file(
-        "racing_lmpc_launch", "param", "iac_car", "iac_car_base.param.yaml")
+        "racing_lmpc_launch", "param", "barc", "barc_base.param.yaml")
     mpc_config = get_share_file(
-        "racing_lmpc_launch", "param", "racing_mpc", "iac_car_lmpc.param.yaml")
+        "racing_lmpc_launch", "param", "racing_mpc", "barc_lmpc.param.yaml")
     sim_track_file = get_share_file(
-        "racing_trajectory", "test_data", "putnam_short", "08_putnam_short_optm.txt")
+        "racing_trajectory", "test_data", "barc", "02_barc_center.txt")
     track_file_folder = get_share_file(
-        "racing_trajectory", "test_data", "putnam_short")
+        "racing_trajectory", "test_data", "barc")
 
     return LaunchDescription(
         [
@@ -53,11 +53,8 @@ def generate_launch_description():
                     {
                         "racing_simulator.race_track_file_path": sim_track_file,
                         "modeling.use_frenet": False,
-                        # "racing_simulator.x0": [-100.0, -5.0, 3.14, 10.0, 0.0, 0.0]
-                        # "racing_simulator.x0": [50.0, 5.0, 3.14, 10.0, 0.0, 0.0]
-                        "racing_simulator.x0": [-10.0, 2.0, 3.14, 10.0, 0.0, 0.0]
-                        # "racing_simulator.x0": [-350.0, -20.0, 3.14, 10.0, 0.0, 0.0]
-                        # "racing_simulator.x0": [-67.9, 247.6, -2.61799, 10.0, 0.0, 0.0]
+                        "racing_simulator.x0": [1.0, 0.0, 0.0, 1.5, 0.0, 0.0]
+                        # "racing_simulator.x0": [-2.0, 3.5, -1.5708, 1.5, 0.0, 0.0]
                     },
                 ],
                 remappings=[
@@ -78,9 +75,9 @@ def generate_launch_description():
                     base_model_config,
                     use_sim_time,
                     {
-                        "racing_mpc_node.dt": 0.1,
+                        "racing_mpc_node.dt": 0.025,
                         "racing_mpc_node.vehicle_model_name": "single_track_planar_model",
-                        "racing_mpc_node.default_traj_idx": 8,
+                        "racing_mpc_node.default_traj_idx": 2,
                         "racing_mpc_node.traj_folder": track_file_folder,
                         "racing_mpc_node.velocity_profile_scale": 0.9,
                         "racing_mpc_node.delay_step": 0,

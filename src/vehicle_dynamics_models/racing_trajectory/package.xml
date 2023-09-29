@@ -17,6 +17,7 @@
   <depend>backward_ros</depend>
   <depend>geometry_msgs</depend>
   <depend>cgal</depend>
+  <depend>tbb</depend>
 
   <depend>lmpc_utils</depend>
 

@@ -243,7 +243,7 @@ void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out, casadi::D
   }
 
   // add current state to safe set
-  ss_recorder_->step(x_ic, u_ic, t_ic, static_cast<double>(total_length));
+  ss_recorder_->step(x_ic, u_ic, curvatures(0), t_ic, static_cast<double>(total_length));
 
   // compute new safe set
   const auto query = lmpc::vehicle_model::racing_trajectory::SSQuery{
@@ -277,9 +277,11 @@ void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out, casadi::D
     }
     if (config_->learning) {
       opti_.set_value(ss_, ss_x);
-      opti_.set_value(ss_costs_, ss_j);
+      opti_.set_value(ss_costs_, ss_j - ss_j(Slice(), 0));
       opti_.set_initial(convex_combi_, in.at("convex_combi_optm_ref"));
     }
+    // std::cout << "[ss_j]:\n" << ss_j << std::endl;
+    // std::cout << "[ss_x]:\n" << ss_x(XIndex::PX, Slice()) << std::endl;
   }
 
   // set up the offsets
@@ -348,6 +350,7 @@ void RacingMPC::solve(const casadi::DMDict & in, casadi::DMDict & out, casadi::D
     stats = sol_->stats();
     if (config_->learning) {
       out["convex_combi_optm"] = sol_->value(convex_combi_);
+      // std::cout << DM::mtimes(out["ss_x"], out["convex_combi_optm"])(XIndex::VX) << std::endl;
     }
     // std::cout << "[X_optm]:" << out.at("X_optm") << std::endl;
     // std::cout << "[U_optm]:" << out.at("U_optm") << std::endl;
@@ -490,14 +493,7 @@ void RacingMPC::build_lmpc_cost(casadi::MX & cost)
   bool enable_convex_hull_slack = static_cast<double>(MX::sumsqr(config_->convex_hull_slack)) > 0.0;
   if (enable_convex_hull_slack) {
     convex_hull_slack_ = opti_.variable(model_->nx(), 1);
-    opti_.subject_to(
-      opti_.bounded(
-        -convex_hull_slack_,
-        xN_combi - xN,
-        convex_hull_slack_
-      )
-    );
-    opti_.subject_to(convex_hull_slack_ >= 0.0);
+    opti_.subject_to(xN == xN_combi + convex_hull_slack_);
     cost += MX::mtimes(
       {convex_hull_slack_.T(), MX::diag(
           config_->convex_hull_slack), convex_hull_slack_});
@@ -513,6 +509,14 @@ void RacingMPC::build_lmpc_cost(casadi::MX & cost)
     const auto dui = dU_(Slice(), i - 1) * scale_u_;
     cost += MX::mtimes({ui.T(), config_->R, ui});
     cost += MX::mtimes({dui.T(), config_->R_d, dui});
+
+    // const auto xi = X_(Slice(), i) * scale_x_;
+    // const auto x_base = model_->to_base_state()(casadi::MXDict{{"x", xi}, {"u", ui}}).at("x_out");
+    // cost += x_base(XIndex::VY) * x_base(XIndex::VY) * config_->q_vy;
+    // cost += x_base(XIndex::VYAW) * x_base(XIndex::VYAW) * config_->q_vyaw;
+
+    // cost += MX::mtimes({ui.T(), config_->R, ui});
+    // cost += MX::mtimes({dui.T(), config_->R_d, dui});
   }
 }
 

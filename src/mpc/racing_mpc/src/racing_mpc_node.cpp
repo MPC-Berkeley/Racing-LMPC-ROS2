@@ -449,6 +449,10 @@ void RacingMPCNode::on_step_timer()
     marker.ns = "safe_set";
     marker.id = 0;
     marker.type = visualization_msgs::msg::Marker::SPHERE_LIST;
+    const auto scale = model_->get_base_config().chassis_config->wheel_base / 10.0;
+    marker.scale.x = scale;
+    marker.scale.y = scale;
+    marker.scale.z = scale;
     marker.action = visualization_msgs::msg::Marker::MODIFY;
     marker.points.reserve(ss_X.size2());
     for (casadi_int i = 0; i < ss_X.size2(); i++) {
@@ -464,9 +468,6 @@ void RacingMPCNode::on_step_timer()
       color.b = 0.0;
       color.a = 1.0;
     }
-    marker.scale.x = 0.5;
-    marker.scale.y = 0.5;
-    marker.scale.z = 0.5;
     ss_vis_pub_->publish(ss_vis_msg);
   }
 
