@@ -44,8 +44,8 @@
       record: false
       path_prefix: "/home/haoru/berkeley/Racing-LMPC-ROS2/src/mpc/racing_mpc/test_data/barc_ss/ss_"
 
-      load: true
-      load_path:
-        - /home/haoru/berkeley/Racing-LMPC-ROS2/src/mpc/racing_mpc/test_data/barc_ss/ss_lap_1
-        - /home/haoru/berkeley/Racing-LMPC-ROS2/src/mpc/racing_mpc/test_data/barc_ss/ss_lap_2
-        - /home/haoru/berkeley/Racing-LMPC-ROS2/src/mpc/racing_mpc/test_data/barc_ss/ss_lap_3
+      # load: true
+      # load_path:
+      #   - /home/haoru/berkeley/Racing-LMPC-ROS2/src/mpc/racing_mpc/test_data/barc_ss/ss_lap_1
+      #   - /home/haoru/berkeley/Racing-LMPC-ROS2/src/mpc/racing_mpc/test_data/barc_ss/ss_lap_2
+      #   - /home/haoru/berkeley/Racing-LMPC-ROS2/src/mpc/racing_mpc/test_data/barc_ss/ss_lap_3

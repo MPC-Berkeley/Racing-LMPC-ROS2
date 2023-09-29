@@ -36,6 +36,9 @@ def generate_launch_description():
         "racing_trajectory", "test_data", "barc", "02_barc_center.txt")
     track_file_folder = get_share_file(
         "racing_trajectory", "test_data", "barc")
+    lap1 = get_share_file("racing_mpc", "test_data", "barc_ss", "ss_lap_1")
+    lap2 = get_share_file("racing_mpc", "test_data", "barc_ss", "ss_lap_2")
+    lap3 = get_share_file("racing_mpc", "test_data", "barc_ss", "ss_lap_3")
 
     return LaunchDescription(
         [
@@ -81,6 +84,8 @@ def generate_launch_description():
                         "racing_mpc_node.traj_folder": track_file_folder,
                         "racing_mpc_node.velocity_profile_scale": 0.9,
                         "racing_mpc_node.delay_step": 0,
+                        "racing_mpc.load": True,
+                        "racing_mpc.load_path": [lap1, lap2, lap3],
                     },
                 ],
                 remappings=[
