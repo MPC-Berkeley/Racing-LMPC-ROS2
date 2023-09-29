@@ -4,6 +4,8 @@
 
 C++ ROS2 packages that implement learning model predictive control for real-world autonomous race cars.
 
+Paper: [Learning Model Predictive Control with Error Dynamics Regression for Autonomous Racing](https://arxiv.org/abs/2309.10716)
+
 ![lmpc-foxglove](vis.gif)
 
 ## Install
@@ -67,3 +69,16 @@ ros2 launch racing_lmpc_launch sim_putnam_config_a_tracking_mpc.launch.py
 ```
 
 Remember to change the line scales of the 3D pannel accordingly to view them easily. Change display frame to `base_link` because the track is huge.
+
+## Cite As
+
+```bibtex
+@misc{xue2023lmpc,
+      title={Learning Model Predictive Control with Error Dynamics Regression for Autonomous Racing}, 
+      author={Haoru Xue and Edward L. Zhu and Francesco Borrelli},
+      year={2023},
+      eprint={2309.10716},
+      archivePrefix={arXiv},
+      primaryClass={cs.RO}
+}
+```
