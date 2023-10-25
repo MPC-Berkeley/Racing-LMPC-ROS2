@@ -42,7 +42,7 @@ In terminal 1, run the following command to launch the simulator:
 
 ```bash
 source install/setup.bash
-ros2 launch racing_lmpc_launch sim_barc_tracking_mpc.launch.py
+ros2 launch racing_lmpc_launch sim_barc_lmpc.launch.py
 ```
 
 In terminal 2, run the following command to launch the foxglove bridge:
